@@ -1,20 +1,19 @@
-import { ReactNode } from 'react';
+// src/app/[lang]/layout.tsx
 
-export default async function LanguageLayout({
+import type { ReactNode } from 'react'
+
+export default function LanguageLayout({
   children,
   params,
 }: {
   children: ReactNode;
   params: { lang: string };
 }) {
-  // Ensure lang is a valid value
-  const lang = params.lang || 'en';
+  const lang = params.lang ?? 'en';
 
   return (
     <html lang={lang}>
-      <body>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
