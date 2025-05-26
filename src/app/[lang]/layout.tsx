@@ -4,17 +4,16 @@ import { LanguageProvider } from '@/lib/contexts/LanguageContext';
 const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
 type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   return SUPPORTED_LANGUAGES.map(lang => ({ lang }));
 }
 
-export default async function LanguageLayout({
-  children,
-  params,
-}: {
+type Props = {
   children: ReactNode;
   params: { lang: SupportedLanguage };
-}) {
+};
+
+export default function LanguageLayout({ children, params }: Props) {
   const lang = SUPPORTED_LANGUAGES.includes(params.lang) ? params.lang : 'en';
 
   return (
