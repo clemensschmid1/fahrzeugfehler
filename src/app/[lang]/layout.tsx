@@ -1,13 +1,20 @@
-export default function LanguageLayout({
+import { ReactNode } from 'react';
+
+export default async function LanguageLayout({
   children,
   params,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   params: { lang: string };
 }) {
+  // Ensure lang is a valid value
+  const lang = params.lang || 'en';
+
   return (
-    <div>
-      {children}
-    </div>
+    <html lang={lang}>
+      <body>
+        {children}
+      </body>
+    </html>
   );
-} 
+}
