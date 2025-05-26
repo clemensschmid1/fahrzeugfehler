@@ -1,25 +1,31 @@
 import { ReactNode } from 'react';
-import { LanguageProvider } from '@/lib/contexts/LanguageContext';
+import { LanguageWrapper } from '@/components/LanguageWrapper';
 
 // Static languages
 const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
 type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
+// This is required by Next.js 15 for static optimization
 export async function generateStaticParams() {
   return SUPPORTED_LANGUAGES.map(lang => ({ lang }));
 }
 
-interface LayoutParams {
-  params: { lang: SupportedLanguage };
+// The layout must be async in Next.js 15 when using dynamic params
+export default async function LanguageLayout({
+  children,
+  params,
+}: {
   children: ReactNode;
-}
-
-export default function LanguageLayout({ children, params }: LayoutParams) {
-  const lang = SUPPORTED_LANGUAGES.includes(params.lang) ? params.lang : 'en';
+  params: { lang: string };
+}) {
+  // Validate the language parameter
+  const lang = SUPPORTED_LANGUAGES.includes(params.lang as SupportedLanguage)
+    ? params.lang
+    : 'en';
 
   return (
-    <LanguageProvider language={lang}>
+    <LanguageWrapper lang={lang}>
       {children}
-    </LanguageProvider>
+    </LanguageWrapper>
   );
 }
