@@ -1,18 +1,15 @@
 import { ReactNode } from 'react';
+import { LanguageProvider } from '@/lib/contexts/LanguageContext';
 
-export default function LanguageLayout({
-  children,
-  params,
-}: {
+type Props = {
   children: ReactNode;
   params: { lang: string };
-}) {
-  // Destructure lang safely (used internally only)
-  const lang = typeof params?.lang === 'string' ? params.lang : 'en';
+};
 
+export default function LanguageLayout({ children, params }: Props) {
   return (
-    <html lang="en">{/* keep static to prevent hydration mismatches */}
-      <body className="min-h-screen bg-white">{children}</body>
-    </html>
+    <LanguageProvider language={params.lang}>
+      {children}
+    </LanguageProvider>
   );
 }
