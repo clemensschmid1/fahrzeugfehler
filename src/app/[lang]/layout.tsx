@@ -4,11 +4,11 @@ import { LanguageProvider } from '@/lib/contexts/LanguageContext';
 const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
 type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
   return SUPPORTED_LANGUAGES.map(lang => ({ lang }));
 }
 
-export default function LanguageLayout({
+export default async function LanguageLayout({
   children,
   params,
 }: {
