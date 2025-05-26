@@ -1,6 +1,4 @@
-// src/app/[lang]/layout.tsx
-
-import type { ReactNode } from 'react'
+import { ReactNode } from 'react';
 
 export default function LanguageLayout({
   children,
@@ -9,11 +7,12 @@ export default function LanguageLayout({
   children: ReactNode;
   params: { lang: string };
 }) {
-  const lang = params.lang ?? 'en';
+  // Destructure lang safely (used internally only)
+  const lang = typeof params?.lang === 'string' ? params.lang : 'en';
 
   return (
-    <html lang={lang}>
-      <body>{children}</body>
+    <html lang="en">{/* keep static to prevent hydration mismatches */}
+      <body className="min-h-screen bg-white">{children}</body>
     </html>
   );
 }
