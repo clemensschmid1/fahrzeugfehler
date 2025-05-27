@@ -2,15 +2,20 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import KnowledgeClient from './KnowledgeClient';
-
-// Falls du eigene Supabase-Typen definieren willst
-// import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/database';
 
 interface Props {
   params: {
     slug: string;
     lang: string;
   };
+}
+
+interface RelatedQuestion {
+  id: string;
+  question: string;
+  slug: string;
+  similarity: number;
 }
 
 interface Comment {
@@ -22,11 +27,9 @@ interface Comment {
 
 export default async function KnowledgePage({ params }: Props) {
   const { lang, slug } = params;
+  const supabase = createServerComponentClient<Database>({ cookies });
 
-  // Falls du Database-Typen hast: <Database>
-  const supabase = createServerComponentClient({ cookies });
-
-  // Fetch the question (draft first, then live)
+  // Fetch the question (draft or live)
   let { data: question, error } = await supabase
     .from('questions')
     .select('*')
@@ -51,15 +54,16 @@ export default async function KnowledgePage({ params }: Props) {
     return notFound();
   }
 
-  let relatedQuestions: any[] = [];
+  let relatedQuestions: RelatedQuestion[] = [];
   if (question.embedding) {
     const { data: relatedData } = await supabase.rpc('match_questions', {
       query_embedding: question.embedding,
       match_threshold: 0.5,
       match_count: 7,
     });
+
     relatedQuestions = (relatedData || [])
-      .filter((q: any) => q.id !== question.id)
+      .filter((q: any): q is RelatedQuestion => q && q.id !== question.id && typeof q.similarity === 'number')
       .slice(0, 6);
   }
 
@@ -73,7 +77,7 @@ export default async function KnowledgePage({ params }: Props) {
     <KnowledgeClient
       question={question}
       relatedQuestions={relatedQuestions}
-      comments={comments || []}
+      comments={(comments || []) as Comment[]}
       lang={lang}
       slug={slug}
     />
