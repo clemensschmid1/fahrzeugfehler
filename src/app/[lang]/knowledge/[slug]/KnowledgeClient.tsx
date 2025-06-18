@@ -58,14 +58,17 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Voting state initialized from props
-  const [votes, setVotes] = useState<{ up: number; down: number }>(initialVotes);
-  const [userVote, setUserVote] = useState<'up' | 'down' | null>(initialUserVote);
+  // Voting state initialized from props - only track upvotes now
+  const [upvotes, setUpvotes] = useState<number>(initialVotes.up);
+  const [hasUserUpvoted, setHasUserUpvoted] = useState<boolean>(initialUserVote === 'up');
   const [isVoting, setIsVoting] = useState(false);
 
   const router = useRouter(); // Keep useRouter for client-side navigation
 
-  const handleVote = async (voteType: 'up' | 'down') => {
+  // Translation helper function
+  const t = (en: string, de: string) => lang === 'de' ? de : en;
+
+  const handleUpvote = async () => {
     if (!user) {
       router.push(`/${lang}/login`); // Redirect if not logged in
       return;
@@ -75,12 +78,12 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
       const res = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: question.id, voteType }),
+        body: JSON.stringify({ questionId: question.id }),
       });
       if (res.ok) {
         const data = await res.json();
-        setVotes({ up: data.up || 0, down: data.down || 0 });
-        setUserVote(data.userVote || null);
+        setUpvotes(data.upvotes || 0);
+        setHasUserUpvoted(data.hasUserUpvoted || false);
       }
     } catch (e) {
       console.error('Error voting:', e); // Add logging for voting errors
@@ -88,9 +91,6 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
       setIsVoting(false);
     }
   };
-
-  const totalVotes = votes.up + votes.down;
-  const positivePercent = totalVotes > 0 ? Math.round((votes.up / totalVotes) * 100) : 0;
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +135,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                Back to Knowledge Base
+                {t("Back to Knowledge Base", "Zurück zur Wissensdatenbank")}
               </Link>
               <div className="flex items-center gap-4">
                 <Link
@@ -145,11 +145,11 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
-                  Ask a Question
+                  {t("Ask a Question", "Frage stellen")}
                 </Link>
                 {question.status === 'draft' && (
                   <span className="px-3 py-1 text-sm font-medium text-yellow-800 bg-yellow-100 rounded-full">
-                    Draft
+                    {t("Draft", "Entwurf")}
                   </span>
                 )}
               </div>
@@ -159,7 +159,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
 
             {/* Show the original question asked */}
             <div className="mb-4">
-              <span className="block text-gray-500 text-sm mb-1">Question asked:</span>
+              <span className="block text-gray-500 text-sm mb-1">{t("Question asked:", "Gestellte Frage:")}</span>
               <div className="text-lg font-semibold text-gray-800">{question.question}</div>
             </div>
 
@@ -178,55 +178,58 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                Ask Follow-up
+                {t("Ask Follow-up", "Nachfrage stellen")}
               </Link>
             </div>
 
             {/* Voting UI */}
             <div className="mt-6 flex items-center gap-4">
               <button
-                className={`px-3 py-1 rounded text-lg border ${userVote === 'up' ? 'bg-green-200 border-green-400' : 'bg-gray-100 border-gray-300'}`}
-                disabled={isVoting || !user} // Disable if not logged in
-                onClick={() => handleVote('up')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                  hasUserUpvoted 
+                    ? 'bg-green-100 border-green-400 text-green-700 hover:bg-green-200' 
+                    : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+                } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isVoting || !user}
+                onClick={handleUpvote}
               >
-                👍 {votes.up}
+                <span className="text-lg">👍</span>
+                <span className="font-medium">{upvotes}</span>
+                <span className="text-sm">
+                  {upvotes === 1 ? t('upvote', 'Upvote') : t('upvotes', 'Upvotes')}
+                </span>
               </button>
-              <button
-                className={`px-3 py-1 rounded text-lg border ${userVote === 'down' ? 'bg-red-200 border-red-400' : 'bg-gray-100 border-gray-300'}`}
-                disabled={isVoting || !user} // Disable if not logged in
-                onClick={() => handleVote('down')}
-              >
-                👎 {votes.down}
-              </button>
-              <span className="ml-2 text-sm text-gray-600">
-                {totalVotes > 0 ? `${positivePercent}% positive` : 'No votes yet'}
-              </span>
+              {!user && (
+                <span className="text-sm text-gray-500">
+                  {t("Sign in to upvote", "Anmelden zum Upvoten")}
+                </span>
+              )}
             </div>
 
             <div className="mt-8 pt-8 border-t">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Details</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("Details", "Details")}</h2>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {question.manufacturer && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Manufacturer</dt>
+                    <dt className="text-sm font-medium text-gray-500">{t("Manufacturer", "Hersteller")}</dt>
                     <dd className="mt-1 text-sm text-gray-900">{question.manufacturer}</dd>
                   </div>
                 )}
                 {question.part_type && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Part Type</dt>
+                    <dt className="text-sm font-medium text-gray-500">{t("Part Type", "Teiletyp")}</dt>
                     <dd className="mt-1 text-sm text-gray-900">{question.part_type}</dd>
                   </div>
                 )}
                 {question.part_series && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Part Series</dt>
+                    <dt className="text-sm font-medium text-gray-500">{t("Part Series", "Teileserie")}</dt>
                     <dd className="mt-1 text-sm text-gray-900">{question.part_series}</dd>
                   </div>
                 )}
                 {question.sector && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Sector</dt>
+                    <dt className="text-sm font-medium text-gray-500">{t("Sector", "Sektor")}</dt>
                     <dd className="mt-1 text-sm text-gray-900">{question.sector}</dd>
                   </div>
                 )}
@@ -234,7 +237,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
             </div>
 
             <div className="mt-8 pt-8 border-t">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Related Questions</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("Related Questions", "Ähnliche Fragen")}</h2>
               {relatedQuestions.length > 0 ? (
                 <div className="space-y-4">
                   {relatedQuestions.map((related) => (
@@ -245,26 +248,26 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                     >
                       <h3 className="text-lg font-medium text-gray-900">{related.question}</h3>
                       <p className="text-sm text-gray-500 mt-1">
-                        Similarity: {Math.round(related.similarity * 100)}%
+                        {t("Similarity:", "Ähnlichkeit:")} {Math.round(related.similarity)}%
                       </p>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500">No related questions found.</p>
+                <p className="text-gray-500">{t("No related questions found.", "Keine ähnlichen Fragen gefunden.")}</p>
               )}
             </div>
 
             <div className="mt-8 pt-8 border-t">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Comments</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("Comments", "Kommentare")}</h2>
               {!user ? (
                 <div className="text-center mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
-                  <p className="text-gray-700 text-lg mb-4">Sign in to share your thoughts!</p>
+                  <p className="text-gray-700 text-lg mb-4">{t("Sign in to share your thoughts!", "Melden Sie sich an, um Ihre Gedanken zu teilen!")}</p>
                   <Link
                     href={`/${lang}/login`}
                     className="inline-block px-8 py-3 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-700 transition-colors duration-200 text-lg font-semibold transform hover:scale-105"
                   >
-                    Please sign in to leave a comment.
+                    {t("Please sign in to leave a comment.", "Bitte melden Sie sich an, um einen Kommentar zu hinterlassen.")}
                   </Link>
                 </div>
               ) : (
@@ -272,7 +275,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Add a comment..."
+                    placeholder={t("Add a comment...", "Kommentar hinzufügen...")}
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     rows={4}
                   />
@@ -281,7 +284,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                     disabled={isSubmitting || !newComment.trim()}
                     className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSubmitting ? 'Posting...' : 'Post Comment'}
+                    {isSubmitting ? t('Posting...', 'Wird gepostet...') : t('Post Comment', 'Kommentar posten')}
                   </button>
                 </form>
               )}
@@ -291,7 +294,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                 {comments.map((comment) => (
                   <div key={comment.id} className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-900">{comment.user_name || 'User'}</span>
+                      <span className="font-medium text-gray-900">{comment.user_name || t('User', 'Benutzer')}</span>
                       <span className="text-sm text-gray-500">
                         {new Date(comment.created_at).toLocaleDateString()}
                       </span>
@@ -299,19 +302,19 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                     <p className="text-gray-700">{comment.content}</p>
                   </div>
                 ))}
-                {comments.length === 0 && <p className="text-gray-500">No comments yet.</p>}
+                {comments.length === 0 && <p className="text-gray-500">{t("No comments yet.", "Noch keine Kommentare.")}</p>}
               </div>
             </div>
 
             {/* Follow-up Questions */}
             {followUpQuestions.length > 0 && (
               <div className="mt-8 pt-8 border-t border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Follow-up Questions</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">{t("Follow-up Questions", "Nachfragen")}</h2>
                 <div className="space-y-8">
                   {followUpQuestions.map((followUp, index) => (
                     <div key={followUp.id} className="bg-gray-50 rounded-lg p-6">
                       <div className="mb-4">
-                        <span className="block text-gray-500 text-sm mb-1">Follow-up #{index + 1}</span>
+                        <span className="block text-gray-500 text-sm mb-1">{t("Follow-up", "Nachfrage")} #{index + 1}</span>
                         <div className="text-lg font-semibold text-gray-800">{followUp.question}</div>
                       </div>
                       <div className="prose prose-sm max-w-none">

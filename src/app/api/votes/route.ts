@@ -4,8 +4,7 @@ import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
-    const { questionId, voteType } = await req.json();
-    const booleanVoteType = voteType === 'up';
+    const { questionId } = await req.json();
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -36,48 +35,53 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check if user already has an upvote for this question
     const { data: existingVote } = await supabase
       .from('votes')
       .select('*')
       .eq('question_id', questionId)
       .eq('user_id', user.id)
+      .eq('vote_type', true) // Only check for upvotes (true)
       .single();
 
     if (existingVote) {
-      const { error: updateError } = await supabase
+      // User has already upvoted - remove the vote (toggle off)
+      const { error: deleteError } = await supabase
         .from('votes')
-        .update({ vote_type: booleanVoteType })
-        .eq('id', existingVote.id);
+        .delete()
+        .eq('question_id', questionId)
+        .eq('user_id', user.id)
+        .eq('vote_type', true);
 
-      if (updateError) throw updateError;
+      if (deleteError) throw deleteError;
     } else {
+      // User hasn't upvoted - add an upvote
       const { error: insertError } = await supabase
         .from('votes')
         .insert({
           question_id: questionId,
           user_id: user.id,
-          vote_type: booleanVoteType
+          vote_type: true // true = upvote
         });
 
       if (insertError) throw insertError;
     }
 
+    // Get updated vote counts
     const { data: votes, error: votesError } = await supabase
       .from('votes')
       .select('vote_type')
-      .eq('question_id', questionId);
+      .eq('question_id', questionId)
+      .eq('vote_type', true); // Only count upvotes
 
     if (votesError) throw votesError;
 
-    const totalVotes = votes.length;
-    const upvotes = votes.filter(v => v.vote_type).length;
-    const percentage = totalVotes > 0 ? Math.round((upvotes / totalVotes) * 100) : 0;
+    const upvotes = votes.length;
+    const hasUserUpvoted = existingVote ? false : true; // If we deleted, user no longer has upvoted; if we inserted, user now has upvoted
 
     return NextResponse.json({
-      totalVotes,
       upvotes,
-      percentage,
-      userVote: booleanVoteType
+      hasUserUpvoted
     });
 
   } catch (error: any) {
@@ -119,19 +123,20 @@ export async function GET(req: Request) {
       }
     );
 
+    // Get total upvotes for this question
     const { data: votes, error: votesError } = await supabase
       .from('votes')
       .select('vote_type')
-      .eq('question_id', questionId);
+      .eq('question_id', questionId)
+      .eq('vote_type', true); // Only count upvotes
 
     if (votesError) throw votesError;
 
-    const totalVotes = votes.length;
-    const upvotes = votes.filter(v => v.vote_type).length;
-    const percentage = totalVotes > 0 ? Math.round((upvotes / totalVotes) * 100) : 0;
+    const upvotes = votes.length;
 
+    // Check if current user has upvoted
     const { data: { user } } = await supabase.auth.getUser();
-    let userVote = null;
+    let hasUserUpvoted = false;
 
     if (user) {
       const { data: userVoteData } = await supabase
@@ -139,18 +144,15 @@ export async function GET(req: Request) {
         .select('vote_type')
         .eq('question_id', questionId)
         .eq('user_id', user.id)
+        .eq('vote_type', true) // Only check for upvotes
         .single();
 
-      if (userVoteData) {
-        userVote = userVoteData.vote_type;
-      }
+      hasUserUpvoted = !!userVoteData;
     }
 
     return NextResponse.json({
-      totalVotes,
       upvotes,
-      percentage,
-      userVote
+      hasUserUpvoted
     });
 
   } catch (error: any) {

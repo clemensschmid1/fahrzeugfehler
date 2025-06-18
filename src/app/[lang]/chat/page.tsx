@@ -37,6 +37,9 @@ function ChatPageContent() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  // Translation helper function
+  const t = (en: string, de: string) => lang === 'de' ? de : en;
+
   // Generate UUID for conversation_id
   const generateConversationId = (): string => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -241,111 +244,172 @@ function ChatPageContent() {
   };
 
   return (
-    <article className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <nav className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4" aria-label="Page navigation">
-          <header>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 leading-tight">
-              Chat with AI
+    <article className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <nav className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-6" aria-label={t("Page navigation", "Seitennavigation")}>
+          <header className="text-center sm:text-left">
+            <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 leading-tight">
+              {t("Technical AI", "Technische KI")}
             </h1>
-            <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full shadow-sm">Chat</span>
+            <p className="text-slate-600 text-lg">
+              {t("Get expert answers to your technical questions", "Erhalten Sie Expertenantworten auf Ihre technischen Fragen")}
+            </p>
+            <span className="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-4 py-2 rounded-full shadow-sm mt-3">
+              {t("AI Assistant", "KI-Assistent")}
+            </span>
           </header>
-          <div className="flex flex-col sm:flex-row gap-4">
+          
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleNewChat}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              New Chat
+              {t("New Chat", "Neuer Chat")}
             </button>
             <Link
               href={`/${lang}/knowledge`}
-              className="inline-flex items-center text-indigo-600 hover:text-indigo-800"
+              className="inline-flex items-center justify-center px-6 py-3 bg-white text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl border border-slate-200 hover:border-slate-300"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Back to Knowledge Base
+              {t("Knowledge Base", "Wissensdatenbank")}
             </Link>
           </div>
         </nav>
 
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-          <div className="space-y-4 mb-6 max-h-[60vh] overflow-y-auto">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="p-6 pb-4">
+            <div className="space-y-6 mb-6 max-h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
+              {messages.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                    {t("Start a conversation", "Starten Sie ein Gespräch")}
+                  </h3>
+                  <p className="text-slate-600">
+                    {t("Ask me anything about technical topics, industrial processes, or engineering questions.", "Fragen Sie mich alles über technische Themen, industrielle Prozesse oder Ingenieursfragen.")}
+                  </p>
+                </div>
+              )}
+              
+              {messages.map((message, index) => (
                 <div
-                  className={`max-w-[80%] rounded-lg p-4 ${
-                    message.role === 'user'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
+                  key={message.id}
+                  className={`flex ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  } animate-in fade-in duration-300`}
+                  style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                  <div className="text-xs mt-2 opacity-75">
-                    {new Date(message.created_at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                  <div
+                    className={`max-w-[85%] rounded-2xl p-5 shadow-lg ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white shadow-blue-200'
+                        : 'bg-slate-100 text-slate-900 shadow-slate-200'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
+                    <div className={`text-xs mt-3 opacity-70 ${
+                      message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
+                    }`}>
+                      {new Date(message.created_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 text-gray-900 rounded-lg p-4">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              ))}
+              
+              {isLoading && (
+                <div className="flex justify-start animate-in fade-in duration-300">
+                  <div className="bg-slate-100 text-slate-900 rounded-2xl p-5 shadow-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      <span className="text-sm text-slate-600 ml-2">
+                        {t("AI is thinking...", "KI denkt nach...")}
+                      </span>
+                    </div>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 text-red-800 border border-red-200 rounded-xl shadow-sm">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">{error}</span>
                 </div>
               </div>
             )}
           </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-100 text-red-800 border border-red-200 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {user ? (
-            <form onSubmit={handleSubmit} className="flex gap-4">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your question..."
-                className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Send
-              </button>
-            </form>
-          ) : (
-            <div className="text-center p-6 bg-gray-50 rounded-lg">
-              <p className="text-gray-700 text-lg mb-4">Please sign in to start chatting!</p>
-              <Link
-                href={`/${lang}/login`}
-                className="inline-block px-8 py-3 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-700 transition-colors"
-              >
-                Sign In
-              </Link>
-            </div>
-          )}
+          <div className="border-t border-slate-200 p-6 bg-slate-50">
+            {user ? (
+              <form onSubmit={handleSubmit} className="flex gap-4">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={t("Type your question...", "Frage eingeben...")}
+                    className="w-full px-5 py-4 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white"
+                    disabled={isLoading}
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isLoading || !input.trim()}
+                  className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  {t("Send", "Senden")}
+                </button>
+              </form>
+            ) : (
+              <div className="text-center p-8 bg-white rounded-2xl shadow-lg border border-slate-200">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">
+                  {t("Sign in to start chatting", "Anmelden zum Chatten")}
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  {t("Create an account or sign in to ask questions and get AI-powered answers.", "Erstellen Sie ein Konto oder melden Sie sich an, um Fragen zu stellen und KI-gestützte Antworten zu erhalten.")}
+                </p>
+                <Link
+                  href={`/${lang}/login`}
+                  className="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl shadow-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                  {t("Sign In", "Anmelden")}
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </article>
@@ -353,8 +417,11 @@ function ChatPageContent() {
 }
 
 export default function ChatPage() {
+  const params = useParams();
+  const lang = params.lang as string;
+  
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>{lang === 'de' ? 'Lädt...' : 'Loading...'}</div>}>
       <ChatPageContent />
     </Suspense>
   );

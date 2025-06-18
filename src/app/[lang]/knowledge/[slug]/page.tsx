@@ -202,8 +202,11 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
     }
   );
 
-  // ✅ Supabase Auth intentionally disabled for MVP
-  const user = null;
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) {
+    console.error('Error fetching user:', userError);
+  }
 
   // 🔍 Try Draft
   const { data: draft, error: draftError } = await supabase
@@ -247,6 +250,8 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
       .from('questions')
       .select('id, question, answer, created_at')
       .eq('conversation_id', question.conversation_id)
+      .eq('language_path', lang)
+      .eq('status', 'live')
       .neq('id', question.id)
       .order('created_at', { ascending: true });
 
@@ -267,7 +272,14 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
     });
 
     if (!relatedError && relatedData) {
-      relatedQuestions = relatedData
+      // Filter the results to only include questions with the same language and status='live'
+      const filteredRelatedData = relatedData.filter((q: any) => 
+        q.language_path === lang && 
+        q.status === 'live' &&
+        q.id !== question.id
+      );
+
+      relatedQuestions = filteredRelatedData
         .filter((q: unknown): q is RelatedQuestion => {
           if (
             typeof q === 'object' &&
@@ -282,8 +294,7 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
               typeof r.id === 'string' &&
               typeof r.slug === 'string' &&
               typeof r.question === 'string' &&
-              typeof r.similarity === 'number' &&
-              r.id !== question.id
+              typeof r.similarity === 'number'
             );
           }
           return false;
@@ -307,7 +318,8 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
   const { data: votesData, error: votesError } = await supabase
     .from('votes')
     .select('vote_type, user_id')
-    .eq('question_id', question.id);
+    .eq('question_id', question.id)
+    .eq('vote_type', true); // Only count upvotes
 
   const votes: Vote[] = votesData ?? [];
 
@@ -315,18 +327,16 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
     console.error('Error fetching votes:', votesError);
   }
 
-  const totalVotes = votes.length;
-  const upvotes = votes.filter((v) => v.vote_type).length;
-  const initialVotes = { up: upvotes, down: totalVotes - upvotes };
+  const upvotes = votes.length;
+  const initialVotes = { up: upvotes, down: 0 }; // No downvotes
 
   let initialUserVote: 'up' | 'down' | null = null;
-  // 💤 Optional: Reaktivierbar wenn user wieder aktiv
-  // if (user) {
-  //   const userVoteData = votes.find(v => v.user_id === user.id);
-  //   if (userVoteData) {
-  //     initialUserVote = userVoteData.vote_type ? 'up' : 'down';
-  //   }
-  // }
+  if (user) {
+    const userVoteData = votes.find(v => v.user_id === user.id);
+    if (userVoteData) {
+      initialUserVote = 'up'; // Only upvotes exist now
+    }
+  }
 
   return (
     <KnowledgeClient
