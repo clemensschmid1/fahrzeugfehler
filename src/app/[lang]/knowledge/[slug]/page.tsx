@@ -366,27 +366,30 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
               {question.header || question.question}
             </h1>
             <div className="flex flex-wrap gap-2 mt-1">
-              {question.manufacturer && (
-                <span className="inline-block bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">{question.manufacturer}</span>
-              )}
-              {question.part_type && (
-                <span className="inline-block bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full">{question.part_type}</span>
-              )}
-              {question.sector && (
-                <span className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">{question.sector}</span>
-              )}
               {question.status === 'Draft' && (
                 <span className="inline-block bg-yellow-100 text-yellow-800 text-xs font-medium px-3 py-1 rounded-full">{lang === 'de' ? 'Entwurf' : 'Draft'}</span>
               )}
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-2">
-            <span className="text-sm text-slate-500">
+          <div className="flex flex-col gap-1 mt-4">
+            <span className="text-lg text-slate-700 font-semibold">
               {lang === 'de' ? 'Gestellte Frage:' : 'Question asked:'}
             </span>
-            <span className="text-base font-medium text-slate-700 break-words">{question.question}</span>
+            <span className="text-lg font-bold text-slate-800 break-words">{question.question}</span>
           </div>
-          {/* Voting UI */}
+        </section>
+
+        {/* Answer Section */}
+        <section className="bg-slate-50 rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col gap-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 mb-3">{lang === 'de' ? 'Antwort' : 'Answer'}</h2>
+            <div className="prose prose-lg max-w-none text-slate-800">
+              {question.answer.split('\n').map((paragraph, idx) => (
+                <p key={idx} className="mb-4 leading-relaxed">{paragraph}</p>
+              ))}
+            </div>
+          </div>
+          {/* Upvote Button (moved here) */}
           <div className="flex items-center gap-3 mt-2">
             <button
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-base font-medium ${
@@ -405,17 +408,52 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
               <span className="text-xs text-slate-400">{lang === 'de' ? 'Anmelden zum Upvoten' : 'Sign in to upvote'}</span>
             )}
           </div>
-        </section>
-
-        {/* Answer Section */}
-        <section className="bg-slate-50 rounded-2xl border border-slate-100 shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">{lang === 'de' ? 'Antwort' : 'Answer'}</h2>
-          <div className="prose prose-lg max-w-none text-slate-800">
-            {question.answer.split('\n').map((paragraph, idx) => (
-              <p key={idx} className="mb-4 leading-relaxed">{paragraph}</p>
-            ))}
+          {/* Ask Follow-up Button (directly under answer) */}
+          <div className="mt-4">
+            <a
+              href={`/${lang}/chat?prefill_question=${encodeURIComponent(question.question)}&prefill_answer=${encodeURIComponent(question.answer)}${question.conversation_id ? `&conversation_id=${question.conversation_id}` : ''}`}
+              className="inline-flex items-center px-5 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {lang === 'de' ? 'Nachfrage stellen' : 'Ask Follow-up'}
+            </a>
           </div>
         </section>
+
+        {/* Details Section */}
+        {(question.manufacturer || question.part_type || question.part_series || question.sector) && (
+          <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">{lang === 'de' ? 'Details' : 'Details'}</h2>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {question.manufacturer && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">{lang === 'de' ? 'Hersteller' : 'Manufacturer'}</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{question.manufacturer}</dd>
+                </div>
+              )}
+              {question.part_type && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">{lang === 'de' ? 'Teiletyp' : 'Part Type'}</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{question.part_type}</dd>
+                </div>
+              )}
+              {question.part_series && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">{lang === 'de' ? 'Teileserie' : 'Part Series'}</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{question.part_series}</dd>
+                </div>
+              )}
+              {question.sector && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">{lang === 'de' ? 'Sektor' : 'Sector'}</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{question.sector}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+        )}
 
         {/* Follow-up Questions Section */}
         {followUpQuestions.length > 0 && (
