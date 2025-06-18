@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Send, ArrowLeft, Plus } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -12,8 +13,17 @@ interface Message {
   created_at: string;
 }
 
-export default function ChatPage() {
+interface ConversationMessage {
+  id: string;
+  question: string;
+  answer: string;
+  created_at: string;
+}
+
+function ChatPageContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const lang = params.lang as string;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -21,7 +31,58 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
-  const supabase = createClientComponentClient();
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  // Generate UUID for conversation_id
+  const generateConversationId = (): string => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  // Load conversation history from Supabase
+  const loadConversationHistory = async (convId: string) => {
+    try {
+      const { data: conversationMessages, error } = await supabase
+        .from('questions')
+        .select('id, question, answer, created_at')
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true })
+        .limit(6);
+
+      if (error) {
+        console.error('Error loading conversation history:', error);
+        return;
+      }
+
+      if (conversationMessages && conversationMessages.length > 0) {
+        const messageHistory: Message[] = conversationMessages.flatMap((msg: ConversationMessage) => [
+          {
+            id: `${msg.id}-user`,
+            content: msg.question,
+            role: 'user' as const,
+            created_at: msg.created_at,
+          },
+          {
+            id: `${msg.id}-assistant`,
+            content: msg.answer,
+            role: 'assistant' as const,
+            created_at: msg.created_at,
+          },
+        ]);
+
+        setMessages(messageHistory);
+      }
+    } catch (err) {
+      console.error('Error loading conversation history:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -47,6 +108,71 @@ export default function ChatPage() {
     };
   }, [supabase]);
 
+  // Handle prefill parameters and conversation_id from URL
+  useEffect(() => {
+    const prefillQuestion = searchParams.get('prefill_question');
+    const prefillAnswer = searchParams.get('prefill_answer');
+    const urlConversationId = searchParams.get('conversation_id');
+    
+    if (urlConversationId) {
+      // Load conversation history if conversation_id is provided
+      setConversationId(urlConversationId);
+      loadConversationHistory(urlConversationId);
+    } else if (prefillQuestion && prefillAnswer) {
+      // Handle prefill parameters for new conversations
+      const newConversationId = generateConversationId();
+      setConversationId(newConversationId);
+      
+      const questionMessage: Message = {
+        id: Date.now().toString(),
+        content: prefillQuestion,
+        role: 'user',
+        created_at: new Date().toISOString(),
+      };
+      
+      const answerMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: prefillAnswer,
+        role: 'assistant',
+        created_at: new Date().toISOString(),
+      };
+      
+      setMessages([questionMessage, answerMessage]);
+      
+      // Update URL with new conversation_id
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('conversation_id', newConversationId);
+      newUrl.searchParams.delete('prefill_question');
+      newUrl.searchParams.delete('prefill_answer');
+      router.replace(newUrl.pathname + newUrl.search);
+    } else {
+      // New chat without any context
+      const newConversationId = generateConversationId();
+      setConversationId(newConversationId);
+      setMessages([]);
+      
+      // Update URL with new conversation_id
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('conversation_id', newConversationId);
+      router.replace(newUrl.pathname + newUrl.search);
+    }
+  }, [searchParams, router]);
+
+  const handleNewChat = () => {
+    const newConversationId = generateConversationId();
+    setConversationId(newConversationId);
+    setMessages([]);
+    setInput('');
+    setError(null);
+    
+    // Update URL with new conversation_id
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('conversation_id', newConversationId);
+    newUrl.searchParams.delete('prefill_question');
+    newUrl.searchParams.delete('prefill_answer');
+    router.replace(newUrl.pathname + newUrl.search);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !user) return;
@@ -64,6 +190,12 @@ export default function ChatPage() {
     setError(null);
 
     try {
+      // Prepare conversation context for the API
+      const conversationContext = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
       const response = await fetch('/api/ask', {
         method: 'POST',
         headers: {
@@ -72,6 +204,8 @@ export default function ChatPage() {
         body: JSON.stringify({
           question: input.trim(),
           language: lang,
+          conversation_id: conversationId,
+          conversation_context: conversationContext,
         }),
       });
 
@@ -80,15 +214,24 @@ export default function ChatPage() {
         throw new Error(errorData.error || 'Failed to get response');
       }
 
-      const answer = await response.text();
+      const data = await response.json();
+      const answer = data.answer;
+      const questionId = data.id;
       const assistantMessage: Message = {
         id: Date.now().toString(),
         content: answer,
         role: 'assistant',
         created_at: new Date().toISOString(),
       };
-
       setMessages(prev => [...prev, assistantMessage]);
+
+      if (questionId) {
+        await fetch('/api/questions/generate-metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: questionId }),
+        });
+      }
     } catch (err: any) {
       console.error('Error in chat:', err);
       setError(err.message);
@@ -108,6 +251,15 @@ export default function ChatPage() {
             <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full shadow-sm">Chat</span>
           </header>
           <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={handleNewChat}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Chat
+            </button>
             <Link
               href={`/${lang}/knowledge`}
               className="inline-flex items-center text-indigo-600 hover:text-indigo-800"
@@ -197,5 +349,13 @@ export default function ChatPage() {
         </div>
       </div>
     </article>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ChatPageContent />
+    </Suspense>
   );
 } 

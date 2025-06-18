@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 
 // This client is not used in the POST/GET handlers below and can be removed.
 // If you need a global client for other purposes, ensure it's configured correctly.
@@ -15,12 +15,29 @@ export async function POST(req: Request) {
     const { questionId, content } = await req.json();
     console.log('POST /api/comments data:', { questionId, content });
 
-    // Create a Supabase client configured to work with App Router route handlers
-    // Use the recommended pattern: pass a function that calls cookies()
-    // const cookieStore = cookies(); // No need to store the raw cookies Promise here for this usage
-    // console.log('POST /api/comments raw cookies object:', cookieStore); // Remove problematic log
-    // console.log('POST /api/comments cookie names:', Array.from(cookieStore.keys())); // Remove problematic log
-    const supabaseAuth = createRouteHandlerClient({ cookies: () => cookies() }); // Pass a function that calls cookies()
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // The `setAll` method was called from a Server Component.
+              // This can be ignored if you have middleware refreshing
+              // user sessions.
+            }
+          },
+        },
+      }
+    );
     console.log('POST /api/comments Supabase client created');
 
     console.log('POST /api/comments attempting getUser...');
@@ -77,12 +94,29 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Question ID is required' }, { status: 400 });
     }
 
-    // Create a Supabase client configured to work with App Router route handlers
-    // Use the recommended pattern: pass a function that calls cookies()
-    // const cookieStore = cookies(); // No need to store the raw cookies Promise here for this usage
-    // console.log('GET /api/comments raw cookies object:', cookieStore); // Remove problematic log
-    // console.log('GET /api/comments cookie names:', Array.from(cookieStore.keys())); // Remove problematic log
-    const supabaseAuth = createRouteHandlerClient({ cookies: () => cookies() }); // Pass a function that calls cookies()
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // The `setAll` method was called from a Server Component.
+              // This can be ignored if you have middleware refreshing
+              // user sessions.
+            }
+          },
+        },
+      }
+    );
     console.log('GET /api/comments Supabase client created');
 
     // Fetch comments and join with profiles to get the username
