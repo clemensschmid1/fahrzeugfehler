@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import KnowledgeClient from './KnowledgeClient';
 import type { Database } from '@/lib/database.types';
 import type { Metadata } from 'next';
+import BackButton from './BackButton';
 
 // Types
 type Params = { slug: string; lang: string };
@@ -345,16 +346,7 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
         {/* Top Navigation */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="inline-flex items-center px-4 py-2 bg-white text-slate-700 font-medium rounded-lg border border-slate-200 shadow-sm hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              {lang === 'de' ? 'Zurück zur Wissensdatenbank' : 'Back to Knowledge Base'}
-            </button>
+            <BackButton lang={lang} />
             <a
               href={`/${lang}/chat`}
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
@@ -506,7 +498,7 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
               comments.map((comment: Comment) => (
                 <div key={comment.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-slate-900">{typeof comment.user_name === 'string' && comment.user_name ? comment.user_name : (lang === 'de' ? 'Benutzer' : 'User')}</span>
+                    <span className="font-medium text-slate-900">{(comment as { user_name?: string }).user_name ? (comment as { user_name?: string }).user_name : (lang === 'de' ? 'Benutzer' : 'User')}</span>
                     <span className="text-xs text-slate-500">{new Date(comment.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-slate-700 text-base">{comment.content}</p>
