@@ -14,6 +14,7 @@ type Question = Omit<Database['public']['Tables']['questions']['Row'], 'status'>
   parent_id: string | null;
   meta_description?: string | null;
   status: 'Draft' | 'Published';
+  sector?: string;
 };
 
 type FollowUpQuestion = {
@@ -339,16 +340,184 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
   }
 
   return (
-    <KnowledgeClient
-      question={question}
-      followUpQuestions={followUpQuestions}
-      relatedQuestions={relatedQuestions}
-      initialComments={comments ?? []}
-      initialVotes={initialVotes}
-      initialUserVote={initialUserVote}
-      lang={lang}
-      slug={slug}
-      user={user}
-    />
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-2 sm:px-4 lg:px-0">
+      <div className="max-w-3xl mx-auto flex flex-col gap-8">
+        {/* Top Navigation */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="inline-flex items-center px-4 py-2 bg-white text-slate-700 font-medium rounded-lg border border-slate-200 shadow-sm hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              {lang === 'de' ? 'Zurück zur Wissensdatenbank' : 'Back to Knowledge Base'}
+            </button>
+            <a
+              href={`/${lang}/chat`}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {lang === 'de' ? 'Frage stellen' : 'Ask a Question'}
+            </a>
+          </div>
+        </div>
+
+        {/* Main Question Card */}
+        <section className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight break-words">
+              {question.header || question.question}
+            </h1>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {question.manufacturer && (
+                <span className="inline-block bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">{question.manufacturer}</span>
+              )}
+              {question.part_type && (
+                <span className="inline-block bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full">{question.part_type}</span>
+              )}
+              {question.sector && (
+                <span className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">{question.sector}</span>
+              )}
+              {question.status === 'Draft' && (
+                <span className="inline-block bg-yellow-100 text-yellow-800 text-xs font-medium px-3 py-1 rounded-full">{lang === 'de' ? 'Entwurf' : 'Draft'}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-2">
+            <span className="text-sm text-slate-500">
+              {lang === 'de' ? 'Gestellte Frage:' : 'Question asked:'}
+            </span>
+            <span className="text-base font-medium text-slate-700 break-words">{question.question}</span>
+          </div>
+          {/* Voting UI */}
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-base font-medium ${
+                initialUserVote === 'up'
+                  ? 'bg-green-100 border-green-400 text-green-700 hover:bg-green-200'
+                  : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+              }`}
+              disabled={!user}
+              // onClick logic handled in KnowledgeClient
+            >
+              <span className="text-lg">👍</span>
+              <span className="font-semibold">{initialVotes.up}</span>
+              <span className="text-sm">{initialVotes.up === 1 ? (lang === 'de' ? 'Upvote' : 'upvote') : (lang === 'de' ? 'Upvotes' : 'upvotes')}</span>
+            </button>
+            {!user && (
+              <span className="text-xs text-slate-400">{lang === 'de' ? 'Anmelden zum Upvoten' : 'Sign in to upvote'}</span>
+            )}
+          </div>
+        </section>
+
+        {/* Answer Section */}
+        <section className="bg-slate-50 rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-800 mb-3">{lang === 'de' ? 'Antwort' : 'Answer'}</h2>
+          <div className="prose prose-lg max-w-none text-slate-800">
+            {question.answer.split('\n').map((paragraph, idx) => (
+              <p key={idx} className="mb-4 leading-relaxed">{paragraph}</p>
+            ))}
+          </div>
+        </section>
+
+        {/* Follow-up Questions Section */}
+        {followUpQuestions.length > 0 && (
+          <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">{lang === 'de' ? 'Nachfragen' : 'Follow-up Questions'}</h2>
+            <div className="flex flex-col gap-6">
+              {followUpQuestions.map((followUp, idx) => (
+                <div key={followUp.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-slate-500">{lang === 'de' ? 'Nachfrage' : 'Follow-up'} #{idx + 1}</span>
+                    <span className="text-sm font-medium text-slate-700">{followUp.question}</span>
+                  </div>
+                  <div className="prose prose-sm text-slate-700">
+                    {followUp.answer.split('\n').map((p, i) => (
+                      <p key={i} className="mb-2">{p}</p>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">{new Date(followUp.created_at).toLocaleDateString()}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Related Questions Section */}
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">{lang === 'de' ? 'Ähnliche Fragen' : 'Related Questions'}</h2>
+          {relatedQuestions.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {relatedQuestions.map((related) => (
+                <a
+                  key={related.id}
+                  href={`/${question.language_path}/knowledge/${related.slug}`}
+                  className="block px-4 py-3 rounded-lg border border-slate-100 bg-slate-50 hover:bg-blue-50 transition-colors text-slate-800"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-base line-clamp-1">{related.question}</span>
+                    <span className="text-xs text-slate-500">{lang === 'de' ? 'Ähnlichkeit' : 'Similarity'}: {Math.round(related.similarity)}%</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm">{lang === 'de' ? 'Keine ähnlichen Fragen gefunden.' : 'No related questions found.'}</p>
+          )}
+        </section>
+
+        {/* Comments Section */}
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">{lang === 'de' ? 'Kommentare' : 'Comments'}</h2>
+          {user ? (
+            <form className="mb-6 flex flex-col gap-3">
+              <textarea
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                rows={3}
+                placeholder={lang === 'de' ? 'Kommentar hinzufügen...' : 'Add a comment...'}
+                // value, onChange, onSubmit handled in KnowledgeClient
+              />
+              <button
+                type="submit"
+                className="self-end px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                // disabled, loading handled in KnowledgeClient
+              >
+                {lang === 'de' ? 'Kommentar posten' : 'Post Comment'}
+              </button>
+            </form>
+          ) : (
+            <div className="text-center mb-6 p-6 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-slate-700 text-base mb-2">{lang === 'de' ? 'Melden Sie sich an, um einen Kommentar zu hinterlassen.' : 'Please sign in to leave a comment.'}</p>
+              <a
+                href={`/${lang}/login`}
+                className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                {lang === 'de' ? 'Anmelden' : 'Sign In'}
+              </a>
+            </div>
+          )}
+          <div className="space-y-4">
+            {comments && comments.length > 0 ? (
+              comments.map((comment: Comment) => (
+                <div key={comment.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-slate-900">{typeof comment.user_name === 'string' && comment.user_name ? comment.user_name : (lang === 'de' ? 'Benutzer' : 'User')}</span>
+                    <span className="text-xs text-slate-500">{new Date(comment.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-slate-700 text-base">{comment.content}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-400 text-sm">{lang === 'de' ? 'Noch keine Kommentare.' : 'No comments yet.'}</p>
+            )}
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
