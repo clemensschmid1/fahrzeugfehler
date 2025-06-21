@@ -4,9 +4,31 @@ import type { NextRequest } from 'next/server';
 // List of supported languages
 const supportedLanguages = ['en', 'de'];
 
+// List of static files that should not be redirected
+const staticFiles = [
+  'sitemap.xml',
+  'robots.txt',
+  'sitemap-0.xml',
+  'sitemap-1.xml',
+  'sitemap-2.xml',
+  'sitemap-3.xml',
+  'sitemap-4.xml',
+  'sitemap-5.xml',
+  'sitemap-6.xml',
+  'sitemap-7.xml',
+  'sitemap-8.xml',
+  'sitemap-9.xml',
+];
+
 export function middleware(request: NextRequest) {
   // Get the pathname of the request (e.g. /, /knowledge, /chat)
   const pathname = request.nextUrl.pathname;
+
+  // Check if this is a static file that should not be redirected
+  const isStaticFile = staticFiles.some(file => pathname === `/${file}`);
+  if (isStaticFile) {
+    return NextResponse.next();
+  }
 
   // Check if the pathname starts with a supported language
   const pathnameHasLanguage = supportedLanguages.some(
@@ -89,7 +111,7 @@ export function middleware(request: NextRequest) {
 // Configure the middleware to run on specific paths
 export const config = {
   matcher: [
-    // Skip all internal paths (_next)
-    '/((?!_next|api|favicon.ico).*)',
+    // Skip all internal paths (_next), API routes, static files, and favicon
+    '/((?!_next|api|favicon.ico|sitemap.xml|sitemap-0.xml|sitemap-1.xml|sitemap-2.xml|sitemap-3.xml|sitemap-4.xml|sitemap-5.xml|sitemap-6.xml|sitemap-7.xml|sitemap-8.xml|sitemap-9.xml|robots.txt).*)',
   ],
 }; 
