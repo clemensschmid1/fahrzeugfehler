@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { requireUser } from '@/lib/auth';
+import { checkGeoblock } from '@/lib/geoblock';
 
 // This client is not used in the POST/GET handlers below and can be removed.
 // If you need a global client for other purposes, ensure it's configured correctly.
@@ -9,10 +11,35 @@ import { cookies } from 'next/headers';
 //   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 // );
 
+function checkMinSubmitDelta(delta: number | undefined, minMs = 3000) {
+  if (typeof delta !== 'number' || delta < minMs) {
+    return false;
+  }
+  return true;
+}
+
 export async function POST(req: Request) {
   try {
+    // --- Geoblocking ---
+    const geoblock = checkGeoblock(req);
+    if (geoblock.blocked) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Access denied from your location.' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    // --- End geoblocking ---
+
+    // Auth guard
+    const user = await requireUser(req);
+    if (!user) {
+      return new Response('Unauthorized', { status: 401 });
+    }
     console.log('POST /api/comments received');
-    const { questionId, content } = await req.json();
+    const { questionId, content, submitDeltaMs } = await req.json();
+    if (!checkMinSubmitDelta(submitDeltaMs)) {
+      return NextResponse.json({ error: 'Form submitted too quickly.' }, { status: 429 });
+    }
     console.log('POST /api/comments data:', { questionId, content });
 
     const cookieStore = await cookies();
@@ -40,40 +67,50 @@ export async function POST(req: Request) {
     );
     console.log('POST /api/comments Supabase client created');
 
-    console.log('POST /api/comments attempting getUser...');
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
-    console.log('POST /api/comments getUser result - user:', user, 'error:', userError);
-
-    if (userError || !user) {
-      console.error('Unauthorized access attempt in POST:', userError?.message || 'No user');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Insert the comment using the request-scoped client
+    // RLS policy should be: WITH CHECK (auth.uid() = user_id)
     console.log('POST /api/comments user authenticated (', user.id, '), inserting comment...', { questionId, content });
     const { data, error } = await supabaseAuth
       .from('comments')
       .insert({
         question_id: questionId,
-        user_id: user.id,
-        content: content
+        user_id: user.id, // Must match auth.uid() for RLS
+        content: content,
+        status: 'live',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .select(`
         id,
         content,
         created_at,
         question_id,
-        user_id
+        user_id,
+        status
       `)
       .single();
 
     if (error) {
         console.error('Supabase insert error in POST:', error);
-        throw error;
+        return NextResponse.json({ error: error.message || 'Insert failed' }, { status: 400 });
     }
 
-    console.log('Comment posted successfully:', data);
-    return NextResponse.json(data);
+    // Fetch the username from profiles
+    const { data: profile, error: profileError } = await supabaseAuth
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    let user_name = null;
+    if (profile && profile.username) {
+      user_name = profile.username;
+    }
+
+    const responseData = { ...data, user_name };
+
+    console.log('Comment posted successfully:', responseData);
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Error creating comment:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
@@ -129,7 +166,8 @@ export async function GET(req: Request) {
         created_at,
         question_id,
         user_id,
-        status
+        status,
+        profiles!inner(username)
       `)
       .eq('question_id', questionId);
 
@@ -144,8 +182,14 @@ export async function GET(req: Request) {
         throw error;
     }
 
-    console.log(`Fetched ${data?.length} comments for question ${questionId} with status ${status || 'any'}`);
-    return NextResponse.json(data);
+    // Map user_name for each comment
+    const commentsWithUserName = (data || []).map((comment: any) => ({
+      ...comment,
+      user_name: comment.profiles?.username || null,
+    }));
+
+    console.log(`Fetched ${commentsWithUserName?.length} comments for question ${questionId} with status ${status || 'any'}`);
+    return NextResponse.json(commentsWithUserName);
   } catch (error: any) {
     console.error('Error fetching comments:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

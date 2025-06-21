@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import InternalAuth from '@/components/InternalAuth';
 
 interface Comment {
   id: string;
@@ -14,31 +15,17 @@ interface Comment {
 }
 
 export default function CommentsPage() {
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [usernamesMap, setUsernamesMap] = useState<{[key: string]: string}>({});
   const [selectedComments, setSelectedComments] = useState<string[]>([]);
   const [slugsMap, setSlugsMap] = useState<{[key: string]: string}>({});
   const [filter, setFilter] = useState<'all' | 'live' | 'binned'>('all');
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === '12345678') {
-      setIsAuthenticated(true);
-      setError(null);
-    } else {
-      setError('Invalid password');
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchComments();
-    }
-  }, [isAuthenticated]);
+    fetchComments();
+  }, []);
 
   const fetchComments = async () => {
     setLoading(true);
@@ -141,190 +128,166 @@ export default function CommentsPage() {
 
   const filteredComments = filter === 'all' ? comments : comments.filter(c => c.status === filter);
 
-  if (!isAuthenticated) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Developer Access
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Please enter the password to access developer tools
-            </p>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleSignIn}>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Access Developer Tools
-              </button>
-            </div>
-          </form>
+      <InternalAuth>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
-      </div>
+      </InternalAuth>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Comments</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-md font-semibold border ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 border-blue-600'} transition`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setFilter('live')}
-              className={`px-4 py-2 rounded-md font-semibold border ${filter === 'live' ? 'bg-green-600 text-white' : 'bg-white text-green-600 border-green-600'} transition`}
-            >
-              Live
-            </button>
-            <button
-              onClick={() => setFilter('binned')}
-              className={`px-4 py-2 rounded-md font-semibold border ${filter === 'binned' ? 'bg-yellow-500 text-white' : 'bg-white text-yellow-600 border-yellow-500'} transition`}
-            >
-              Bin
-            </button>
+    <InternalAuth>
+      <div className="min-h-screen bg-gray-50 py-6 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Manage Comments</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-md font-semibold border ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 border-blue-600'} transition`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter('live')}
+                className={`px-4 py-2 rounded-md font-semibold border ${filter === 'live' ? 'bg-green-600 text-white' : 'bg-white text-green-600 border-green-600'} transition`}
+              >
+                Live
+              </button>
+              <button
+                onClick={() => setFilter('binned')}
+                className={`px-4 py-2 rounded-md font-semibold border ${filter === 'binned' ? 'bg-red-600 text-white' : 'bg-white text-red-600 border-red-600'} transition`}
+              >
+                Binned
+              </button>
+            </div>
           </div>
-          <Link
-            href="/internal"
-            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-          >
-            Back to Dashboard
-          </Link>
-          <button
-            onClick={() => setIsAuthenticated(false)}
-            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
-          >
-            Sign Out
-          </button>
-        </div>
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-800 border border-red-200 rounded-lg">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded">
+              {error}
+            </div>
+          )}
 
-        {loading ? (
-          <div className="text-center text-gray-600">Loading comments...</div>
-        ) : (
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <div className="p-6">
-              {/* Mass action buttons */}
-              <div className="mb-4 space-x-4">
-                <button
-                  onClick={handleMassMoveToBin}
-                  disabled={selectedComments.length === 0}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-md font-semibold hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Move Selected to Bin
-                </button>
-                <button
-                  onClick={handleMassMakeLive}
-                  disabled={selectedComments.length === 0}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Make Selected Live
-                </button>
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div className="px-4 py-5 sm:px-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Comments ({filteredComments.length})
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSelectAll}
+                    className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                  >
+                    {selectedComments.length === comments.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                  {selectedComments.length > 0 && (
+                    <>
+                      <button
+                        onClick={handleMassMakeLive}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Make Live ({selectedComments.length})
+                      </button>
+                      <button
+                        onClick={handleMassMoveToBin}
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Move to Bin ({selectedComments.length})
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
+            </div>
 
+            <div className="border-t border-gray-200">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="w-10 px-4 py-3">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <input
                         type="checkbox"
+                        checked={selectedComments.length === comments.length && comments.length > 0}
                         onChange={handleSelectAll}
-                        checked={selectedComments.length === filteredComments.length && filteredComments.length > 0}
-                        className="rounded text-blue-600"
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comment</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredComments.map((comment) => (
-                    <tr key={comment.id} className={selectedComments.includes(comment.id) ? 'bg-blue-50' : ''}>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                    <tr key={comment.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={selectedComments.includes(comment.id)}
                           onChange={() => handleToggleSelect(comment.id)}
-                          className="rounded text-blue-600"
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{comment.content}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{usernamesMap[comment.user_id] || 'Anonymous'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{new Date(comment.created_at).toLocaleString()}</td>
-                      <td className="px-6 py-4 text-sm text-blue-700">
-                        {slugsMap[comment.question_id] ? (
-                          <Link
-                            href={`/knowledge/${slugsMap[comment.question_id]}`}
-                            className="hover:underline"
-                            target="_blank"
-                          >
-                            View Page
-                          </Link>
-                        ) : (
-                          comment.question_id
-                        )}
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-xs truncate">
+                          {comment.content}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${comment.status === 'live' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{comment.status}</span>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {usernamesMap[comment.user_id] || 'Unknown User'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <Link
+                          href={`/en/knowledge/${slugsMap[comment.question_id] || '#'}`}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          {slugsMap[comment.question_id] || 'Unknown Question'}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${comment.status === 'live' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {comment.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(comment.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         {comment.status === 'live' ? (
-                          <button onClick={() => handleMoveToBin(comment.id)} className="text-yellow-600 hover:text-yellow-900 mr-4">Bin</button>
+                          <button
+                            onClick={() => handleMoveToBin(comment.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Move to Bin
+                          </button>
                         ) : (
-                          <button onClick={() => handleMakeLive(comment.id)} className="text-green-600 hover:text-green-900 mr-4">Make Live</button>
+                          <button
+                            onClick={() => handleMakeLive(comment.id)}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Make Live
+                          </button>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
-              {filteredComments.length === 0 && !loading && (
-                <div className="text-center text-gray-600 py-8">No comments found for this filter.</div>
+              {filteredComments.length === 0 && (
+                <div className="text-center py-4 text-gray-500">No comments found.</div>
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
-    </div>
+    </InternalAuth>
   );
 } 

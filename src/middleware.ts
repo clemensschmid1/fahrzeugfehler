@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
 
   // Check if the pathname starts with a supported language
   const pathnameHasLanguage = supportedLanguages.some(
-    (lang) => pathname.startsWith(`/${lang}/`)
+    (lang) => pathname === `/${lang}` || pathname.startsWith(`/${lang}/`)
   );
 
   // If the pathname already has a language prefix, continue

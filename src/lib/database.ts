@@ -18,6 +18,7 @@ export interface Database {
           part_series?: string;
           embedding?: number[];
           language_path: string;
+          is_main?: boolean;
         };
       };
       comments: {

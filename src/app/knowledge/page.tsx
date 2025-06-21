@@ -16,7 +16,7 @@ export default function KnowledgePage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Knowledge Base</h1>
       <ul className="space-y-3">
-        {questions.map(q => (
+        {questions.filter(q => q.is_main).map(q => (
           <li key={q.slug}>
             <Link href={`/knowledge/${q.slug}`} className="text-blue-600 hover:underline">
               {q.question}

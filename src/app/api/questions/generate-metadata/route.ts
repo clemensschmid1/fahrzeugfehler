@@ -103,11 +103,14 @@ Return this JSON:
   complexity_level: string | null,
   related_processes: string[] | null,
   confidentiality_flag: boolean,
-  seo_score: number (from 1 to 99 based on the estimated seo score of the question and answer. 99 is a completely perfect text for having a high page ranking.),
+  seo_score: integer from 1 to 99 (Evaluate how well the question and answer are optimized for technical search intent within industrial automation. Consider keyword usage, relevance to real problems, structure, and clarity. Penalize off-topic or generic content.),
   header: string,
   status: string,
   parent_id: string | null,
-  meta_description: string (max 155 characters, high-CTR industrial tone)
+  meta_description: string (max 155 characters, high-CTR industrial tone),
+  content_score: integer from 1 to 99 (Evaluate how detailed, technically accurate, and practically relevant the content is. High scores require clear, step-by-step solutions or structured analysis of industrial systems, components, or processes.),
+  expertise_score: integer from 1 to 99 (Evaluate the demonstrated technical depth, use of precise terminology, and understanding of industry-level challenges. Penalize vague, consumer-level, or non-technical explanations.),
+  helpfulness_score: integer from 1 to 99 (Evaluate how actionable and technically useful the answer is for engineers, technicians, or maintenance specialists in real-world industrial scenarios. Answers should solve a concrete technical issue or clearly guide through a troubleshooting or configuration task.)
 }`;
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -136,13 +139,32 @@ Return this JSON:
     const allFields = [
       'seo_slug', 'manufacturer', 'part_type', 'part_series', 'sector', 'related_slugs', 'question_type',
       'affected_components', 'error_code', 'complexity_level', 'related_processes', 'confidentiality_flag',
-      'seo_score', 'header', 'status', 'parent_id', 'meta_description'
+      'seo_score', 'header', 'status', 'parent_id', 'meta_description',
+      'content_score', 'expertise_score', 'helpfulness_score',
     ];
     for (const field of allFields) {
       if (!(field in metadata)) metadata[field] = null;
     }
 
-    metadata.slug = metadata.seo_slug || null;
+    // Ensure slug is unique
+    let baseSlug = metadata.seo_slug || null;
+    let uniqueSlug = baseSlug;
+    if (uniqueSlug) {
+      let counter = 1;
+      while (true) {
+        const { data: existing, error: slugError } = await supabase
+          .from('questions')
+          .select('id')
+          .eq('slug', uniqueSlug)
+          .neq('id', id)
+          .maybeSingle();
+        if (slugError) throw slugError;
+        if (!existing) break;
+        uniqueSlug = `${baseSlug}${counter}`;
+        counter++;
+      }
+    }
+    metadata.slug = uniqueSlug;
     delete metadata.seo_slug;
 
     metadata.language = language;

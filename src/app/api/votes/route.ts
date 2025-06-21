@@ -30,39 +30,68 @@ export async function POST(req: Request) {
       }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let user = null;
+    try {
+      const { data: { user: userData }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        // Don't log AuthSessionMissingError as it's expected for unauthenticated users
+        if (userError.message !== 'Auth session missing!') {
+          console.error('Error fetching user in votes API:', userError);
+        }
+      } else {
+        user = userData;
+      }
+    } catch (error: any) {
+      // Don't log AuthSessionMissingError as it's expected for unauthenticated users
+      if (error.message !== 'Auth session missing!') {
+        console.error('Auth session error in votes API:', error);
+      }
+      // Continue without user - this is normal for unauthenticated users
     }
+    
+    // Get IP address for unauthenticated users
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+               req.headers.get('cf-connecting-ip') || 
+               'unknown';
+    
+    const userId = user?.id || null;
+    const identifier = userId || ip;
 
-    // Check if user already has an upvote for this question
+    // Check if user/IP already has an upvote for this question
     const { data: existingVote } = await supabase
       .from('votes')
       .select('*')
       .eq('question_id', questionId)
-      .eq('user_id', user.id)
       .eq('vote_type', true) // Only check for upvotes (true)
+      .eq(userId ? 'user_id' : 'ip_address', identifier)
       .single();
 
     if (existingVote) {
-      // User has already upvoted - remove the vote (toggle off)
+      // User/IP has already upvoted - remove the vote (toggle off)
       const { error: deleteError } = await supabase
         .from('votes')
         .delete()
         .eq('question_id', questionId)
-        .eq('user_id', user.id)
-        .eq('vote_type', true);
+        .eq('vote_type', true)
+        .eq(userId ? 'user_id' : 'ip_address', identifier);
 
       if (deleteError) throw deleteError;
     } else {
-      // User hasn't upvoted - add an upvote
+      // User/IP hasn't upvoted - add an upvote
+      const voteData: any = {
+        question_id: questionId,
+        vote_type: true // true = upvote
+      };
+      
+      if (userId) {
+        voteData.user_id = userId;
+      } else {
+        voteData.ip_address = ip;
+      }
+
       const { error: insertError } = await supabase
         .from('votes')
-        .insert({
-          question_id: questionId,
-          user_id: user.id,
-          vote_type: true // true = upvote
-        });
+        .insert(voteData);
 
       if (insertError) throw insertError;
     }
@@ -134,20 +163,54 @@ export async function GET(req: Request) {
 
     const upvotes = votes.length;
 
-    // Check if current user has upvoted
-    const { data: { user } } = await supabase.auth.getUser();
+    // Check if current user/IP has upvoted
     let hasUserUpvoted = false;
+    let user = null;
+    
+    try {
+      const { data: { user: userData }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        // Don't log AuthSessionMissingError as it's expected for unauthenticated users
+        if (userError.message !== 'Auth session missing!') {
+          console.error('Error fetching user in votes API:', userError);
+        }
+      } else {
+        user = userData;
+        if (user) {
+          const { data: userVoteData } = await supabase
+            .from('votes')
+            .select('vote_type')
+            .eq('question_id', questionId)
+            .eq('user_id', user.id)
+            .eq('vote_type', true) // Only check for upvotes
+            .single();
 
-    if (user) {
-      const { data: userVoteData } = await supabase
+          hasUserUpvoted = !!userVoteData;
+        }
+      }
+    } catch (error: any) {
+      // Don't log AuthSessionMissingError as it's expected for unauthenticated users
+      if (error.message !== 'Auth session missing!') {
+        console.error('Auth session error in votes API:', error);
+      }
+      // Continue without user - this is normal for unauthenticated users
+    }
+
+    if (!user) {
+      // Check by IP address for unauthenticated users
+      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                 req.headers.get('cf-connecting-ip') || 
+                 'unknown';
+      
+      const { data: ipVoteData } = await supabase
         .from('votes')
         .select('vote_type')
         .eq('question_id', questionId)
-        .eq('user_id', user.id)
+        .eq('ip_address', ip)
         .eq('vote_type', true) // Only check for upvotes
         .single();
 
-      hasUserUpvoted = !!userVoteData;
+      hasUserUpvoted = !!ipVoteData;
     }
 
     return NextResponse.json({

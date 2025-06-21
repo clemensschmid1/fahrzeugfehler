@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { checkRateLimit } from '@/lib/ratelimiter';
+import { sanitizeAnswer } from '@/lib/sanitize';
+import { isOutputUnsafe } from '@/lib/safety';
+import { checkGeoblock } from '@/lib/geoblock';
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   throw new Error('Supabase environment variables are missing. Check .env.local.');
@@ -23,6 +27,55 @@ const bedrockClient = new BedrockRuntimeClient({
   },
 });
 
+// Multi-language prompt injection filter
+const BANNED_PHRASES = [
+  // ENGLISH
+  "ignore previous",
+  "disregard previous instructions",
+  "pretend to be",
+  "you are now",
+  "forget all instructions",
+  "override your rules",
+  "jailbreak",
+  "bypass filter",
+  "as an ai",
+  "you must obey",
+  "you were told",
+  "system prompt",
+  "inner monologue",
+  "act as",
+  // GERMAN
+  "vergiss alle anweisungen",
+  "tu so als ob",
+  "du bist jetzt",
+  "handle als",
+  "umgehe die filter",
+  "du musst antworten",
+  "ignoriere vorherige",
+  "systemanweisung",
+  // SPANISH
+  "olvida todas las instrucciones",
+  "ignora lo anterior",
+  "actúa como",
+  "eres ahora",
+  "burlar el filtro",
+  "debes obedecer",
+  "prompt del sistema",
+  // FRENCH
+  "oublie toutes les instructions",
+  "ignore les instructions précédentes",
+  "fais semblant d'être",
+  "tu es maintenant",
+  "contourne le filtre",
+  "tu dois obéir",
+  "invite système"
+];
+
+function containsBannedPhrase(input: string): boolean {
+  const lower = input.toLowerCase();
+  return BANNED_PHRASES.some(phrase => lower.includes(phrase));
+}
+
 async function generateClaudeAnswer(question: string, conversationContext?: Array<{ role: string; content: string }>): Promise<string> {
   const modelId = "anthropic.claude-3-haiku-20240307-v1:0";
 
@@ -41,35 +94,49 @@ async function generateClaudeAnswer(question: string, conversationContext?: Arra
       messages: [
         {
           role: "user",
-          content: `Reply in the same language the question is written in.
+          content: `You are an expert-level industrial field technician writing for an internal technical knowledge base used by other technicians in real-world environments.
 
-You are a **senior industrial automation engineer and field application specialist** with **15+ years of deep hands-on experience** in **real-world troubleshooting, maintenance, and optimization of complex industrial systems** (drives, motors, robotics, CNCs, PLCs, sensors, power electronics, fieldbuses, safety systems, mechanical systems).
+Your answers should reflect *deep system-level understanding* of SEW, Siemens, and ABB industrial drive systems. Do not mention AI, do not refer to yourself, and do not simulate a human persona.
 
-You are NOT writing from a manual. You are writing from your own **field experience**.
+Your primary goal: deliver **highly actionable, deeply technical, and field-proven troubleshooting instructions** that go significantly beyond surface-level help.
 
-Your goal is to write an **exceptionally practical**, technically deep, and field-proven answer to the following industrial question — an answer that would help an **experienced but stuck technician or engineer in a real-world factory situation**.
+### Priorities:
 
-**Think very carefully**: What would a senior SEW / Siemens / ABB service engineer or top freelance expert write in an internal knowledge base to help other engineers with exactly this problem? **Be explicit. Be practical. Avoid generic statements.**
+- Focus on **realistic root causes**, including **subtle failure patterns**, **aging effects**, and **external system interactions**
+- Include **exact measurement values**, e.g., DC bus voltage thresholds, resistance ranges, parameter values (P108, P300, etc.)
+- Always reference **relevant drive parameters**, and link them to symptoms (e.g., "If P500 drops below 470 VDC for more than 30 ms, F602 will trigger")
+- Include **diagnostic techniques** used in the field:
+  - Oscilloscope ripple analysis
+  - Comparison of phase currents
+  - Logging data from MOVITOOLS or Starter
+  - Signal tracing to input/output stages
+  - Inspection of relay circuits, braking units, comms telegrams
 
-**Critically important:**
-- Prioritize **real-world applicability**, **practical diagnostics**, and **proven countermeasures** — not theory.
-- Include **brand-specific field knowledge** if brands are mentioned (SEW, Siemens, ABB, Fanuc, KUKA, etc).
-- Explicitly include:
-    - Typical **failure modes** and "**hidden**" causes that manuals often miss
-    - Known **common practical field issues** for this type of equipment
-    - Useful **diagnostic tricks and shortcuts** that experienced technicians use
-    - Preventive maintenance practices that are field-proven
-    - Typical **parameter ranges or values** where applicable (example: Siemens drive parameters, SEW telegram settings, PROFIBUS timings, etc.)
-    - Mention **relevant standards** (IEC, EN, ISO) where useful — but focus on **hands-on value**
-    - **Workarounds** known in the field (even if not officially documented)
+### Structure:
 
-- Write in **clear and structured format** with bullet points, numbered lists, subheadings.
+1. **Typical causes**
+   - Include internal & external issues
+   - Reference thresholds, parameter numbers, symptom behavior
+2. **Step-by-step diagnostics**
+   - Logical priority
+   - Mention tools (multimeter, oscilloscope, insulation tester)
+   - Identify failure indicators (e.g., asymmetric ripple, spike patterns)
+3. **Field tricks & known hidden issues**
+   - Share insider knowledge: common mistakes, intermittent problems, overlooked root causes
+   - Mention vendor-specific quirks, maintenance shortcuts, hidden dependencies
+4. **Preventive actions** (optional but encouraged)
 
-**Do NOT:**
-- Do not generate any metadata.
-- Do not write an introduction, apologies, or disclaimers.
-- Do not summarize.
-- Do not copy a theoretical overview — write **exactly like an expert technician helping another expert in the field**.${conversationHistory}
+### Critical rules:
+- Do **not** add fluff like "I hope this helps" or "please let me know"
+- Never reference yourself or say "I"
+- Use **concise, precise, unambiguous** language
+- Do not generalize — give **hard technical answers**, not vague suggestions
+
+The target audience is a highly competent technician looking for exact answers under time pressure. Assume they already understand theory — focus on **fast diagnosis and resolution** with *real data, concrete steps, and edge-case insight*.
+
+Question:
+
+${conversationHistory}
 
 Question: ${question}`,
         },
@@ -85,12 +152,83 @@ Question: ${question}`,
   return data?.content?.[0]?.text?.trim() || "";
 }
 
+function checkMinSubmitDelta(delta: number | undefined, minMs = 3000) {
+  if (typeof delta !== 'number' || delta < minMs) {
+    return false;
+  }
+  return true;
+}
+
 export async function POST(req: Request) {
   try {
-    const { question, parent_id, conversation_id, conversation_context } = await req.json();
+    // --- Geoblocking ---
+    const geoblock = checkGeoblock(req);
+    if (geoblock.blocked) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Access denied from your location.' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    // --- End geoblocking ---
+
+    // --- Rate limiting ---
+    let userId: string | null = null;
+    let ip: string | null = null;
+    // Try to get userId from Supabase JWT (Authorization header)
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const jwt = authHeader.slice(7);
+      // Parse JWT payload (base64url, no padding)
+      try {
+        const payload = JSON.parse(Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+        userId = payload.sub || null;
+      } catch (e) {
+        userId = null;
+      }
+    }
+    // Fallback: get IP from headers (X-Forwarded-For or cf-connecting-ip)
+    ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
+
+    const rate = await checkRateLimit({ userId, ip, routeKey: 'ask' });
+    if (!rate.allowed) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Too Many Requests', reason: rate.reason }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            ...rate.headers,
+            'Retry-After': rate.retryAfter ? Math.ceil((rate.retryAfter - Date.now()) / 1000).toString() : '60',
+          },
+        }
+      );
+    }
+    // --- End rate limiting ---
+
+    const { question, parent_id, conversation_id, conversation_context, submitDeltaMs } = await req.json();
+    // Prompt injection filter
+    if (containsBannedPhrase(question)) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unsafe prompt detected' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!checkMinSubmitDelta(submitDeltaMs)) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Form submitted too quickly.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     const answer = await generateClaudeAnswer(question, conversation_context);
     if (!answer) throw new Error('No answer from Claude Haiku');
+    if (isOutputUnsafe(answer)) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Blocked: unsafe output detected.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    const sanitizedAnswer = sanitizeAnswer(answer);
 
     let finalConversationId: string | null = null;
 
@@ -109,15 +247,37 @@ export async function POST(req: Request) {
       finalConversationId = parentQuestion.conversation_id;
     }
 
+    // Check if this is the first question in the conversation
+    let isMain = false;
+    if (finalConversationId) {
+      const { count, error: countError } = await supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', finalConversationId);
+      if (countError) throw countError;
+      isMain = (count === 0);
+    } else {
+      // If no conversation_id, this is the first question
+      isMain = true;
+    }
+
+    const insertData: Record<string, any> = {
+      question,
+      answer,
+      meta_generated: false,
+      parent_id: parent_id || null,
+      conversation_id: finalConversationId || null,
+      status: 'draft',
+      language_path: 'en',
+      created_at: new Date().toISOString(),
+      ...(isMain ? { is_main: true } : {}),
+    };
+
+    console.log('Insert payload:', insertData);
+
     const { data: inserted, error: insertError } = await supabase
       .from('questions')
-      .insert({
-        question,
-        answer,
-        meta_generated: false,
-        parent_id: parent_id || null,
-        conversation_id: finalConversationId || null,
-      })
+      .insert(insertData)
       .select('id')
       .single();
 
@@ -135,7 +295,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      answer,
+      answer: sanitizedAnswer,
       id: inserted.id,
       conversation_id: finalConversationId
     });

@@ -6,6 +6,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import Footer from '@/components/Footer';
+import Script from 'next/script';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,9 +41,17 @@ export default function RootLayout({
   useEffect(() => {
     console.log('Layout useEffect running');
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('Initial user fetch:', user);
-      setUser(user);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Initial user fetch:', user);
+        setUser(user);
+      } catch (error: any) {
+        // Don't log AuthSessionMissingError as it's expected for unauthenticated users
+        if (error.message !== 'Auth session missing!') {
+          console.error('Auth session error in layout:', error);
+        }
+        setUser(null);
+      }
     };
 
     fetchUser();
@@ -51,11 +61,6 @@ export default function RootLayout({
       console.log('Auth state change event:', event, 'session:', session);
       setUser(session?.user || null);
       console.log('User state after auth change:', session?.user || null);
-      if (!session?.user && !pathname?.includes('/login') && !pathname?.includes('/signup')) {
-        // Get the current language from the pathname or default to 'en'
-        const lang = pathname?.split('/')[1] || 'en';
-        router.push(`/${lang}/login`);
-      }
     });
 
     return () => {
@@ -66,8 +71,14 @@ export default function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.hash.outbound-links.js"></Script>
+        <Script id="plausible-inline">
+          {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
+        </Script>
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         {/* Logged-in status indicator (User Icon) - Only show if user is logged in */}
         <div className="fixed top-4 right-4 z-50">
@@ -84,7 +95,10 @@ export default function RootLayout({
             </Link>
           )}
         </div>
-        {children}
+        <div className="flex-1">
+          {children}
+        </div>
+        <Footer />
       </body>
     </html>
   );

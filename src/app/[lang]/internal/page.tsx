@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import InternalAuth from '@/components/InternalAuth';
 
 interface ImportedQuestion {
   question: string;
@@ -15,9 +16,6 @@ interface ImportedQuestion {
 }
 
 export default function InternalPage() {
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [previewQuestions, setPreviewQuestions] = useState<ImportedQuestion[]>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -30,16 +28,6 @@ export default function InternalPage() {
   // New state for raw parsed questions before AI analysis
   const [rawQuestions, setRawQuestions] = useState<ImportedQuestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === '12345678') {
-      setIsAuthenticated(true);
-      setError(null);
-    } else {
-      setError('Invalid password');
-    }
-  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -193,11 +181,8 @@ export default function InternalPage() {
 
   // Fetch the current AI prompt on mount
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAiPrompt();
-    }
-    // eslint-disable-next-line
-  }, [isAuthenticated]);
+    fetchAiPrompt();
+  }, []);
 
   const fetchAiPrompt = async () => {
     setAiPromptLoading(true);
@@ -228,258 +213,212 @@ export default function InternalPage() {
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Developer Access
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Please enter the password to access developer tools
-            </p>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleSignIn}>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Access Developer Tools
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Developer Dashboard</h1>
-            <button
-              onClick={() => setIsAuthenticated(false)}
-              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
-            >
-              Sign Out
-            </button>
-          </div>
+    <InternalAuth>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900">Developer Dashboard</h1>
+            </div>
 
-          {/* Navigation Links */}
-          <div className="flex items-center space-x-4 mb-8">
-             <Link 
-              href={`/${lang}/internal/drafts`}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              View Drafts and Bin
-            </Link>
-             <Link
-               href={`/${lang}/internal/bulkimport`}
-               className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-             >
-               Bulk Imports
-             </Link>
-             <Link
-               href={`/${lang}/internal/comments`}
-               className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-             >
-               Manage Comments
-             </Link>
-          </div>
+            {/* Navigation Links */}
+            <div className="flex items-center space-x-4 mb-8">
+               <Link 
+                href={`/${lang}/internal/drafts`}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                View Drafts and Bin
+              </Link>
+               <Link
+                 href={`/${lang}/internal/bulkimport`}
+                 className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+               >
+                 Bulk Imports
+               </Link>
+               <Link
+                 href={`/${lang}/internal/comments`}
+                 className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+               >
+                 Manage Comments
+               </Link>
+               <Link
+                 href={`/${lang}/internal/emails`}
+                 className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+               >
+                 Email Management
+               </Link>
+            </div>
 
-          {/* AI Prompt Management Section */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">AI Prompt Management</h2>
-            <p className="text-gray-600 mb-2">This is the prompt used for the AI. You can tweak and optimize it to change how the AI responds.</p>
-            {aiPromptLoading ? (
-              <div className="text-gray-500">Loading prompt...</div>
-            ) : (
-              <>
-                <textarea
-                  className="w-full min-h-[120px] rounded-md border border-gray-300 shadow-sm p-3 text-gray-900 text-base mb-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={aiPrompt}
-                  onChange={e => setAiPrompt(e.target.value)}
-                  placeholder="Enter the AI prompt here..."
-                  disabled={aiPromptLoading}
-                />
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={saveAiPrompt}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+            {/* AI Prompt Management Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4">AI Prompt Management</h2>
+              <p className="text-gray-600 mb-2">This is the prompt used for the AI. You can tweak and optimize it to change how the AI responds.</p>
+              {aiPromptLoading ? (
+                <div className="text-gray-500">Loading prompt...</div>
+              ) : (
+                <>
+                  <textarea
+                    className="w-full min-h-[120px] rounded-md border border-gray-300 shadow-sm p-3 text-gray-900 text-base mb-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={aiPrompt}
+                    onChange={e => setAiPrompt(e.target.value)}
+                    placeholder="Enter the AI prompt here..."
                     disabled={aiPromptLoading}
-                  >
-                    Save Prompt
-                  </button>
-                  {aiPromptStatus && <span className="text-sm text-gray-600">{aiPromptStatus}</span>}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Bulk Import Section */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Bulk Import</h2>
-            <div className="bg-white shadow rounded-lg p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload File (CSV or Text)
-                </label>
-                <input
-                  type="file"
-                  accept=".csv,.txt"
-                  onChange={handleFileUpload}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
-                />
-              </div>
-
-              {rawQuestions.length > 0 && (
-                <div className="mt-4">
-                  <button
-                    onClick={handleAnalyzeWithAI}
-                    disabled={isAnalyzing}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-                  >
-                    {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
-                  </button>
-                </div>
+                  />
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={saveAiPrompt}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                      disabled={aiPromptLoading}
+                    >
+                      Save Prompt
+                    </button>
+                    {aiPromptStatus && <span className="text-sm text-gray-600">{aiPromptStatus}</span>}
+                  </div>
+                </>
               )}
+            </div>
 
-              {(previewQuestions.length > 0 || isAnalyzing) && (
-                <div className="mt-4">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Preview</h3>
-                  {isAnalyzing ? (
-                    <div className="text-gray-500">Analyzing... Please wait.</div>
-                  ) : (
-                    <div className="max-h-60 overflow-y-auto border rounded-md">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Question</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Answer</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sector</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Manufacturer</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Type</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Series</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {previewQuestions.map((question, index) => (
-                            <tr key={index}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{question.question}</td>
-                              <td className="px-6 py-4 text-sm text-gray-500">{question.answer}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.sector}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.manufacturer}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.part_type}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.part_series}</td>
+            {/* Bulk Import Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4">Bulk Import</h2>
+              <div className="bg-white shadow rounded-lg p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload File (CSV or Text)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={handleFileUpload}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100"
+                  />
+                </div>
+
+                {rawQuestions.length > 0 && (
+                  <div className="mt-4">
+                    <button
+                      onClick={handleAnalyzeWithAI}
+                      disabled={isAnalyzing}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
+                    </button>
+                  </div>
+                )}
+
+                {(previewQuestions.length > 0 || isAnalyzing) && (
+                  <div className="mt-4">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Preview</h3>
+                    {isAnalyzing ? (
+                      <div className="text-gray-500">Analyzing... Please wait.</div>
+                    ) : (
+                      <div className="max-h-60 overflow-y-auto border rounded-md">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Question</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Answer</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sector</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Manufacturer</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Type</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Series</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {!isAnalyzing && previewQuestions.length > 0 && (
-                    <div className="mt-4">
-                      <button
-                        onClick={handleImport}
-                        disabled={isImporting}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition disabled:opacity-50"
-                      >
-                        {isImporting ? 'Importing...' : 'Import Questions'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {previewQuestions.map((question, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{question.question}</td>
+                                <td className="px-6 py-4 text-sm text-gray-500">{question.answer}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.sector}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.manufacturer}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.part_type}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.part_series}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {!isAnalyzing && previewQuestions.length > 0 && (
+                      <div className="mt-4">
+                        <button
+                          onClick={handleImport}
+                          disabled={isImporting}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition disabled:opacity-50"
+                        >
+                          {isImporting ? 'Importing...' : 'Import Questions'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {importStatus && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                  <p className="text-sm text-gray-600">{importStatus}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* System Status and Quick Actions */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {/* System Status */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">System Status</h3>
-                <div className="mt-5">
-                  <dl className="grid grid-cols-1 gap-5">
-                    <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
-                      <dt className="text-sm font-medium text-gray-500 truncate">API Status</dt>
-                      <dd className="mt-1 text-3xl font-semibold text-green-600">Online</dd>
-                    </div>
-                    <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
-                      <dt className="text-sm font-medium text-gray-500 truncate">Database Status</dt>
-                      <dd className="mt-1 text-3xl font-semibold text-green-600">Online</dd>
-                    </div>
-                  </dl>
-                </div>
+                {importStatus && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                    <p className="text-sm text-gray-600">{importStatus}</p>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Recent Activity */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
-                <div className="mt-5">
-                  <div className="flow-root">
-                    <ul className="-mb-8">
-                      <li>
-                        <div className="relative pb-8">
-                          <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                          <div className="relative flex space-x-3">
-                            <div>
-                              <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                                <svg className="h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                </svg>
-                              </span>
-                            </div>
-                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+            {/* System Status and Quick Actions */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {/* System Status */}
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">System Status</h3>
+                  <div className="mt-5">
+                    <dl className="grid grid-cols-1 gap-5">
+                      <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                        <dt className="text-sm font-medium text-gray-500 truncate">API Status</dt>
+                        <dd className="mt-1 text-3xl font-semibold text-green-600">Online</dd>
+                      </div>
+                      <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                        <dt className="text-sm font-medium text-gray-500 truncate">Database Status</dt>
+                        <dd className="mt-1 text-3xl font-semibold text-green-600">Online</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
+                  <div className="mt-5">
+                    <div className="flow-root">
+                      <ul className="-mb-8">
+                        <li>
+                          <div className="relative pb-8">
+                            <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                            <div className="relative flex space-x-3">
                               <div>
-                                <p className="text-sm text-gray-500">System update completed</p>
+                                <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                                  <svg className="h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
                               </div>
-                              <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                <time dateTime="2024-03-20">20 minutes ago</time>
+                              <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                <div>
+                                  <p className="text-sm text-gray-500">System update completed</p>
+                                </div>
+                                <div className="text-right text-sm whitespace-nowrap text-gray-500">
+                                  <time dateTime="2024-03-20">20 minutes ago</time>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </li>
-                    </ul>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -487,6 +426,6 @@ export default function InternalPage() {
           </div>
         </div>
       </div>
-    </div>
+    </InternalAuth>
   );
 } 

@@ -32,10 +32,16 @@ function ChatPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [freeLimitReached, setFreeLimitReached] = useState(false);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+
+  const formMountTime = useRef<number>(Date.now());
+  useEffect(() => {
+    formMountTime.current = Date.now();
+  }, []);
 
   // Translation helper function
   const t = (en: string, de: string) => lang === 'de' ? de : en;
@@ -161,6 +167,16 @@ function ChatPageContent() {
     }
   }, [searchParams, router]);
 
+  // Check free question limit for unauthenticated users
+  useEffect(() => {
+    if (!user) {
+      const count = parseInt(localStorage.getItem('free_questions_count') || '0', 10);
+      if (count >= 3) setFreeLimitReached(true);
+    } else {
+      setFreeLimitReached(false);
+    }
+  }, [user]);
+
   const handleNewChat = () => {
     const newConversationId = generateConversationId();
     setConversationId(newConversationId);
@@ -178,7 +194,29 @@ function ChatPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !user) return;
+    if (!input.trim()) return;
+    if (input.length > 1000) {
+      setError(lang === 'de' ? 'Maximal 1000 Zeichen erlaubt.' : 'Maximum 1000 characters allowed.');
+      return;
+    }
+    const now = Date.now();
+    const delta = now - formMountTime.current;
+    if (delta < 3000) {
+      setError(lang === 'de' ? 'Bitte warten Sie mindestens 3 Sekunden, bevor Sie Ihre Frage absenden.' : 'Please wait at least 3 seconds before submitting your question.');
+      return;
+    }
+    if (!user) {
+      const count = parseInt(localStorage.getItem('free_questions_count') || '0', 10);
+      if (count >= 3) {
+        setFreeLimitReached(true);
+        setError(lang === 'de' ? 'Sie haben Ihr Kontingent von 3 kostenlosen Fragen erreicht. Bitte registrieren Sie sich, um unbegrenzt weiterzufragen.' : 'You have used up your 3 free questions. Please sign up to continue asking unlimited questions.');
+        return;
+      } else {
+        localStorage.setItem('free_questions_count', (count + 1).toString());
+        if (count + 1 >= 3) setFreeLimitReached(true);
+      }
+    }
+    if (!user) setError(null);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -209,6 +247,7 @@ function ChatPageContent() {
           language: lang,
           conversation_id: conversationId,
           conversation_context: conversationContext,
+          submitDeltaMs: delta,
         }),
       });
 
@@ -260,6 +299,16 @@ function ChatPageContent() {
           </header>
           
           <div className="flex flex-col sm:flex-row gap-3">
+            {/* Language Toggle Button */}
+            <Link
+              href={`/${lang === 'en' ? 'de' : 'en'}/chat`}
+              className="inline-flex items-center justify-center px-6 py-3 bg-white text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl border border-slate-200 hover:border-slate-300"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+              </svg>
+              {lang === 'en' ? 'Deutsch' : 'English'}
+            </Link>
             <button
               onClick={handleNewChat}
               className="inline-flex items-center justify-center px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
@@ -344,6 +393,21 @@ function ChatPageContent() {
               )}
             </div>
 
+            {freeLimitReached && !user && (
+              <div className="mb-6 p-4 bg-yellow-50 text-yellow-900 border border-yellow-200 rounded-xl shadow-sm">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">
+                    {lang === 'de'
+                      ? 'Sie haben Ihr Kontingent von 3 kostenlosen Fragen erreicht. Bitte registrieren Sie sich, um unbegrenzt weiterzufragen.'
+                      : 'You have used up your 3 free questions. Please sign up to continue asking unlimited questions.'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="mb-6 p-4 bg-red-50 text-red-800 border border-red-200 rounded-xl shadow-sm">
                 <div className="flex items-center">
@@ -357,56 +421,48 @@ function ChatPageContent() {
           </div>
 
           <div className="border-t border-slate-200 p-6 bg-slate-50">
-            {user ? (
-              <form onSubmit={handleSubmit} className="flex gap-4">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={t("Type your question...", "Frage eingeben...")}
-                    className="w-full px-5 py-4 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white"
-                    disabled={isLoading}
-                  />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                  {t("Send", "Senden")}
-                </button>
-              </form>
-            ) : (
-              <div className="text-center p-8 bg-white rounded-2xl shadow-lg border border-slate-200">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <form onSubmit={handleSubmit} className="flex gap-4">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={t("Type your question...", "Frage eingeben...")}
+                  className="w-full px-5 py-4 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white"
+                  disabled={isLoading || (freeLimitReached && !user)}
+                  maxLength={1000}
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">
-                  {t("Sign in to start chatting", "Anmelden zum Chatten")}
-                </h3>
-                <p className="text-slate-600 mb-6">
-                  {t("Create an account or sign in to ask questions and get AI-powered answers.", "Erstellen Sie ein Konto oder melden Sie sich an, um Fragen zu stellen und KI-gestützte Antworten zu erhalten.")}
-                </p>
-                <Link
-                  href={`/${lang}/login`}
-                  className="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl shadow-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim() || (freeLimitReached && !user)}
+                className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                {t("Send", "Senden")}
+              </button>
+            </form>
+            
+            {!user && !freeLimitReached && (
+              <div className="mt-4 p-3 bg-blue-50 text-blue-800 border border-blue-200 rounded-xl text-sm">
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {t("Sign In", "Anmelden")}
-                </Link>
+                  <span>
+                    {t(
+                      `You have ${3 - parseInt(localStorage.getItem('free_questions_count') || '0', 10)} free questions remaining. Sign up for unlimited access.`,
+                      `Sie haben noch ${3 - parseInt(localStorage.getItem('free_questions_count') || '0', 10)} kostenlose Fragen übrig. Registrieren Sie sich für unbegrenzten Zugang.`
+                    )}
+                  </span>
+                </div>
               </div>
             )}
           </div>

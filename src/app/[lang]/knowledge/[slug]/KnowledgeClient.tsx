@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -57,6 +57,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState<string | null>(null);
 
   // Voting state initialized from props - only track upvotes now
   const [upvotes, setUpvotes] = useState<number>(initialVotes.up);
@@ -65,14 +66,16 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
 
   const router = useRouter(); // Keep useRouter for client-side navigation
 
+  const formMountTime = useRef<number>(Date.now());
+
+  useEffect(() => {
+    formMountTime.current = Date.now();
+  }, []);
+
   // Translation helper function
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
   const handleUpvote = async () => {
-    if (!user) {
-      router.push(`/${lang}/login`); // Redirect if not logged in
-      return;
-    }
     setIsVoting(true);
     try {
       const res = await fetch('/api/votes', {
@@ -92,14 +95,22 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
     }
   };
 
-  const handleCommentSubmit = async (e: React.FormEvent) => {
+  const handleCommentSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!newComment.trim() || isSubmitting || !user) { // Check for user here
-      if (!user) setError('Please sign in to comment');
+    if (!newComment.trim() || isSubmitting) return;
+    if (newComment.length > 1000) {
+      setCommentError(lang === 'de' ? 'Maximal 1000 Zeichen erlaubt.' : 'Maximum 1000 characters allowed.');
+      return;
+    }
+    const now = Date.now();
+    const delta = now - formMountTime.current;
+    if (delta < 3000) {
+      setError('Please wait at least 3 seconds before submitting your comment.');
       return;
     }
     setIsSubmitting(true);
     setError(null);
+    setCommentError(null);
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -107,15 +118,25 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
         body: JSON.stringify({
           questionId: question.id,
           content: newComment,
+          submitDeltaMs: delta,
         }),
       });
-      if (!response.ok) throw new Error('Failed to post comment');
+      console.log('Comment API response:', response);
+      if (!response.ok) {
+        let errorMsg = 'Failed to post comment';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch (jsonErr) {
+          errorMsg = 'Failed to post comment (invalid response)';
+        }
+        throw new Error(errorMsg);
+      }
       const newCommentData = await response.json();
-      // Assuming the API returns the full comment with user info
       setComments(prev => [...prev, newCommentData]);
       setNewComment('');
     } catch (err: any) {
-      console.error('Error posting comment:', err); // Add logging for comment errors
+      console.error('Error posting comment:', err);
       setError(err.message);
     } finally {
       setIsSubmitting(false);
@@ -189,8 +210,8 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                   hasUserUpvoted 
                     ? 'bg-green-100 border-green-400 text-green-700 hover:bg-green-200' 
                     : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
-                } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isVoting || !user}
+                }`}
+                disabled={isVoting}
                 onClick={handleUpvote}
               >
                 <span className="text-lg">👍</span>
@@ -199,11 +220,6 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                   {upvotes === 1 ? t('upvote', 'Upvote') : t('upvotes', 'Upvotes')}
                 </span>
               </button>
-              {!user && (
-                <span className="text-sm text-gray-500">
-                  {t("Sign in to upvote", "Anmelden zum Upvoten")}
-                </span>
-              )}
             </div>
 
             <div className="mt-8 pt-8 border-t">
@@ -275,9 +291,10 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder={t("Add a comment...", "Kommentar hinzufügen...")}
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={4}
+                    placeholder={t('Add a comment...', 'Kommentar hinzufügen...')}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base resize-none"
+                    rows={3}
+                    maxLength={1000}
                   />
                   <button
                     type="submit"
@@ -290,11 +307,12 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
               )}
 
               {error && <div className="text-red-600 mb-2">{error}</div>}
+              {commentError && <div className="text-red-600 mb-2">{commentError}</div>}
               <div className="space-y-4">
                 {comments.map((comment) => (
                   <div key={comment.id} className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-900">{comment.user_name || t('User', 'Benutzer')}</span>
+                      <span className="font-medium text-gray-900">{comment.user_name ? comment.user_name : t('User', 'Benutzer')}</span>
                       <span className="text-sm text-gray-500">
                         {new Date(comment.created_at).toLocaleDateString()}
                       </span>
