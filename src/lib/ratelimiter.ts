@@ -1,35 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
-// Per-user sliding window (10/min)
-const userLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, '1 m'),
-  analytics: true,
-  prefix: 'ratelimit_user',
-});
-
-// Per-IP fallback (5/min)
-const ipLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(5, '1 m'),
-  analytics: true,
-  prefix: 'ratelimit_ip',
-});
-
-// Global cap (5000/day)
-const globalLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(5000, '1 d'),
-  analytics: true,
-  prefix: 'ratelimit_global',
-});
-
 function makeHeaders(res: { limit: number; remaining: number; reset: number }) {
   return {
     'X-RateLimit-Limit': res.limit.toString(),
@@ -47,6 +18,36 @@ export async function checkRateLimit({
   ip?: string | null;
   routeKey?: string;
 }) {
+  // Initialize Redis client inside the function to ensure environment variables are available
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
+
+  // Per-user sliding window (10/min)
+  const userLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, '1 m'),
+    analytics: true,
+    prefix: 'ratelimit_user',
+  });
+
+  // Per-IP fallback (5/min)
+  const ipLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5, '1 m'),
+    analytics: true,
+    prefix: 'ratelimit_ip',
+  });
+
+  // Global cap (5000/day)
+  const globalLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5000, '1 d'),
+    analytics: true,
+    prefix: 'ratelimit_global',
+  });
+
   // 1. Global limit
   const globalKey = `global:${routeKey}`;
   const globalRes = await globalLimiter.limit(globalKey);

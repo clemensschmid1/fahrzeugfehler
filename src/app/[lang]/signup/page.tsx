@@ -181,17 +181,17 @@ export default function SignupPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                     </svg>
                   </div>
-                  <input
-                    type="email"
-                    id="email"
+            <input
+              type="email"
+              id="email"
                     className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
                     placeholder={t("Enter your email", "E-Mail eingeben")}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
                     disabled
-                  />
-                </div>
+            />
+          </div>
               </div>
 
               {/* Password Field */}
@@ -205,13 +205,13 @@ export default function SignupPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
-                  <input
-                    type="password"
-                    id="password"
+            <input
+              type="password"
+              id="password"
                     className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
                     placeholder={t("Create a strong password", "Starkes Passwort erstellen")}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled
                   />
@@ -278,8 +278,8 @@ export default function SignupPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
                 {t("Notify Me", "Benachrichtigen Sie mich")}
-              </div>
-            )}
+            </div>
+          )}
           </button>
           {notificationStatus && (
             <div className={`p-3 rounded-lg text-sm ${

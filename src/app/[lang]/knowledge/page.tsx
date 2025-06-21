@@ -82,28 +82,28 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
 
   try {
     const { data, error: dbError } = await supabase
-      .from('questions')
-      .select('*')
-      .eq('language_path', lang)
+            .from('questions')
+            .select('*')
+            .eq('language_path', lang)
       .in('status', ['live', 'draft']) // Fetch both live and draft
       .eq('is_main', true)
-      .order('created_at', { ascending: false });
-
+            .order('created_at', { ascending: false });
+          
     if (dbError) {
       console.error('Error fetching questions:', dbError);
       throw new Error(dbError.message);
-    }
-    
+        }
+
     questions = data || [];
 
   } catch (e) {
     const fetchErr = e as Error;
     console.error('Error in fetchQuestions:', fetchErr);
     error = fetchErr.message;
-  } finally {
+      } finally {
     loading = false;
-  }
-  
+      }
+
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
   // Generate structured data for the page
@@ -135,20 +135,20 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <div className="max-w-6xl mx-auto">
-        {error ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+          {error ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
             <strong className="font-bold">{t("Error:", "Fehler:")} </strong>
-            <span className="block sm:inline">{error}</span>
-          </div>
-        ) : loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+              <span className="block sm:inline">{error}</span>
+            </div>
+          ) : loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
             <p className="mt-4 text-gray-600">{t("Loading...", "Lädt...")}</p>
-          </div>
-        ) : (
+            </div>
+          ) : (
           <KnowledgeClient initialQuestions={questions} />
-        )}
-      </div>
-    </article>
+          )}
+        </div>
+      </article>
   );
 } 

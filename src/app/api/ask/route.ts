@@ -278,15 +278,15 @@ export async function POST(req: Request) {
       if (conversation_id) {
         finalConversationId = conversation_id;
       } else if (parent_id) {
-        const { data: parentQuestion, error: parentError } = await supabase
-          .from('questions')
-          .select('conversation_id')
-          .eq('id', parent_id)
-          .single();
+      const { data: parentQuestion, error: parentError } = await supabase
+        .from('questions')
+        .select('conversation_id')
+        .eq('id', parent_id)
+        .single();
 
-        if (parentError) throw new Error(`Error fetching parent question: ${parentError.message}`);
-        if (!parentQuestion) throw new Error('Parent question not found');
-        
+      if (parentError) throw new Error(`Error fetching parent question: ${parentError.message}`);
+      if (!parentQuestion) throw new Error('Parent question not found');
+      
         finalConversationId = parentQuestion.conversation_id;
       }
 
@@ -321,8 +321,8 @@ export async function POST(req: Request) {
       const { data: newQuestion, error: insertError } = await supabase
         .from('questions')
         .insert(insertData)
-        .select('id')
-        .single();
+      .select('id')
+      .single();
 
       if (insertError) {
         console.error('Supabase insert error:', insertError);
@@ -337,7 +337,7 @@ export async function POST(req: Request) {
     }
 
     console.log('8. Returning response to client.');
-    return NextResponse.json({
+    return NextResponse.json({ 
       answer: sanitizedAnswer,
       id: newQuestionId,
       conversation_id: finalConversationId,
