@@ -160,8 +160,10 @@ function checkMinSubmitDelta(delta: number | undefined, minMs = 3000) {
 }
 
 export async function POST(req: Request) {
+  console.log('--- POST /api/ask ---');
   try {
     // --- Geoblocking ---
+    console.log('1. Checking geoblock...');
     const geoblock = checkGeoblock(req);
     if (geoblock.blocked) {
       return new NextResponse(
@@ -169,9 +171,11 @@ export async function POST(req: Request) {
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
+    console.log('Geoblock check passed.');
     // --- End geoblocking ---
 
     // --- Rate limiting ---
+    console.log('2. Checking rate limit...');
     let userId: string | null = null;
     let ip: string | null = null;
     // Try to get userId from Supabase JWT (Authorization header)
@@ -203,8 +207,10 @@ export async function POST(req: Request) {
         }
       );
     }
+    console.log('Rate limit check passed.');
     // --- End rate limiting ---
 
+    console.log('3. Parsing request body...');
     const { 
       question, 
       language,
@@ -220,8 +226,10 @@ export async function POST(req: Request) {
       conversation_context?: Array<{ role: string; content: string }>;
       submitDeltaMs?: number;
     } = await req.json();
+    console.log('Request body parsed successfully:', { question, language, conversation_id });
 
     // Prompt injection filter
+    console.log('4. Checking for banned phrases...');
     if (containsBannedPhrase(question)) {
       return new NextResponse(
         JSON.stringify({ error: 'Unsafe prompt detected' }),
@@ -229,87 +237,117 @@ export async function POST(req: Request) {
       );
     }
     if (!checkMinSubmitDelta(submitDeltaMs)) {
+      console.warn('Form submitted too quickly.');
       return new NextResponse(
         JSON.stringify({ error: 'Form submitted too quickly.' }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       );
     }
+    console.log('Security checks passed.');
 
-    const answer = await generateClaudeAnswer(question, conversation_context);
-    if (!answer) throw new Error('No answer from Claude Haiku');
+    let answer = '';
+    try {
+      console.log('5. Generating answer with Claude Haiku...');
+      answer = await generateClaudeAnswer(question, conversation_context);
+      if (!answer) {
+        console.error('No answer returned from Claude Haiku.');
+        throw new Error('No answer from Claude Haiku');
+      }
+      console.log('Answer generated successfully.');
+    } catch (error) {
+      console.error('Error generating answer from AI:', error);
+      throw new Error(`AI service failed: ${(error as Error).message}`);
+    }
+
+    console.log('6. Sanitizing and checking safety of the answer...');
     if (isOutputUnsafe(answer)) {
+      console.warn('Unsafe output detected:', answer);
       return new NextResponse(
         JSON.stringify({ error: 'Blocked: unsafe output detected.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
     const sanitizedAnswer = sanitizeAnswer(answer);
+    console.log('Answer sanitized and checked.');
 
     let finalConversationId: string | null = null;
+    let newQuestionId: string | null = null;
+    
+    try {
+      console.log('7. Saving question and answer to the database...');
+      if (conversation_id) {
+        finalConversationId = conversation_id;
+      } else if (parent_id) {
+        const { data: parentQuestion, error: parentError } = await supabase
+          .from('questions')
+          .select('conversation_id')
+          .eq('id', parent_id)
+          .single();
 
-    if (conversation_id) {
-      finalConversationId = conversation_id;
-    } else if (parent_id) {
-      const { data: parentQuestion, error: parentError } = await supabase
+        if (parentError) throw new Error(`Error fetching parent question: ${parentError.message}`);
+        if (!parentQuestion) throw new Error('Parent question not found');
+        
+        finalConversationId = parentQuestion.conversation_id;
+      }
+
+      // Check if this is the first question in the conversation
+      const isMain = !parent_id;
+
+      interface InsertData {
+        question: string;
+        answer: string;
+        meta_generated: boolean;
+        parent_id: string | null;
+        conversation_id: string | null;
+        status: 'draft' | 'live' | 'archived';
+        language_path: string;
+        created_at: string;
+        is_main: boolean;
+      }
+
+      // Insert the new question/answer pair
+      const insertData: InsertData = {
+        question,
+        answer: sanitizedAnswer,
+        meta_generated: false,
+        parent_id: parent_id || null,
+        conversation_id: finalConversationId || null,
+        status: 'draft',
+        language_path: language,
+        created_at: new Date().toISOString(),
+        is_main: isMain,
+      };
+
+      const { data: newQuestion, error: insertError } = await supabase
         .from('questions')
-        .select('conversation_id')
-        .eq('id', parent_id)
+        .insert(insertData)
+        .select('id')
         .single();
 
-      if (parentError) throw new Error(`Error fetching parent question: ${parentError.message}`);
-      if (!parentQuestion) throw new Error('Parent question not found');
+      if (insertError) {
+        console.error('Supabase insert error:', insertError);
+        throw new Error(`Database insert failed: ${insertError.message}`);
+      }
       
-      finalConversationId = parentQuestion.conversation_id;
+      newQuestionId = newQuestion.id;
+      console.log('Question saved to DB with ID:', newQuestionId);
+    } catch (error) {
+        console.error('Error with database operation:', error);
+        throw new Error(`Database operation failed: ${(error as Error).message}`);
     }
 
-    // Check if this is the first question in the conversation
-    const isMain = !parent_id;
-
-    interface InsertData {
-      question: string;
-      answer: string;
-      meta_generated: boolean;
-      parent_id: string | null;
-      conversation_id: string | null;
-      status: 'draft' | 'live' | 'archived';
-      language_path: string;
-      created_at: string;
-      is_main: boolean;
-    }
-
-    // Insert the new question/answer pair
-    const insertData: InsertData = {
-      question,
+    console.log('8. Returning response to client.');
+    return NextResponse.json({
       answer: sanitizedAnswer,
-      meta_generated: false,
-      parent_id: parent_id || null,
-      conversation_id: finalConversationId || null,
-      status: 'draft',
-      language_path: language,
-      created_at: new Date().toISOString(),
-      is_main: isMain,
-    };
-
-    const { data: insertedQuestion, error } = await supabase
-      .from('questions')
-      .insert(insertData)
-      .select('id, conversation_id')
-      .single();
-
-    if (error) {
-      console.error('Supabase insert error:', error);
-      throw new Error(`Supabase error: ${error.message}`);
-    }
-
-    return NextResponse.json({ 
-      answer: sanitizedAnswer, 
-      id: insertedQuestion.id, 
-      conversation_id: insertedQuestion.conversation_id 
+      id: newQuestionId,
+      conversation_id: finalConversationId,
     });
-
   } catch (error) {
     const err = error as Error;
-    console.error('[Ask API Error]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[API/ASK ERROR]', err.message);
+    return new NextResponse(
+      JSON.stringify({ error: err.message || 'An internal server error occurred.' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
