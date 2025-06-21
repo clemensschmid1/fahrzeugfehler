@@ -139,6 +139,10 @@ function checkMinSubmitDelta(delta: number | undefined, minMs = 3000) {
 export async function POST(req: Request) {
   console.log('--- POST /api/ask ---');
   try {
+    // Check if this is a bulk import request
+    const isBulkImport = req.headers.get('X-Bulk-Import') === 'true';
+    console.log('Bulk import request:', isBulkImport);
+
     // --- Geoblocking ---
     console.log('1. Checking geoblock...');
     const geoblock = checkGeoblock(req);
@@ -151,50 +155,54 @@ export async function POST(req: Request) {
     console.log('Geoblock check passed.');
     // --- End geoblocking ---
 
-    // --- Rate limiting ---
-    console.log('2. Checking rate limit...');
-    let userId: string | null = null;
-    let ip: string | null = null;
-    // Try to get userId from Supabase JWT (Authorization header)
-    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const jwt = authHeader.slice(7);
-      // Parse JWT payload (base64url, no padding)
-      try {
-        const payload = JSON.parse(Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
-        userId = payload.sub || null;
-      } catch {
-        userId = null;
+    // --- Rate limiting (skip for bulk import) ---
+    if (!isBulkImport) {
+      console.log('2. Checking rate limit...');
+      let userId: string | null = null;
+      let ip: string | null = null;
+      // Try to get userId from Supabase JWT (Authorization header)
+      const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const jwt = authHeader.slice(7);
+        // Parse JWT payload (base64url, no padding)
+        try {
+          const payload = JSON.parse(Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+          userId = payload.sub || null;
+        } catch {
+          userId = null;
+        }
       }
-    }
-    // Fallback: get IP from headers (X-Forwarded-For or cf-connecting-ip)
-    ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
+      // Fallback: get IP from headers (X-Forwarded-For or cf-connecting-ip)
+      ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
 
-    console.log('Rate limit params:', { userId: !!userId, ip: !!ip, routeKey: 'ask' });
-    
-    try {
-      const rate = await checkRateLimit({ userId, ip, routeKey: 'ask' });
-      console.log('Rate limit result:', { allowed: rate.allowed, reason: rate.reason });
+      console.log('Rate limit params:', { userId: !!userId, ip: !!ip, routeKey: 'ask' });
       
-      if (!rate.allowed) {
-        return new NextResponse(
-          JSON.stringify({ error: 'Too Many Requests', reason: rate.reason }),
-          {
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              ...rate.headers,
-              'Retry-After': rate.retryAfter ? Math.ceil((rate.retryAfter - Date.now()) / 1000).toString() : '60',
-            },
-          }
-        );
+      try {
+        const rate = await checkRateLimit({ userId, ip, routeKey: 'ask' });
+        console.log('Rate limit result:', { allowed: rate.allowed, reason: rate.reason });
+        
+        if (!rate.allowed) {
+          return new NextResponse(
+            JSON.stringify({ error: 'Too Many Requests', reason: rate.reason }),
+            {
+              status: 429,
+              headers: {
+                'Content-Type': 'application/json',
+                ...rate.headers,
+                'Retry-After': rate.retryAfter ? Math.ceil((rate.retryAfter - Date.now()) / 1000).toString() : '60',
+              },
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Rate limiting error:', error);
+        // Continue without rate limiting if it fails
       }
-    } catch (error) {
-      console.error('Rate limiting error:', error);
-      // Continue without rate limiting if it fails
+      
+      console.log('Rate limit check passed.');
+    } else {
+      console.log('2. Skipping rate limit check for bulk import request.');
     }
-    
-    console.log('Rate limit check passed.');
     // --- End rate limiting ---
 
     console.log('3. Parsing request body...');
@@ -223,7 +231,9 @@ export async function POST(req: Request) {
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    if (!checkMinSubmitDelta(submitDeltaMs)) {
+    
+    // Skip submit delta check for bulk import requests
+    if (!isBulkImport && !checkMinSubmitDelta(submitDeltaMs)) {
       console.warn('Form submitted too quickly.');
       return new NextResponse(
         JSON.stringify({ error: 'Form submitted too quickly.' }),

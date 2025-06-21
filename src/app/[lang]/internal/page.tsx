@@ -138,10 +138,12 @@ export default function InternalPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Bulk-Import': 'true'
           },
           body: JSON.stringify({
             question: rawQuestion.question,
             analyzeOnly: true,
+            submitDeltaMs: 5000
           }),
         });
 

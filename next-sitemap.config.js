@@ -59,8 +59,25 @@ module.exports = {
       return null; // These are handled by additionalPaths
     }
 
-    const enPath = path.replace(`/${otherLang}/`, `/${defaultLang}/`);
-    const dePath = path.replace(`/${defaultLang}/`, `/${otherLang}/`);
+    // Skip internal routes
+    if (path.includes('/internal/') || path.includes('/login') || path.includes('/signup') || path.includes('/profile')) {
+      return null;
+    }
+
+    // Generate proper hreflang URLs
+    let enPath, dePath;
+    
+    if (path.startsWith(`/${defaultLang}/`)) {
+      enPath = path;
+      dePath = path.replace(`/${defaultLang}/`, `/${otherLang}/`);
+    } else if (path.startsWith(`/${otherLang}/`)) {
+      dePath = path;
+      enPath = path.replace(`/${otherLang}/`, `/${defaultLang}/`);
+    } else {
+      // For paths without language prefix, add both
+      enPath = `/${defaultLang}${path}`;
+      dePath = `/${otherLang}${path}`;
+    }
 
     return {
       loc: path,
