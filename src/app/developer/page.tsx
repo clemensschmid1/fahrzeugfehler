@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import Link from 'next/link';
 
 export default function DeveloperPage() {
   const [email, setEmail] = useState('');
@@ -35,8 +34,9 @@ export default function DeveloperPage() {
         password,
       });
       if (error) throw error;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      const err = error as Error;
+      setError(err.message);
     }
   };
 
@@ -44,8 +44,9 @@ export default function DeveloperPage() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      const err = error as Error;
+      setError(err.message);
     }
   };
 

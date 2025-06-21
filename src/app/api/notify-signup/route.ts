@@ -76,8 +76,9 @@ export async function POST(req: Request) {
       message: 'Email saved successfully'
     });
 
-  } catch (error: any) {
-    console.error('Error handling signup notification:', error);
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error handling signup notification:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

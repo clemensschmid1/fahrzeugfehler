@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -26,11 +26,8 @@ export default function DraftsPage() {
   const params = useParams();
   const lang = params.lang as string;
 
-  useEffect(() => {
-    fetchDrafts();
-  }, []);
-
-  const fetchDrafts = async () => {
+  const fetchDrafts = useCallback(async () => {
+    setLoading(true);
     try {
       let query = supabase
         .from('questions')
@@ -49,16 +46,17 @@ export default function DraftsPage() {
       setDrafts(data || []);
       setSelectedDrafts([]);
       setSelectAll(false);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      const err = error as Error;
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [lang, filterStatus]);
 
   useEffect(() => {
     fetchDrafts();
-  }, [filterStatus]);
+  }, [fetchDrafts]);
 
   const handleCheckboxChange = (id: string) => {
     setSelectedDrafts(prev => 
@@ -89,8 +87,9 @@ export default function DraftsPage() {
       if (error) throw error;
       setActionStatus(`Successfully moved ${ids.length} items to ${newStatus}.`);
       fetchDrafts();
-    } catch (error: any) {
-      setActionStatus(`Error moving items: ${error.message}`);
+    } catch (error) {
+      const err = error as Error;
+      setActionStatus(`Error moving items: ${err.message}`);
     }
   };
 

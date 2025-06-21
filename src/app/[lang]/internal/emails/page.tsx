@@ -1,17 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import InternalAuth from '@/components/InternalAuth';
+
+interface Metadata {
+  source?: string;
+  user_agent?: string;
+  ip_address?: string;
+  timestamp?: string;
+}
 
 interface EmailRecord {
   id: string;
   email: string;
   type: string;
   status: string;
-  metadata: any;
+  metadata: Metadata;
   created_at: string;
   updated_at: string;
 }
@@ -24,11 +31,7 @@ export default function EmailsPage() {
   const params = useParams();
   const lang = params.lang as string;
 
-  useEffect(() => {
-    fetchEmails();
-  }, [filter]);
-
-  const fetchEmails = async () => {
+  const fetchEmails = useCallback(async () => {
     try {
       setLoading(true);
       let query = supabase
@@ -48,12 +51,17 @@ export default function EmailsPage() {
 
       if (error) throw error;
       setEmails(data || []);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      const err = error as Error;
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchEmails();
+  }, [fetchEmails]);
 
   const updateEmailStatus = async (id: string, newStatus: string) => {
     try {
@@ -64,8 +72,9 @@ export default function EmailsPage() {
 
       if (error) throw error;
       fetchEmails(); // Refresh the list
-    } catch (error: any) {
-      setError(`Error updating email status: ${error.message}`);
+    } catch (error) {
+      const err = error as Error;
+      setError(`Error updating email status: ${err.message}`);
     }
   };
 

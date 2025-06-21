@@ -41,10 +41,11 @@ export async function POST(req: Request) {
       } else {
         user = userData;
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       // Don't log AuthSessionMissingError as it's expected for unauthenticated users
-      if (error.message !== 'Auth session missing!') {
-        console.error('Auth session error in votes API:', error);
+      if (err.message !== 'Auth session missing!') {
+        console.error('Auth session error in votes API:', err);
       }
       // Continue without user - this is normal for unauthenticated users
     }
@@ -78,7 +79,12 @@ export async function POST(req: Request) {
       if (deleteError) throw deleteError;
     } else {
       // User/IP hasn't upvoted - add an upvote
-      const voteData: any = {
+      const voteData: {
+        question_id: string,
+        vote_type: boolean,
+        user_id?: string,
+        ip_address?: string
+      } = {
         question_id: questionId,
         vote_type: true // true = upvote
       };
@@ -113,9 +119,10 @@ export async function POST(req: Request) {
       hasUserUpvoted
     });
 
-  } catch (error: any) {
-    console.error('Error handling vote:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error handling vote:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -188,10 +195,11 @@ export async function GET(req: Request) {
           hasUserUpvoted = !!userVoteData;
         }
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       // Don't log AuthSessionMissingError as it's expected for unauthenticated users
-      if (error.message !== 'Auth session missing!') {
-        console.error('Auth session error in votes API:', error);
+      if (err.message !== 'Auth session missing!') {
+        console.error('Auth session error in votes API:', err);
       }
       // Continue without user - this is normal for unauthenticated users
     }
@@ -218,8 +226,9 @@ export async function GET(req: Request) {
       hasUserUpvoted
     });
 
-  } catch (error: any) {
-    console.error('Error fetching votes:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error fetching votes:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

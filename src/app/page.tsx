@@ -67,7 +67,7 @@ export default function Home() {
               Input: error code. Output: solution.
             </span>
             <span className="block text-slate-600">
-              No AI gimmicks. Infoneva speaks your machine's language.
+              No AI gimmicks. Infoneva speaks your machine&apos;s language.
             </span>
           </div>
         </div>

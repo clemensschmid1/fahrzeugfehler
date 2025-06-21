@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import KnowledgeClient from './KnowledgeClient';
 import type { Database } from '@/lib/database.types';
 import type { Metadata } from 'next';
-import BackButton from './BackButton';
 
 // Types
 type Params = { slug: string; lang: string };
@@ -17,6 +16,7 @@ type Question = Omit<Database['public']['Tables']['questions']['Row'], 'status'>
   status: 'Draft' | 'Published';
   sector?: string;
   is_main?: boolean;
+  ip_address?: string;
 };
 
 type FollowUpQuestion = {
@@ -38,8 +38,6 @@ type Vote = {
   user_id?: string;
   ip_address?: string;
 };
-
-type Comment = Database['public']['Tables']['comments']['Row'];
 
 export const dynamic = 'force-dynamic';
 
@@ -288,28 +286,8 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
     });
 
     if (!relatedError && relatedData) {
-      // Only filter out the current question itself
-      relatedQuestions = relatedData
-        .filter((q: any) => q.id !== question.id)
-        .filter((q: unknown): q is RelatedQuestion => {
-          if (
-            typeof q === 'object' &&
-            q !== null &&
-            'id' in q &&
-            'slug' in q &&
-            'question' in q &&
-            'similarity' in q
-          ) {
-            const r = q as Record<string, unknown>;
-            return (
-              typeof r.id === 'string' &&
-              typeof r.slug === 'string' &&
-              typeof r.question === 'string' &&
-              typeof r.similarity === 'number'
-            );
-          }
-          return false;
-        })
+      relatedQuestions = (relatedData as RelatedQuestion[])
+        .filter((q) => q.id !== question.id)
         .slice(0, 6);
     }
   }
@@ -350,16 +328,16 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
   }
   // Note: For unauthenticated users, the vote status will be checked client-side by IP
 
+  // Pass all data to the client component
   return (
-    <KnowledgeClient
-      question={question}
+    <KnowledgeClient 
+      question={question} 
       followUpQuestions={followUpQuestions}
       relatedQuestions={relatedQuestions}
       initialComments={comments || []}
       initialVotes={initialVotes}
       initialUserVote={initialUserVote}
       lang={lang}
-      slug={slug}
       user={user}
     />
   );

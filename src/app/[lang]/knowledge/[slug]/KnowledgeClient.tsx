@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { User } from '@supabase/supabase-js';
 
 type Question = {
   id: string;
@@ -48,11 +48,10 @@ type KnowledgeClientProps = {
   initialVotes: { up: number; down: number };
   initialUserVote: 'up' | 'down' | null;
   lang: string;
-  slug: string;
-  user: any; // User data from server
+  user: User | null; // User data from server
 };
 
-export default function KnowledgeClient({ question, followUpQuestions, relatedQuestions, initialComments, initialVotes, initialUserVote, lang, slug, user }: KnowledgeClientProps) {
+export default function KnowledgeClient({ question, followUpQuestions, relatedQuestions, initialComments, initialVotes, initialUserVote, lang, user }: KnowledgeClientProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments || []);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,8 +62,6 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
   const [upvotes, setUpvotes] = useState<number>(initialVotes.up);
   const [hasUserUpvoted, setHasUserUpvoted] = useState<boolean>(initialUserVote === 'up');
   const [isVoting, setIsVoting] = useState(false);
-
-  const router = useRouter(); // Keep useRouter for client-side navigation
 
   const formMountTime = useRef<number>(Date.now());
 
@@ -127,7 +124,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (jsonErr) {
+        } catch {
           errorMsg = 'Failed to post comment (invalid response)';
         }
         throw new Error(errorMsg);
@@ -135,9 +132,10 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
       const newCommentData = await response.json();
       setComments(prev => [...prev, newCommentData]);
       setNewComment('');
-    } catch (err: any) {
-      console.error('Error posting comment:', err);
-      setError(err.message);
+    } catch (err) {
+      const anError = err as Error;
+      console.error('Error posting comment:', anError);
+      setError(anError.message);
     } finally {
       setIsSubmitting(false);
     }

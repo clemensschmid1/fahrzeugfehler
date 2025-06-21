@@ -54,8 +54,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(slugsMap);
-  } catch (error: any) {
-    console.error('Error fetching slugs:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error fetching slugs:', err);
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 } 

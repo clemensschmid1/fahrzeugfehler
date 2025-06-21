@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     // --- End geoblocking ---
 
     // Auth guard
-    const user = await requireUser(req);
+    const user = await requireUser();
     if (!user) {
       return new Response('Unauthorized', { status: 401 });
     }
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     }
 
     // Fetch the username from profiles
-    const { data: profile, error: profileError } = await supabaseAuth
+    const { data: profile } = await supabaseAuth
       .from('profiles')
       .select('username')
       .eq('id', user.id)
@@ -111,10 +111,24 @@ export async function POST(req: Request) {
 
     console.log('Comment posted successfully:', responseData);
     return NextResponse.json(responseData);
-  } catch (error: any) {
-    console.error('Error creating comment:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error creating comment:', err);
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
+}
+
+// Define the correct type for comments joined with profiles
+interface CommentWithProfile {
+  id: string;
+  content: string;
+  created_at: string;
+  question_id: string;
+  user_id: string;
+  status: string;
+  profiles: { // This is a single object for a one-to-one join
+    username: string | null;
+  } | null;
 }
 
 export async function GET(req: Request) {
@@ -182,16 +196,17 @@ export async function GET(req: Request) {
         throw error;
     }
 
-    // Map user_name for each comment
-    const commentsWithUserName = (data || []).map((comment: any) => ({
+    // Map user_name for each comment, casting through 'unknown' to assert the correct type
+    const commentsWithUserName = ((data as unknown as CommentWithProfile[]) || []).map((comment) => ({
       ...comment,
       user_name: comment.profiles?.username || null,
     }));
 
     console.log(`Fetched ${commentsWithUserName?.length} comments for question ${questionId} with status ${status || 'any'}`);
     return NextResponse.json(commentsWithUserName);
-  } catch (error: any) {
-    console.error('Error fetching comments:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error fetching comments:', err);
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 } 

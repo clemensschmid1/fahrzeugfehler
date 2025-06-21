@@ -182,7 +182,7 @@ export async function POST(req: Request) {
       try {
         const payload = JSON.parse(Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
         userId = payload.sub || null;
-      } catch (e) {
+      } catch {
         userId = null;
       }
     }
@@ -205,7 +205,22 @@ export async function POST(req: Request) {
     }
     // --- End rate limiting ---
 
-    const { question, parent_id, conversation_id, conversation_context, submitDeltaMs } = await req.json();
+    const { 
+      question, 
+      language,
+      parent_id, 
+      conversation_id, 
+      conversation_context, 
+      submitDeltaMs 
+    }: { 
+      question: string;
+      language: string;
+      parent_id?: string;
+      conversation_id?: string;
+      conversation_context?: Array<{ role: string; content: string }>;
+      submitDeltaMs?: number;
+    } = await req.json();
+
     // Prompt injection filter
     if (containsBannedPhrase(question)) {
       return new NextResponse(
@@ -248,59 +263,53 @@ export async function POST(req: Request) {
     }
 
     // Check if this is the first question in the conversation
-    let isMain = false;
-    if (finalConversationId) {
-      const { count, error: countError } = await supabase
-        .from('questions')
-        .select('id', { count: 'exact', head: true })
-        .eq('conversation_id', finalConversationId);
-      if (countError) throw countError;
-      isMain = (count === 0);
-    } else {
-      // If no conversation_id, this is the first question
-      isMain = true;
+    const isMain = !parent_id;
+
+    interface InsertData {
+      question: string;
+      answer: string;
+      meta_generated: boolean;
+      parent_id: string | null;
+      conversation_id: string | null;
+      status: 'draft' | 'live' | 'archived';
+      language_path: string;
+      created_at: string;
+      is_main: boolean;
     }
 
-    const insertData: Record<string, any> = {
+    // Insert the new question/answer pair
+    const insertData: InsertData = {
       question,
-      answer,
+      answer: sanitizedAnswer,
       meta_generated: false,
       parent_id: parent_id || null,
       conversation_id: finalConversationId || null,
       status: 'draft',
-      language_path: 'en',
+      language_path: language,
       created_at: new Date().toISOString(),
-      ...(isMain ? { is_main: true } : {}),
+      is_main: isMain,
     };
 
-    console.log('Insert payload:', insertData);
-
-    const { data: inserted, error: insertError } = await supabase
+    const { data: insertedQuestion, error } = await supabase
       .from('questions')
       .insert(insertData)
-      .select('id')
+      .select('id, conversation_id')
       .single();
 
-    if (insertError) throw insertError;
-
-    if (!finalConversationId) {
-      const { error: updateError } = await supabase
-        .from('questions')
-        .update({ conversation_id: inserted.id })
-        .eq('id', inserted.id);
-
-      if (updateError) throw updateError;
-      finalConversationId = inserted.id;
+    if (error) {
+      console.error('Supabase insert error:', error);
+      throw new Error(`Supabase error: ${error.message}`);
     }
 
-    return NextResponse.json({
-      success: true,
-      answer: sanitizedAnswer,
-      id: inserted.id,
-      conversation_id: finalConversationId
+    return NextResponse.json({ 
+      answer: sanitizedAnswer, 
+      id: insertedQuestion.id, 
+      conversation_id: insertedQuestion.conversation_id 
     });
-  } catch (error: any) {
-    console.error('[Claude API Error]', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+  } catch (error) {
+    const err = error as Error;
+    console.error('[Ask API Error]', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

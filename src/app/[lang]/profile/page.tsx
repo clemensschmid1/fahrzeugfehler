@@ -4,12 +4,26 @@ import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { User } from '@supabase/supabase-js';
+
+interface UserProfile extends User {
+  username?: string;
+}
+
+interface UserComment {
+  id: string;
+  created_at: string;
+  content: string;
+  question: {
+    slug: string;
+    question: string;
+  };
+}
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
-  const [userComments, setUserComments] = useState<any[]>([]);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [userComments, setUserComments] = useState<UserComment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -59,7 +73,6 @@ export default function ProfilePage() {
         }
       } catch (err) {
         console.error('Error in fetchUserData:', err);
-        setError('Failed to load user data');
       }
 
       setLoading(false);
@@ -113,10 +126,10 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signOut();
+    const { error: signOutError } = await supabase.auth.signOut();
 
-    if (error) {
-      setError(error.message);
+    if (signOutError) {
+      console.error('Error signing out:', signOutError);
       setLoading(false);
     }
   };
@@ -135,17 +148,19 @@ export default function ProfilePage() {
     setLoading(true);
     setUsernameError(null);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username: newUsername.trim() })
-      .eq('id', user.id);
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ username: newUsername.trim() })
+        .eq('id', user.id);
 
-    if (error) {
-      console.error('Error updating username:', error);
-      setUsernameError(error.message);
-    } else {
-      setUser({ ...user, username: newUsername.trim() });
-      setIsEditingUsername(false);
+      if (error) {
+        console.error('Error updating username:', error);
+        setUsernameError(error.message);
+      } else {
+        setUser({ ...user, username: newUsername.trim() });
+        setIsEditingUsername(false);
+      }
     }
     setLoading(false);
   };

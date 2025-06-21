@@ -42,7 +42,6 @@ export default function InternalPage() {
 
         if (file.name.endsWith('.csv')) {
           // Handle CSV format
-          const headers = lines[0].split(',').map(h => h.trim());
           for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map(v => v.trim());
             const question: ImportedQuestion = {
@@ -118,8 +117,8 @@ export default function InternalPage() {
       setImportStatus(`Successfully imported ${previewQuestions.length} questions`);
       setPreviewQuestions([]);
       setRawQuestions([]);
-    } catch (error: any) {
-      setImportStatus('Error importing questions: ' + error.message);
+    } catch (error) {
+      setImportStatus('Error importing questions: ' + (error as Error).message);
     } finally {
       setIsImporting(false);
     }
@@ -159,8 +158,8 @@ export default function InternalPage() {
           part_type: data.part_type || rawQuestion.part_type || 'Unknown',
           part_series: data.part_series || rawQuestion.part_series || 'Unknown',
         });
-      } catch (error: any) {
-        console.error('AI analysis error for question:', rawQuestion.question, error);
+      } catch (error) {
+        console.error('AI analysis error for question:', rawQuestion.question, error as Error);
         // If AI analysis fails, use the raw data with placeholders
         analyzedQuestions.push({
           question: rawQuestion.question,

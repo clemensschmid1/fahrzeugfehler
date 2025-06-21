@@ -132,6 +132,7 @@ Return this JSON:
     if (!content) throw new Error('No metadata from OpenAI');
 
     const cleaned = content.replace(/```json|```/g, '').trim();
+    // eslint-disable-next-line prefer-const
     let metadata = JSON.parse(cleaned);
 
     metadata.status = 'live';
@@ -147,6 +148,7 @@ Return this JSON:
     }
 
     // Ensure slug is unique
+    // eslint-disable-next-line prefer-const
     let baseSlug = metadata.seo_slug || null;
     let uniqueSlug = baseSlug;
     if (uniqueSlug) {
@@ -193,8 +195,9 @@ Return this JSON:
     }
 
     return NextResponse.json({ success: true, metadata: { ...metadata, embedding: 'generated' } });
-  } catch (error: any) {
-    console.log('[generate-metadata] Caught error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.log('[generate-metadata] Caught error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

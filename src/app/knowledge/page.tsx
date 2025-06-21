@@ -3,8 +3,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+interface Question {
+  id: string;
+  slug: string;
+  question: string;
+  is_main: boolean;
+}
+
 export default function KnowledgePage() {
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
     fetch('/api/knowledge/index')

@@ -1,6 +1,40 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
 type Params = { lang: string };
+
+export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
+  const { lang } = await params;
+  const siteUrl = 'https://infoneva.com';
+
+  const title = lang === 'de'
+    ? 'Infoneva: Industrielle KI für die Fertigung | Sofortige technische Lösungen'
+    : 'Infoneva: Industrial AI for Manufacturing | Instant Technical Solutions';
+
+  const description = lang === 'de'
+    ? 'Infoneva bietet sofortige, präzise Antworten für industrielle Automatisierung. Greifen Sie auf eine Wissensdatenbank zu, die auf Tausenden von OEM-Handbüchern, Fehlercodes und SPS-Logik basiert.'
+    : 'Infoneva provides instant, precise answers for industrial automation. Access a knowledge base trained on thousands of OEM manuals, error codes, and PLC logic.';
+
+  const canonicalUrl = `${siteUrl}/${lang}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        'en': `${siteUrl}/en`,
+        'de': `${siteUrl}/de`,
+      },
+    },
+    other: {
+      'og:title': title,
+      'og:description': description,
+      'og:url': canonicalUrl,
+      'og:site_name': 'Infoneva',
+    },
+  };
+}
 
 export default async function MainPage({ params }: { params: Promise<Params> }) {
   // SSR-safe: get language from params

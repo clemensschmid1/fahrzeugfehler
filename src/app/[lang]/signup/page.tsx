@@ -8,9 +8,6 @@ import Link from 'next/link';
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [notificationEmail, setNotificationEmail] = useState('');
   const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
   const [isSubmittingNotification, setIsSubmittingNotification] = useState(false);
@@ -27,11 +24,10 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setMessage(null);
+    // This form is disabled, so the logic inside is currently unused.
+    // If re-enabled, loading/error/message state will need to be re-added.
 
-    const { error } = await supabase.auth.signUp({
+    const { error: signupError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -39,14 +35,13 @@ export default function SignupPage() {
       },
     });
 
-    if (error) {
-      setError(error.message);
+    if (signupError) {
+      console.error('Signup Error:', signupError.message);
     } else {
-      setMessage(t('Check your email for a confirmation link.', 'Überprüfen Sie Ihre E-Mail für einen Bestätigungslink.'));
+      console.log('Signup successful, confirmation email sent.');
       // Redirect to profile page after successful signup
       router.push(`/${lang}/profile`);
     }
-    setLoading(false);
   };
 
   const handleNotificationSubmit = async (e: React.FormEvent) => {
@@ -75,7 +70,7 @@ export default function SignupPage() {
       } else {
         setNotificationStatus(t('Something went wrong. Please try again.', 'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.'));
       }
-    } catch (error) {
+    } catch {
       setNotificationStatus(t('Something went wrong. Please try again.', 'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.'));
     } finally {
       setIsSubmittingNotification(false);

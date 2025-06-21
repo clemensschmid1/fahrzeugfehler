@@ -1,0 +1,17 @@
+# *
+User-agent: *
+Allow: /
+
+# *
+User-agent: *
+Disallow: /internal/
+Disallow: /login
+Disallow: /signup
+Disallow: /profile
+Disallow: /api/
+
+# Host
+Host: https://infoneva.com
+
+# Sitemaps
+Sitemap: https://infoneva.com/sitemap.xml

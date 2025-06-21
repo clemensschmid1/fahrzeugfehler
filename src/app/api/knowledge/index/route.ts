@@ -1,10 +1,4 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function POST(req: Request) {
   try {
@@ -39,20 +33,17 @@ Question: ${question}
     });
 
     const gptData = await gptRes.json();
-    const parsed = JSON.parse(gptData.choices?.[0]?.message?.content || '{}');
+    const content = gptData.choices?.[0]?.message?.content;
 
-    // Only return is_main = true questions
-    const { data, error } = await supabase
-      .from('questions')
-      .select('*')
-      .eq('is_main', true);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!content) {
+      return NextResponse.json({ error: 'Failed to get content from OpenAI' }, { status: 500 });
     }
 
-    return NextResponse.json(data);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Unknown error' }, { status: 500 });
+    const parsed = JSON.parse(content);
+
+    return NextResponse.json(parsed);
+  } catch (err) {
+    const error = err as Error;
+    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });
   }
 }

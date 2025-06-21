@@ -1,12 +1,18 @@
 'use client';
 
+interface Comment {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id?: string;
+  user_name?: string;
+}
+
 type CommentSectionProps = {
-  questionId: string;
-  comments: any[];
-  onCommentsChange: (comments: any[]) => void;
+  comments: Comment[];
 };
 
-export function CommentSection({ questionId, comments, onCommentsChange }: CommentSectionProps) {
+export function CommentSection({ comments }: CommentSectionProps) {
   return (
     <div>
       <h2 className="text-lg font-semibold mb-2">Comments</h2>
@@ -14,8 +20,8 @@ export function CommentSection({ questionId, comments, onCommentsChange }: Comme
         <p>No comments yet.</p>
       ) : (
         <ul>
-          {comments.map((c, i) => (
-            <li key={i}>{c.content || JSON.stringify(c)}</li>
+          {comments.map((c) => (
+            <li key={c.id}>{c.content}</li>
           ))}
         </ul>
       )}
