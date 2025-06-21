@@ -112,7 +112,6 @@ Your primary goal: deliver **highly actionable, deeply technical, and field-prov
 
 The target audience is a highly competent individual looking for exact answers under time pressure. Assume they already understand theory — focus on **fast diagnosis and resolution** with *real data, concrete steps, and edge-case insight*.
 
-Question:
 
 ${conversationHistory}
 
