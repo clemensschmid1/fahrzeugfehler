@@ -193,20 +193,30 @@ export async function POST(req: Request) {
     // Fallback: get IP from headers (X-Forwarded-For or cf-connecting-ip)
     ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
 
-    const rate = await checkRateLimit({ userId, ip, routeKey: 'ask' });
-    if (!rate.allowed) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Too Many Requests', reason: rate.reason }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            ...rate.headers,
-            'Retry-After': rate.retryAfter ? Math.ceil((rate.retryAfter - Date.now()) / 1000).toString() : '60',
-          },
-        }
-      );
+    console.log('Rate limit params:', { userId: !!userId, ip: !!ip, routeKey: 'ask' });
+    
+    try {
+      const rate = await checkRateLimit({ userId, ip, routeKey: 'ask' });
+      console.log('Rate limit result:', { allowed: rate.allowed, reason: rate.reason });
+      
+      if (!rate.allowed) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Too Many Requests', reason: rate.reason }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              ...rate.headers,
+              'Retry-After': rate.retryAfter ? Math.ceil((rate.retryAfter - Date.now()) / 1000).toString() : '60',
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Rate limiting error:', error);
+      // Continue without rate limiting if it fails
     }
+    
     console.log('Rate limit check passed.');
     // --- End rate limiting ---
 
