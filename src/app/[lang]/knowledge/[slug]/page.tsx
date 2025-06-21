@@ -330,8 +330,8 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
 
   // Pass all data to the client component
   return (
-    <KnowledgeClient 
-      question={question} 
+    <KnowledgeClient
+      question={question}
       followUpQuestions={followUpQuestions}
       relatedQuestions={relatedQuestions}
       initialComments={comments || []}

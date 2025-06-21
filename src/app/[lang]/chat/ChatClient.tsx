@@ -33,12 +33,15 @@ function ChatPageContent() {
   const [user, setUser] = useState<User | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [freeLimitReached, setFreeLimitReached] = useState(false);
+  const [freeQuestionsCount, setFreeQuestionsCount] = useState<number>(0);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
   const formMountTime = useRef<number>(Date.now());
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
     formMountTime.current = Date.now();
   }, []);
@@ -149,11 +152,16 @@ function ChatPageContent() {
       setMessages([questionMessage, answerMessage]);
       
       // Update URL with new conversation_id
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('conversation_id', newConversationId);
-      newUrl.searchParams.delete('prefill_question');
-      newUrl.searchParams.delete('prefill_answer');
-      router.replace(newUrl.pathname + newUrl.search);
+      try {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('conversation_id', newConversationId);
+        newUrl.searchParams.delete('prefill_question');
+        newUrl.searchParams.delete('prefill_answer');
+        router.replace(newUrl.pathname + newUrl.search);
+      } catch (err) {
+        console.error('Failed to parse URL for prefill:', err);
+        setError('An internal error occurred while starting a new chat. Please refresh the page.');
+      }
     } else {
       // New chat without any context
       const newConversationId = generateConversationId();
@@ -161,9 +169,14 @@ function ChatPageContent() {
       setMessages([]);
       
       // Update URL with new conversation_id
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('conversation_id', newConversationId);
-      router.replace(newUrl.pathname + newUrl.search);
+      try {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('conversation_id', newConversationId);
+        router.replace(newUrl.pathname + newUrl.search);
+      } catch (err) {
+        console.error('Failed to parse URL for new chat (no context):', err);
+        setError('An internal error occurred while starting a new chat. Please refresh the page.');
+      }
     }
   }, [searchParams, router, loadConversationHistory]);
 
@@ -171,11 +184,20 @@ function ChatPageContent() {
   useEffect(() => {
     if (!user) {
       const count = parseInt(localStorage.getItem('free_questions_count') || '0', 10);
+      setFreeQuestionsCount(count);
       if (count >= 3) setFreeLimitReached(true);
     } else {
       setFreeLimitReached(false);
     }
   }, [user]);
+
+  // Auto-expand textarea as user types
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [input]);
 
   const handleNewChat = () => {
     const newConversationId = generateConversationId();
@@ -185,11 +207,16 @@ function ChatPageContent() {
     setError(null);
     
     // Update URL with new conversation_id
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set('conversation_id', newConversationId);
-    newUrl.searchParams.delete('prefill_question');
-    newUrl.searchParams.delete('prefill_answer');
-    router.replace(newUrl.pathname + newUrl.search);
+    try {
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('conversation_id', newConversationId);
+      newUrl.searchParams.delete('prefill_question');
+      newUrl.searchParams.delete('prefill_answer');
+      router.replace(newUrl.pathname + newUrl.search);
+    } catch (err) {
+      console.error('Failed to parse URL for new chat:', err);
+      setError('An internal error occurred while starting a new chat. Please refresh the page.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -212,8 +239,10 @@ function ChatPageContent() {
         setError(lang === 'de' ? 'Sie haben Ihr Kontingent von 3 kostenlosen Fragen erreicht. Bitte registrieren Sie sich, um unbegrenzt weiterzufragen.' : 'You have used up your 3 free questions. Please sign up to continue asking unlimited questions.');
         return;
       } else {
-        localStorage.setItem('free_questions_count', (count + 1).toString());
-        if (count + 1 >= 3) setFreeLimitReached(true);
+        const newCount = count + 1;
+        localStorage.setItem('free_questions_count', newCount.toString());
+        setFreeQuestionsCount(newCount);
+        if (newCount >= 3) setFreeLimitReached(true);
       }
     }
     if (!user) setError(null);
@@ -251,27 +280,39 @@ function ChatPageContent() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'API request failed');
+      let data;
+      try {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'API request failed');
+        }
+        data = await response.json();
+      } catch (err) {
+        console.error('Error during fetch or parsing response:', err);
+        setError('An error occurred while contacting the AI service. Please try again.');
+        setIsLoading(false);
+        return;
       }
 
-      const data = await response.json();
-      const assistantMessage: Message = {
-        id: data.id,
-        content: data.answer,
-        role: 'assistant',
-        created_at: new Date().toISOString(),
-      };
+      try {
+        const assistantMessage: Message = {
+          id: data.id,
+          content: data.answer,
+          role: 'assistant',
+          created_at: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
 
-      setMessages(prev => [...prev, assistantMessage]);
-
-      if (data.id) {
-        await fetch('/api/questions/generate-metadata', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: data.id }),
-        });
+        if (data.id) {
+          await fetch('/api/questions/generate-metadata', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: data.id }),
+          });
+        }
+      } catch (err) {
+        console.error('Error handling AI response or metadata:', err);
+        setError('An error occurred while processing the AI response.');
       }
     } catch (error) {
       const err = error as Error;
@@ -308,15 +349,6 @@ function ChatPageContent() {
               </svg>
               {lang === 'en' ? 'Deutsch' : 'English'}
             </Link>
-            <button
-              onClick={handleNewChat}
-              className="inline-flex items-center justify-center px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {t("New Chat", "Neuer Chat")}
-            </button>
             <Link
               href={`/${lang}/knowledge`}
               className="inline-flex items-center justify-center px-6 py-3 bg-white text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl border border-slate-200 hover:border-slate-300"
@@ -420,29 +452,26 @@ function ChatPageContent() {
           </div>
 
           <div className="border-t border-slate-200 p-6 bg-slate-50">
-            <form onSubmit={handleSubmit} className="flex gap-4">
+            <form onSubmit={handleSubmit} className="flex gap-2">
               <div className="flex-1 relative">
-                <input
-                  type="text"
+                <textarea
+                  ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={t("Type your question...", "Frage eingeben...")}
-                  className="w-full px-5 py-4 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white"
+                  className="w-full px-5 py-3 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white text-gray-900 resize-none min-h-[48px] max-h-40"
                   disabled={isLoading || (freeLimitReached && !user)}
                   maxLength={1000}
+                  rows={1}
+                  aria-label={t("Type your question...", "Frage eingeben...")}
                 />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
               </div>
               <button
                 type="submit"
                 disabled={isLoading || !input.trim() || (freeLimitReached && !user)}
-                className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center"
+                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md flex items-center text-sm"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
                 {t("Send", "Senden")}
@@ -457,8 +486,8 @@ function ChatPageContent() {
                   </svg>
                   <span>
                     {t(
-                      `You have ${3 - parseInt(localStorage.getItem('free_questions_count') || '0', 10)} free questions remaining. Sign up for unlimited access.`,
-                      `Sie haben noch ${3 - parseInt(localStorage.getItem('free_questions_count') || '0', 10)} kostenlose Fragen übrig. Registrieren Sie sich für unbegrenzten Zugang.`
+                      `You have ${3 - freeQuestionsCount} free questions remaining. Sign up for unlimited access.`,
+                      `Sie haben noch ${3 - freeQuestionsCount} kostenlose Fragen übrig. Registrieren Sie sich für unbegrenzten Zugang.`
                     )}
                   </span>
                 </div>
@@ -466,6 +495,19 @@ function ChatPageContent() {
             )}
           </div>
         </div>
+
+        {/* New Chat link below chat area, only if there are messages */}
+        {messages.length > 0 && (
+          <div className="flex justify-end mt-2">
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="text-blue-600 underline font-medium text-sm hover:text-blue-800 transition-colors"
+            >
+              {t('Start a new Chat', 'Neue Konversation')}
+            </button>
+          </div>
+        )}
       </div>
     </article>
   );

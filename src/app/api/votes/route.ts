@@ -173,7 +173,7 @@ export async function GET(req: Request) {
     // Check if current user/IP has upvoted
     let hasUserUpvoted = false;
     let user = null;
-    
+
     try {
       const { data: { user: userData }, error: userError } = await supabase.auth.getUser();
       if (userError) {
@@ -183,14 +183,14 @@ export async function GET(req: Request) {
         }
       } else {
         user = userData;
-        if (user) {
-          const { data: userVoteData } = await supabase
-            .from('votes')
-            .select('vote_type')
-            .eq('question_id', questionId)
-            .eq('user_id', user.id)
+    if (user) {
+      const { data: userVoteData } = await supabase
+        .from('votes')
+        .select('vote_type')
+        .eq('question_id', questionId)
+        .eq('user_id', user.id)
             .eq('vote_type', true) // Only check for upvotes
-            .single();
+        .single();
 
           hasUserUpvoted = !!userVoteData;
         }
