@@ -135,7 +135,29 @@ Return this JSON:
     // eslint-disable-next-line prefer-const
     let metadata = JSON.parse(cleaned);
 
-    metadata.status = 'live';
+    // Quality score thresholds
+    const SCORE_THRESHOLDS = {
+      seo_score: 50,
+      content_score: 70,
+      expertise_score: 60,
+      helpfulness_score: 40
+    };
+
+    // Check if any score is below threshold and set status accordingly
+    const failedScores = [];
+    for (const [scoreField, threshold] of Object.entries(SCORE_THRESHOLDS)) {
+      const score = metadata[scoreField];
+      if (score !== null && score !== undefined && score < threshold) {
+        failedScores.push(`${scoreField}: ${score} < ${threshold}`);
+      }
+    }
+
+    if (failedScores.length > 0) {
+      console.log('[generate-metadata] Quality check failed:', failedScores.join(', '));
+      metadata.status = 'bin';
+    } else {
+      metadata.status = 'live';
+    }
 
     const allFields = [
       'seo_slug', 'manufacturer', 'part_type', 'part_series', 'sector', 'related_slugs', 'question_type',
@@ -182,6 +204,10 @@ Return this JSON:
 
     console.log('[generate-metadata] language:', language);
     console.log('[generate-metadata] seo_score:', metadata.seo_score);
+    console.log('[generate-metadata] content_score:', metadata.content_score);
+    console.log('[generate-metadata] expertise_score:', metadata.expertise_score);
+    console.log('[generate-metadata] helpfulness_score:', metadata.helpfulness_score);
+    console.log('[generate-metadata] final_status:', metadata.status);
     console.log('[generate-metadata] metadata:', { ...metadata, embedding: 'generated' });
 
     const { error: updateError } = await supabase.from('questions').update({

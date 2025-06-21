@@ -19,6 +19,21 @@ export interface Database {
           embedding?: number[];
           language_path: string;
           is_main?: boolean;
+          seo_score?: number;
+          content_score?: number;
+          expertise_score?: number;
+          helpfulness_score?: number;
+          meta_description?: string;
+          parent_id?: string;
+          conversation_id?: string;
+          meta_generated?: boolean;
+          related_slugs?: string[];
+          question_type?: string;
+          affected_components?: string[];
+          error_code?: string;
+          complexity_level?: string;
+          related_processes?: string[];
+          confidentiality_flag?: boolean;
         };
       };
       comments: {
