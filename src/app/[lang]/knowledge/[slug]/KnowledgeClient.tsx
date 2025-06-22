@@ -346,6 +346,13 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                 </div>
               </div>
             )}
+
+            {/* Disclaimer */}
+            <div className="mt-10 text-center">
+              <span className="text-xs text-gray-500 opacity-70">
+                This answer was generated automatically. Please verify with official documentation where necessary.
+              </span>
+            </div>
           </div>
         </div>
       </div>

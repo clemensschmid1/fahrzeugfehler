@@ -374,9 +374,6 @@ function ChatPageContent() {
                   <h3 className="text-xl font-semibold text-slate-900 mb-2">
                     {t("Start a conversation", "Starten Sie ein Gespräch")}
                   </h3>
-                  <p className="text-slate-600">
-                    {t("Ask me anything about technical topics, industrial processes, or engineering questions.", "Fragen Sie mich alles über technische Themen, industrielle Prozesse oder Ingenieursfragen.")}
-                  </p>
                 </div>
               )}
               
@@ -508,6 +505,12 @@ function ChatPageContent() {
             </button>
           </div>
         )}
+        {/* Disclaimer */}
+        <div className="mt-8 text-center">
+          <span className="text-xs text-gray-500 opacity-70">
+            This answer was generated automatically. Please verify with official documentation where necessary.
+          </span>
+        </div>
       </div>
     </article>
   );

@@ -21,20 +21,8 @@ export default function Footer() {
             <div className="space-y-3 text-gray-300 leading-relaxed">
               <p className="text-lg">
                 {t(
-                  'Infoneva consolidates scattered industrial knowledge into one structured, accessible platform.',
-                  'Infoneva konsolidiert verstreutes industrielles Wissen in eine strukturierte, zugängliche Plattform.'
-                )}
-              </p>
-              <p className="text-lg">
-                {t(
-                  'We deliver hands-on insights – practical, precise, and field-proven.',
-                  'Wir liefern praxisnahe Erkenntnisse – praktisch, präzise und erprobt.'
-                )}
-              </p>
-              <p className="text-lg font-medium text-white">
-                {t(
-                  'Built for people who need real solutions, not theory.',
-                  'Entwickelt für Menschen, die echte Lösungen brauchen, nicht Theorie.'
+                  'Our Mission: Infoneva collects and restructures information into one structured, accessible platform. We deliver real insights - practical, precise, and field-proven. Built for people who do not want to waste their time.',
+                  'Unsere Mission: Infoneva sammelt und restrukturiert Informationen in einer strukturierten, zugänglichen Plattform. Wir liefern echte Erkenntnisse – praktisch, präzise und erprobt. Für Menschen, die ihre Zeit nicht verschwenden wollen.'
                 )}
               </p>
             </div>
