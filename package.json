@@ -7,7 +7,8 @@
     "build": "next build",
     "postbuild": "next-sitemap",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "bulk-indexnow": "npx tsx scripts/bulkSubmitToIndexNow.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.821.0",

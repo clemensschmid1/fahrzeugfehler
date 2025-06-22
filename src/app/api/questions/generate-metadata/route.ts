@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { submitToIndexNow } from '@/lib/submitToIndexNow';
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error('Supabase environment variables are missing. Check .env.local.');
+  throw new Error('Missing Supabase environment variables');
 }
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OpenAI API key is missing. Check .env.local.');
@@ -218,6 +219,17 @@ Return this JSON:
     if (updateError) {
       console.log('[generate-metadata] Update error:', updateError);
       throw updateError;
+    }
+
+    // Submit to Bing IndexNow if the page is live (non-blocking)
+    if (metadata.status === 'live' && metadata.slug) {
+      // Construct the full URL for the new page
+      const fullUrl = `https://infoneva.com/${metadata.language}/knowledge/${metadata.slug}`;
+      
+      // Submit to IndexNow in the background (non-blocking)
+      submitToIndexNow(fullUrl).catch(error => {
+        console.warn('[generate-metadata] IndexNow submission failed:', error);
+      });
     }
 
     return NextResponse.json({ success: true, metadata: { ...metadata, embedding: 'generated' } });
