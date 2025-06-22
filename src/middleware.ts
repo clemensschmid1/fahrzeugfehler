@@ -8,6 +8,7 @@ const supportedLanguages = ['en', 'de'];
 const staticFiles = [
   'sitemap.xml',
   'robots.txt',
+  'BingSiteAuth.xml',
   'sitemap-0.xml',
   'sitemap-1.xml',
   'sitemap-2.xml',
@@ -112,6 +113,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Skip all internal paths (_next), API routes, static files, and favicon
-    '/((?!_next|api|favicon.ico|sitemap.xml|sitemap-0.xml|sitemap-1.xml|sitemap-2.xml|sitemap-3.xml|sitemap-4.xml|sitemap-5.xml|sitemap-6.xml|sitemap-7.xml|sitemap-8.xml|sitemap-9.xml|robots.txt).*)',
+    '/((?!_next|api|favicon.ico|sitemap.xml|sitemap-0.xml|sitemap-1.xml|sitemap-2.xml|sitemap-3.xml|sitemap-4.xml|sitemap-5.xml|sitemap-6.xml|sitemap-7.xml|sitemap-8.xml|sitemap-9.xml|robots.txt|BingSiteAuth.xml).*)',
   ],
 }; 

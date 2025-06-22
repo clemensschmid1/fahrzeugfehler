@@ -39,6 +39,9 @@ export const metadata: Metadata = {
     title: 'Infoneva: Industrial AI for Manufacturing',
     description: 'Instant, precise answers for industrial automation.',
   },
+  verification: {
+    google: 'your-google-verification-code',
+  },
 };
 
 export default async function RootLayout({
@@ -56,6 +59,7 @@ export default async function RootLayout({
         <Script id="plausible-inline">
           {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
         </Script>
+        <meta name="msvalidate.01" content="04FC17AA84330E866FDBF4F1C78EFD59" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
