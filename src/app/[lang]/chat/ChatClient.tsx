@@ -36,6 +36,9 @@ function ChatPageContent() {
   const [freeLimitReached, setFreeLimitReached] = useState(false);
   const [freeQuestionsCount, setFreeQuestionsCount] = useState<number>(0);
   const [showMetaDisclaimer, setShowMetaDisclaimer] = useState(false);
+  const [metaPollId, setMetaPollId] = useState<string | null>(null);
+  const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [metaPollInterval, setMetaPollInterval] = useState<NodeJS.Timeout | null>(null);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -185,7 +188,7 @@ function ChatPageContent() {
   // Check free question limit for unauthenticated users
   useEffect(() => {
     if (!user) {
-      const count = parseInt(localStorage.getItem('free_questions_count') || '0', 10);
+      const count = parseInt(localStorage.getItem('free_questions_count_v2') || '0', 10);
       setFreeQuestionsCount(count);
       if (count >= 3) setFreeLimitReached(true);
     } else {
@@ -235,14 +238,14 @@ function ChatPageContent() {
       return;
     }
     if (!user) {
-      const count = parseInt(localStorage.getItem('free_questions_count') || '0', 10);
+      const count = parseInt(localStorage.getItem('free_questions_count_v2') || '0', 10);
       if (count >= 3) {
         setFreeLimitReached(true);
         setError(lang === 'de' ? 'Sie haben Ihr Kontingent von 3 kostenlosen Fragen erreicht. Bitte registrieren Sie sich, um unbegrenzt weiterzufragen.' : 'You have used up your 3 free questions. Please sign up to continue asking unlimited questions.');
         return;
       } else {
         const newCount = count + 1;
-        localStorage.setItem('free_questions_count', newCount.toString());
+        localStorage.setItem('free_questions_count_v2', newCount.toString());
         setFreeQuestionsCount(newCount);
         if (newCount >= 3) setFreeLimitReached(true);
       }
@@ -353,7 +356,32 @@ function ChatPageContent() {
       setIsLoading(false);
       // Show disclaimer that metadata is being generated
       setShowMetaDisclaimer(true);
-      setTimeout(() => setShowMetaDisclaimer(false), 10000);
+      // Store the latest assistant message/question ID
+      setMetaPollId(assistantId);
+      // Start polling for meta_generated status
+      if (metaPollInterval) clearInterval(metaPollInterval);
+      if (metaPollTimeout) clearTimeout(metaPollTimeout);
+      const interval = setInterval(async () => {
+        if (!assistantId) return;
+        // Query Supabase for meta_generated status
+        const { data, error } = await supabase
+          .from('questions')
+          .select('meta_generated')
+          .eq('id', assistantId)
+          .single();
+        if (data?.meta_generated) {
+          setShowMetaDisclaimer(false);
+          clearInterval(interval);
+          if (metaPollTimeout) clearTimeout(metaPollTimeout);
+        }
+      }, 2000);
+      setMetaPollInterval(interval);
+      // Fallback: stop polling after 60s
+      const timeout = setTimeout(() => {
+        setShowMetaDisclaimer(false);
+        clearInterval(interval);
+      }, 60000);
+      setMetaPollTimeout(timeout);
     } catch (error) {
       const err = error as Error;
       setError(err.message);
@@ -452,7 +480,9 @@ function ChatPageContent() {
                         </div>
                         {showMetaDisclaimer && index === messages.length - 1 && (
                           <div className="mt-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                            This answer is being internally evaluated for quality and metadata. It may take a few seconds before it appears in the knowledge base.
+                            {lang === 'de'
+                              ? 'Die Frage wird intern ausgewertet. Bitte warten Sie, bevor Sie diese Seite verlassen.'
+                              : 'The question is being internally evaluated. Please wait before leaving this page.'}
                           </div>
                         )}
                       </>
