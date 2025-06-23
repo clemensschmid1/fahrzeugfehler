@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-const BUCKET = 'bulk-import';
 
 // Default processing parameters
 const MAX_CONCURRENCY = 9;
@@ -29,51 +28,6 @@ interface BulkImportJob {
 interface BulkImportResult {
   question: string;
   status: string;
-}
-
-async function processJob(job: BulkImportJob) {
-  // Download file from Supabase Storage
-  const filePath = job.file_url.split(`/${BUCKET}/`)[1];
-  const { data: fileData, error: downloadError } = await supabase.storage.from(BUCKET).download(filePath);
-  if (downloadError) throw new Error('Failed to download file: ' + downloadError.message);
-  const text = await fileData.text();
-  const questions = text.split('\n').map(q => q.trim()).filter(Boolean);
-
-  // Store total_questions in the job record
-  await supabase.from('bulk_import_jobs').update({ total_questions: questions.length }).eq('id', job.id);
-
-  // Processing logic (simulate API calls)
-  let current = 0;
-  const total = questions.length;
-  let requestsInWindow = 0;
-  let windowStart = Date.now();
-  const results: BulkImportResult[] = [];
-
-  while (current < total) {
-    if (requestsInWindow >= MAX_REQUESTS_PER_WINDOW) {
-      const now = Date.now();
-      const elapsed = (now - windowStart) / 1000;
-      if (elapsed < WINDOW_SECONDS) {
-        await new Promise(res => setTimeout(res, (WINDOW_SECONDS - elapsed) * 1000));
-      }
-      requestsInWindow = 0;
-      windowStart = Date.now();
-    }
-    const batch = questions.slice(current, current + Math.min(MAX_CONCURRENCY, MAX_REQUESTS_PER_WINDOW - requestsInWindow));
-    // Simulate processing each question (replace with real API calls)
-    await Promise.all(batch.map(async (question) => {
-      // Here you would call your /api/ask and /api/questions/generate-metadata endpoints
-      // For now, just simulate a delay
-      await new Promise(res => setTimeout(res, 100));
-      results.push({ question, status: 'success' });
-    }));
-    current += batch.length;
-    requestsInWindow += batch.length;
-    if (current < total) {
-      await new Promise(res => setTimeout(res, ANALYZE_BATCH_DELAY * 1000));
-    }
-  }
-  return results;
 }
 
 export async function POST() {
