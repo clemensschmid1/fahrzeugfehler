@@ -5,6 +5,7 @@ import "./globals.css";
 import Footer from '@/components/Footer';
 import Script from 'next/script';
 import UserSessionProvider from '@/components/UserSessionProvider';
+import { Analytics } from '@vercel/analytics/next';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,6 +60,13 @@ export default async function RootLayout({
         <Script id="plausible-inline">
           {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
         </Script>
+        <Script
+          id="adsense-script"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9438397722476631"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <meta name="msvalidate.01" content="04FC17AA84330E866FDBF4F1C78EFD59" />
       </head>
       <body className="antialiased">
@@ -68,6 +76,7 @@ export default async function RootLayout({
           </div>
           <Footer />
         </UserSessionProvider>
+        <Analytics />
       </body>
     </html>
   );

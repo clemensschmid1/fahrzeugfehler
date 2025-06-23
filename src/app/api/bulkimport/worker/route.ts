@@ -77,35 +77,108 @@ async function processJob(job: BulkImportJob) {
 }
 
 export async function POST() {
-  // Find the next pending job
-  const { data: job, error: fetchError } = await supabase
-    .from('bulk_import_jobs')
-    .select('*')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle<BulkImportJob>();
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 });
-  if (!job) return NextResponse.json({ message: 'No pending jobs' });
-
-  // Mark job as processing
-  await supabase.from('bulk_import_jobs').update({ status: 'processing', updated_at: new Date().toISOString() }).eq('id', job.id);
-
   try {
-    const results = await processJob(job);
-    await supabase.from('bulk_import_jobs').update({
-      status: 'done',
-      result: results,
-      updated_at: new Date().toISOString(),
-    }).eq('id', job.id);
-    return NextResponse.json({ success: true, jobId: job.id, processed: results.length });
-  } catch (error: unknown) {
-    const err = error as Error;
-    await supabase.from('bulk_import_jobs').update({
-      status: 'error',
-      error_message: err.message,
-      updated_at: new Date().toISOString(),
-    }).eq('id', job.id);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.log('[Worker] Fetching next pending job...');
+    const { data: job, error: fetchError } = await supabase
+      .from('bulk_import_jobs')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle<BulkImportJob>();
+    if (fetchError) {
+      console.error('[Worker] Error fetching job:', fetchError.message);
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+    if (!job) {
+      console.log('[Worker] No pending jobs found.');
+      return NextResponse.json({ message: 'No pending jobs' });
+    }
+    console.log(`[Worker] Found job: ${job.id}, file: ${job.filename}`);
+    // Mark job as processing
+    await supabase.from('bulk_import_jobs').update({ status: 'processing', updated_at: new Date().toISOString() }).eq('id', job.id);
+    try {
+      const results = await processJobWithLogging(job);
+      await supabase.from('bulk_import_jobs').update({
+        status: 'done',
+        result: results,
+        updated_at: new Date().toISOString(),
+      }).eq('id', job.id);
+      console.log(`[Worker] Job ${job.id} processed successfully.`);
+      return NextResponse.json({ success: true, jobId: job.id, processed: results.length });
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error(`[Worker] Error processing job ${job.id}:`, err.message);
+      await supabase.from('bulk_import_jobs').update({
+        status: 'error',
+        error_message: err.message,
+        updated_at: new Date().toISOString(),
+      }).eq('id', job.id);
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+  } catch (outerError) {
+    console.error('[Worker] Unexpected error:', outerError);
+    return NextResponse.json({ error: (outerError as Error).message }, { status: 500 });
+  }
+}
+
+// Add a wrapper for processJob with logging
+async function processJobWithLogging(job: BulkImportJob) {
+  try {
+    // Use the storage path directly from the DB
+    const filePath = job.file_url;
+    if (!filePath || filePath.includes('http') || filePath.includes('example.com')) {
+      const errorMsg = 'Invalid file path in job: ' + filePath;
+      console.error('[Worker]', errorMsg);
+      await supabase.from('bulk_import_jobs').update({
+        status: 'error',
+        error_message: errorMsg,
+        updated_at: new Date().toISOString(),
+      }).eq('id', job.id);
+      // Do not throw, just return so the worker can continue
+      return [];
+    }
+    console.log(`[Worker] Downloading file from storage path: ${filePath}`);
+    const { data: fileData, error: downloadError } = await supabase.storage.from('bulk-import').download(filePath);
+    if (downloadError) {
+      console.error('[Worker] File download error:', downloadError.message);
+      throw new Error('Failed to download file: ' + downloadError.message);
+    }
+    const text = await fileData.text();
+    const questions = text.split('\n').map(q => q.trim()).filter(Boolean);
+    console.log(`[Worker] Parsed ${questions.length} questions from file.`);
+    await supabase.from('bulk_import_jobs').update({ total_questions: questions.length }).eq('id', job.id);
+    // Simulate processing
+    let current = 0;
+    const total = questions.length;
+    let requestsInWindow = 0;
+    let windowStart = Date.now();
+    const results: BulkImportResult[] = [];
+    while (current < total) {
+      if (requestsInWindow >= MAX_REQUESTS_PER_WINDOW) {
+        const now = Date.now();
+        const elapsed = (now - windowStart) / 1000;
+        if (elapsed < WINDOW_SECONDS) {
+          console.log(`[Worker] API cap reached, waiting ${WINDOW_SECONDS - elapsed}s...`);
+          await new Promise(res => setTimeout(res, (WINDOW_SECONDS - elapsed) * 1000));
+        }
+        requestsInWindow = 0;
+        windowStart = Date.now();
+      }
+      const batch = questions.slice(current, current + Math.min(MAX_CONCURRENCY, MAX_REQUESTS_PER_WINDOW - requestsInWindow));
+      await Promise.all(batch.map(async (question) => {
+        await new Promise(res => setTimeout(res, 100));
+        results.push({ question, status: 'success' });
+      }));
+      current += batch.length;
+      requestsInWindow += batch.length;
+      if (current < total) {
+        await new Promise(res => setTimeout(res, ANALYZE_BATCH_DELAY * 1000));
+      }
+    }
+    return results;
+  } catch (err) {
+    console.error('[Worker] Error in processJobWithLogging:', err);
+    throw err;
   }
 } 
