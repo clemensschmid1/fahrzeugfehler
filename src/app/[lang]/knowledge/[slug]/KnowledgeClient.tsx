@@ -185,7 +185,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
             </div>
 
             {/* Pronounced Answer Segment */}
-            <div className="relative my-8 p-6 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border-2 border-blue-200 shadow-xl">
+            <div className="relative my-8 p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border-2 border-blue-200 shadow-xl">
               <span className="absolute -top-4 left-4 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">{t('AI Answer', 'KI-Antwort')}</span>
               <div className="prose prose-lg max-w-none font-geist" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}}>
                 <ReactMarkdown
@@ -197,9 +197,9 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                     strong: (props) => <strong className="font-bold text-black" {...props} />, 
                     em: (props) => <em className="italic text-black" {...props} />, 
                     p: (props) => <p className="my-3 leading-relaxed text-base text-black" {...props} />, 
-                    li: (props) => <li className="ml-4 my-1 pl-1 list-inside text-black" {...props} />, 
-                    ol: (props) => <ol className="list-decimal ml-6 my-2 text-black" {...props} />, 
-                    ul: (props) => <ul className="list-disc ml-6 my-2 text-black" {...props} />, 
+                    li: (props) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside text-black" {...props} />, 
+                    ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2 text-black" {...props} />, 
+                    ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2 text-black" {...props} />, 
                     code: (props) => <code className="bg-slate-200 px-1 rounded text-sm font-geist text-black" style={{fontFamily: 'GeistMono, Geist, Inter, Arial, monospace'}} {...props} />, 
                     table: (props) => <table className="w-full my-6 border-collapse rounded-xl overflow-hidden shadow-md bg-white text-sm">{props.children}</table>,
                     thead: (props) => <thead className="bg-blue-100 text-blue-900 font-semibold" {...props} />, 
