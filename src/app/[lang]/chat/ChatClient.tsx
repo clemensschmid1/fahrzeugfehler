@@ -36,7 +36,6 @@ function ChatPageContent() {
   const [freeLimitReached, setFreeLimitReached] = useState(false);
   const [freeQuestionsCount, setFreeQuestionsCount] = useState<number>(0);
   const [showMetaDisclaimer, setShowMetaDisclaimer] = useState(false);
-  const [metaPollId, setMetaPollId] = useState<string | null>(null);
   const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | null>(null);
   const [metaPollInterval, setMetaPollInterval] = useState<NodeJS.Timeout | null>(null);
   const supabase = createBrowserClient(
@@ -356,15 +355,13 @@ function ChatPageContent() {
       setIsLoading(false);
       // Show disclaimer that metadata is being generated
       setShowMetaDisclaimer(true);
-      // Store the latest assistant message/question ID
-      setMetaPollId(assistantId);
       // Start polling for meta_generated status
       if (metaPollInterval) clearInterval(metaPollInterval);
       if (metaPollTimeout) clearTimeout(metaPollTimeout);
       const interval = setInterval(async () => {
         if (!assistantId) return;
         // Query Supabase for meta_generated status
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('questions')
           .select('meta_generated')
           .eq('id', assistantId)
