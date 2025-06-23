@@ -53,17 +53,15 @@ export default async function RootLayout({
 }>) {
   const { lang } = await params;
   return (
-    <html lang={lang || 'en'}>
+    <html lang={lang || 'en'} className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.hash.outbound-links.js"></Script>
+        <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.js"></Script>
         <Script id="plausible-inline">
           {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
         </Script>
         <meta name="msvalidate.01" content="04FC17AA84330E866FDBF4F1C78EFD59" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
-      >
+      <body className="antialiased">
         <UserSessionProvider>
           <div className="flex-1">
             {children}

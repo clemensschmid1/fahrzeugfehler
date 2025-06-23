@@ -2,24 +2,20 @@ import { ReactNode } from 'react';
 import { LanguageWrapper } from '@/components/LanguageWrapper';
 
 const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
-type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   return SUPPORTED_LANGUAGES.map(lang => ({ lang }));
 }
 
-export default async function LanguageLayout({
+export default async function LangLayout({
   children,
   params,
 }: {
   children: ReactNode;
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: SupportedLanguage }>;
 }) {
-  const { lang: rawLang } = await params;
-  const lang: SupportedLanguage = SUPPORTED_LANGUAGES.includes(rawLang as SupportedLanguage)
-    ? rawLang as SupportedLanguage
-    : 'en';
-
+  const { lang } = await params;
   return (
     <LanguageWrapper lang={lang}>
       {children}
