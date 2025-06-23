@@ -302,7 +302,15 @@ export async function POST(req: Request) {
                     created_at: new Date().toISOString(),
                     is_main: isMain,
                   };
-                  await supabase.from('questions').insert(insertData);
+                  const { data: inserted, error: insertError } = await supabase.from('questions').insert(insertData).select('id').single();
+                  if (!insertError && inserted?.id) {
+                    // Fire-and-forget metadata generation
+                    fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://infoneva.com'}/api/questions/generate-metadata`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: inserted.id }),
+                    }).catch(() => {});
+                  }
                   console.log('Question saved to DB after streaming.');
                 } catch (err) {
                   console.error('Error saving Q&A after streaming:', err);
@@ -420,17 +428,25 @@ export async function POST(req: Request) {
           is_main: isMain,
         };
 
-        const { data: newQuestion, error: insertError } = await supabase
+        const { data: inserted, error: insertError } = await supabase
           .from('questions')
           .insert(insertData)
           .select('id')
           .single();
-        if (insertError || !newQuestion) {
+        if (insertError || !inserted) {
           console.error('Supabase insert error:', insertError?.message || 'No new question returned');
           throw new Error(`Database insert failed: ${insertError?.message || 'No new question returned'}`);
         }
-        newQuestionId = newQuestion?.id ?? null;
+        newQuestionId = inserted?.id ?? null;
         console.log('Question saved to DB with ID:', newQuestionId);
+
+        if (newQuestionId) {
+          fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://infoneva.com'}/api/questions/generate-metadata`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: newQuestionId }),
+          }).catch(() => {});
+        }
       } catch (error) {
         console.error('Error with database operation:', error);
         throw new Error(`Database operation failed: ${(error as Error).message}`);

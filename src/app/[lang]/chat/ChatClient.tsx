@@ -35,6 +35,7 @@ function ChatPageContent() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [freeLimitReached, setFreeLimitReached] = useState(false);
   const [freeQuestionsCount, setFreeQuestionsCount] = useState<number>(0);
+  const [showMetaDisclaimer, setShowMetaDisclaimer] = useState(false);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -350,27 +351,9 @@ function ChatPageContent() {
         }
       }
       setIsLoading(false);
-      // After streaming completes, save Q&A to DB
-      try {
-        await fetch('/api/ask', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Save-Only': 'true',
-          },
-          body: JSON.stringify({
-            question: input.trim(),
-            language: lang,
-            conversation_id: conversationId,
-            conversation_context: conversationContext,
-            answer: assistantContent,
-            submitDeltaMs: delta,
-          }),
-        });
-      } catch {
-        // Log but do not block UI
-        console.error('Failed to save Q&A after streaming');
-      }
+      // Show disclaimer that metadata is being generated
+      setShowMetaDisclaimer(true);
+      setTimeout(() => setShowMetaDisclaimer(false), 10000);
     } catch (error) {
       const err = error as Error;
       setError(err.message);
@@ -448,24 +431,31 @@ function ChatPageContent() {
                     }`}
                   >
                     {message.role === 'assistant' ? (
-                      <div className="prose prose-blue max-w-none">
-                        <ReactMarkdown
-                          components={{
-                            h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
-                            h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
-                            h3: (props) => <h3 className="font-geist font-medium text-lg mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
-                            strong: (props) => <strong className="font-bold text-blue-800" {...props} />,
-                            em: (props) => <em className="italic text-blue-700" {...props} />,
-                            p: (props) => <p className="my-3 leading-relaxed text-base" {...props} />,
-                            li: (props) => <li className="ml-4 my-1 pl-1 list-inside" {...props} />,
-                            ol: (props) => <ol className="list-decimal ml-6 my-2" {...props} />,
-                            ul: (props) => <ul className="list-disc ml-6 my-2" {...props} />,
-                            code: (props) => <code className="bg-slate-200 px-1 rounded text-sm" {...props} />,
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
+                      <>
+                        <div className="prose prose-blue max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
+                              h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
+                              h3: (props) => <h3 className="font-geist font-medium text-lg mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
+                              strong: (props) => <strong className="font-bold text-blue-800" {...props} />,
+                              em: (props) => <em className="italic text-blue-700" {...props} />,
+                              p: (props) => <p className="my-3 leading-relaxed text-base" {...props} />,
+                              li: (props) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside" {...props} />,
+                              ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2" {...props} />,
+                              ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2" {...props} />,
+                              code: (props) => <code className="bg-slate-200 px-1 rounded text-sm" {...props} />,
+                            }}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
+                        </div>
+                        {showMetaDisclaimer && index === messages.length - 1 && (
+                          <div className="mt-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                            This answer is being internally evaluated for quality and metadata. It may take a few seconds before it appears in the knowledge base.
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
                     )}
