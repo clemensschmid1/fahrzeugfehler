@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 type Question = {
   id: string;
@@ -182,10 +184,34 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
               <div className="text-lg font-semibold text-gray-800">{question.question}</div>
             </div>
 
-            <div className="prose prose-lg max-w-none">
-              {question.answer.split('\n').map((paragraph, index) => (
-                <p key={index} className="mb-4 text-gray-700">{paragraph}</p>
-              ))}
+            {/* Pronounced Answer Segment */}
+            <div className="relative my-8 p-6 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border-2 border-blue-200 shadow-xl">
+              <span className="absolute -top-4 left-4 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">{t('AI Answer', 'KI-Antwort')}</span>
+              <div className="prose prose-lg max-w-none font-geist" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
+                    h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
+                    h3: (props) => <h3 className="font-geist font-medium text-lg mt-4 mb-2 text-blue-900" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
+                    strong: (props) => <strong className="font-bold text-black" {...props} />, 
+                    em: (props) => <em className="italic text-black" {...props} />, 
+                    p: (props) => <p className="my-3 leading-relaxed text-base text-black" {...props} />, 
+                    li: (props) => <li className="ml-4 my-1 pl-1 list-inside text-black" {...props} />, 
+                    ol: (props) => <ol className="list-decimal ml-6 my-2 text-black" {...props} />, 
+                    ul: (props) => <ul className="list-disc ml-6 my-2 text-black" {...props} />, 
+                    code: (props) => <code className="bg-slate-200 px-1 rounded text-sm font-geist text-black" style={{fontFamily: 'GeistMono, Geist, Inter, Arial, monospace'}} {...props} />, 
+                    table: (props) => <table className="w-full my-6 border-collapse rounded-xl overflow-hidden shadow-md bg-white text-sm">{props.children}</table>,
+                    thead: (props) => <thead className="bg-blue-100 text-blue-900 font-semibold" {...props} />, 
+                    tbody: (props) => <tbody {...props} />, 
+                    th: (props) => <th className="px-4 py-2 border-b border-blue-200 text-left" {...props} />, 
+                    tr: (props) => <tr className="even:bg-blue-50" {...props} />, 
+                    td: (props) => <td className="px-4 py-2 border-b border-blue-100 text-black align-top" {...props} />, 
+                  }}
+                >
+                  {question.answer}
+                </ReactMarkdown>
+              </div>
             </div>
 
             {/* Ask Follow-up Button */}

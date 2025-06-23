@@ -5,6 +5,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -270,6 +271,7 @@ function ChatPageContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
         },
         body: JSON.stringify({
           question: input.trim(),
@@ -280,45 +282,98 @@ function ChatPageContent() {
         }),
       });
 
-      let data;
-      try {
-        if (!response.ok) {
+      if (!response.ok) {
+        let errorMsg = 'API request failed';
+        try {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'API request failed');
-        }
-        data = await response.json();
-      } catch (err) {
-        console.error('Error during fetch or parsing response:', err);
-        setError('An error occurred while contacting the AI service. Please try again.');
+          errorMsg = errorData.error || errorMsg;
+        } catch {}
+        setError(errorMsg);
         setIsLoading(false);
         return;
       }
 
-      try {
-        const assistantMessage: Message = {
-          id: data.id,
-          content: data.answer,
-          role: 'assistant',
-          created_at: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-
-        if (data.id) {
-          await fetch('/api/questions/generate-metadata', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: data.id }),
-          });
+      // Streaming response handling
+      const reader = response.body?.getReader();
+      if (!reader) {
+        setError('No response body from server.');
+        setIsLoading(false);
+        return;
+      }
+      let assistantContent = '';
+      const assistantId = Date.now().toString();
+      let done = false;
+      let buffer = '';
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          buffer += new TextDecoder().decode(value);
+          // OpenAI streams as data: {"id":..., "choices":...}\n\n
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.replace('data: ', '').trim();
+              if (jsonStr === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || '';
+                if (delta) {
+                  assistantContent += delta;
+                  setMessages(prev => {
+                    // If last message is assistant and has this id, update it
+                    if (prev.length > 0 && prev[prev.length - 1].role === 'assistant' && prev[prev.length - 1].id === assistantId) {
+                      return [
+                        ...prev.slice(0, -1),
+                        { ...prev[prev.length - 1], content: assistantContent },
+                      ];
+                    } else {
+                      // Otherwise, add a new assistant message
+                      return [
+                        ...prev,
+                        {
+                          id: assistantId,
+                          content: assistantContent,
+                          role: 'assistant',
+                          created_at: new Date().toISOString(),
+                        },
+                      ];
+                    }
+                  });
+                }
+              } catch {
+                // Ignore JSON parse errors for incomplete chunks
+              }
+            }
+          }
         }
-      } catch (err) {
-        console.error('Error handling AI response or metadata:', err);
-        setError('An error occurred while processing the AI response.');
+      }
+      setIsLoading(false);
+      // After streaming completes, save Q&A to DB
+      try {
+        await fetch('/api/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Save-Only': 'true',
+          },
+          body: JSON.stringify({
+            question: input.trim(),
+            language: lang,
+            conversation_id: conversationId,
+            conversation_context: conversationContext,
+            answer: assistantContent,
+            submitDeltaMs: delta,
+          }),
+        });
+      } catch {
+        // Log but do not block UI
+        console.error('Failed to save Q&A after streaming');
       }
     } catch (error) {
       const err = error as Error;
       setError(err.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -392,7 +447,28 @@ function ChatPageContent() {
                         : 'bg-slate-100 text-slate-900 shadow-slate-200'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <div className="prose prose-blue max-w-none">
+                        <ReactMarkdown
+                          components={{
+                            h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
+                            h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
+                            h3: (props) => <h3 className="font-geist font-medium text-lg mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
+                            strong: (props) => <strong className="font-bold text-blue-800" {...props} />,
+                            em: (props) => <em className="italic text-blue-700" {...props} />,
+                            p: (props) => <p className="my-3 leading-relaxed text-base" {...props} />,
+                            li: (props) => <li className="ml-4 my-1 pl-1 list-inside" {...props} />,
+                            ol: (props) => <ol className="list-decimal ml-6 my-2" {...props} />,
+                            ul: (props) => <ul className="list-disc ml-6 my-2" {...props} />,
+                            code: (props) => <code className="bg-slate-200 px-1 rounded text-sm" {...props} />,
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
+                    )}
                     <div className={`text-xs mt-3 opacity-70 ${
                       message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
                     }`}>
