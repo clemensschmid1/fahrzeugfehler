@@ -14,26 +14,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Helper to detect language
-async function detectLanguage(text: string) {
-  const prompt = `Detect the language of the following text. Respond ONLY with 'en' or 'de' based on the ISO 639-1 code:\n\nText:\n${text}`;
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini-2024-07-18',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.1
-    })
-  });
-  const data = await response.json();
-  const lang = data.choices?.[0]?.message?.content?.trim().toLowerCase();
-  return lang === 'de' ? 'de' : 'en';
-}
-
 // Function to generate embedding
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
@@ -81,10 +61,11 @@ export async function POST(req: Request) {
 
     const { question, answer } = questionRow;
 
-    const language = await detectLanguage(`${question} ${answer}`);
+    // Only generate embedding
     const embedding = await generateEmbedding(`${question} ${answer}`);
 
-    const prompt = `Given the following question and answer, generate ONLY the metadata fields for a technical knowledge base. Respond ONLY with valid JSON.
+    // Add language field to the prompt and parse it from the response
+    const prompt = `Given the following question and answer, generate ONLY the metadata fields for a technical knowledge base. Respond ONLY with valid JSON. Include a 'language' field as 'en' or 'de'.
 
 Question: ${question}
 
@@ -104,14 +85,15 @@ Return this JSON:
   complexity_level: string | null,
   related_processes: string[] | null,
   confidentiality_flag: boolean,
-  seo_score: integer from 1 to 99 (Evaluate how well the question and answer are optimized for technical search intent within industrial automation. Consider keyword usage, relevance to real problems, structure, and clarity. Penalize off-topic or generic content.),
+  seo_score: integer from 1 to 99,
   header: string,
   status: string,
   parent_id: string | null,
   meta_description: string (max 155 characters, high-CTR industrial tone),
-  content_score: integer from 1 to 99 (Evaluate how detailed, technically accurate, and practically relevant the content is. High scores require clear, step-by-step solutions or structured analysis of industrial systems, components, or processes.),
-  expertise_score: integer from 1 to 99 (Evaluate the demonstrated technical depth, use of precise terminology, and understanding of industry-level challenges. Penalize vague, consumer-level, or non-technical explanations.),
-  helpfulness_score: integer from 1 to 99 (Evaluate how actionable and technically useful the answer is for engineers, technicians, or maintenance specialists in real-world industrial scenarios. Answers should solve a concrete technical issue or clearly guide through a troubleshooting or configuration task.)
+  content_score: integer from 1 to 99,
+  expertise_score: integer from 1 to 99,
+  helpfulness_score: integer from 1 to 99,
+  language: 'en' or 'de'
 }`;
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -164,15 +146,14 @@ Return this JSON:
       'seo_slug', 'manufacturer', 'part_type', 'part_series', 'sector', 'related_slugs', 'question_type',
       'affected_components', 'error_code', 'complexity_level', 'related_processes', 'confidentiality_flag',
       'seo_score', 'header', 'status', 'parent_id', 'meta_description',
-      'content_score', 'expertise_score', 'helpfulness_score',
+      'content_score', 'expertise_score', 'helpfulness_score', 'language'
     ];
     for (const field of allFields) {
       if (!(field in metadata)) metadata[field] = null;
     }
 
     // Ensure slug is unique
-    // eslint-disable-next-line prefer-const
-    let baseSlug = metadata.seo_slug || null;
+    const baseSlug = metadata.seo_slug || null;
     let uniqueSlug = baseSlug;
     if (uniqueSlug) {
       let counter = 1;
@@ -192,8 +173,8 @@ Return this JSON:
     metadata.slug = uniqueSlug;
     delete metadata.seo_slug;
 
-    metadata.language = language;
-    metadata.language_path = language;
+    metadata.language = metadata.language || 'en';
+    metadata.language_path = metadata.language;
 
     if (typeof metadata.parent_id !== 'string' || !/^[0-9a-fA-F-]{36}$/.test(metadata.parent_id)) {
       metadata.parent_id = null;
@@ -203,7 +184,7 @@ Return this JSON:
       metadata.meta_description = metadata.meta_description.substring(0, 155).trim();
     }
 
-    console.log('[generate-metadata] language:', language);
+    console.log('[generate-metadata] language:', metadata.language);
     console.log('[generate-metadata] seo_score:', metadata.seo_score);
     console.log('[generate-metadata] content_score:', metadata.content_score);
     console.log('[generate-metadata] expertise_score:', metadata.expertise_score);
@@ -225,7 +206,6 @@ Return this JSON:
     if (metadata.status === 'live' && metadata.slug) {
       // Construct the full URL for the new page
       const fullUrl = `https://infoneva.com/${metadata.language}/knowledge/${metadata.slug}`;
-      
       // Submit to IndexNow in the background (non-blocking)
       submitToIndexNow(fullUrl).catch(error => {
         console.warn('[generate-metadata] IndexNow submission failed:', error);
