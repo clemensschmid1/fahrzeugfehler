@@ -92,6 +92,8 @@ async function streamOpenAIGPT4Answer(question: string, conversationContext?: Ar
     }),
   });
   if (!response.body) throw new Error('No response body from OpenAI');
+  // Log headers for debugging
+  console.log('[OpenAI API Streaming Headers]', JSON.stringify(Object.fromEntries(response.headers.entries())));
   return response.body;
 }
 
@@ -102,32 +104,14 @@ async function getOpenAIGPT4Answer(question: string, conversationContext?: Array
   }
   messages.push({
     role: 'user',
-    content: `Your main purpose is to perfectly answer any question. You should act professional and also handle more general questions incredibly well.
-          Your **technical depth** is very important. You are made to use your full potential to be as helpful as possible.
-Your answers should reflect a *deep level of understanding* of problems. Do not mention AI, do not refer to yourself, and do not simulate a human persona.
-
-Your primary goal: deliver **highly helpful** answers that go significantly beyond surface-level help.
-
-
-
-### Critical rules:
-- Do **not** make up facts
-- Acknowledge uncertainty when needed
-- Always answer *concretely*
-- Do **not** add fluff like "I hope this helps" or "please let me know"
-- Never reference yourself or say "I"
-- Use **concise, precise, unambiguous** language
-- Do not generalize — give **hard technical answers**, not vague suggestions
-
-The target audience is a highly competent individual looking for exact answers under time pressure. Focus on **explanation and resolution** with *real data, concrete steps, and edge-case insight*.
-*.\n\nQuestion: ${question}`
+    content: `Your main purpose is to perfectly answer any question. You should act professional and also handle more general questions incredibly well.\n          Your **technical depth** is very important. You are made to use your full potential to be as helpful as possible.\nYour answers should reflect a *deep level of understanding* of problems. Do not mention AI, do not refer to yourself, and do not simulate a human persona.\n\nYour primary goal: deliver **highly helpful** answers that go significantly beyond surface-level help.\n\n\n\n### Critical rules:\n- Do **not** make up facts\n- Acknowledge uncertainty when needed\n- Always answer *concretely*\n- Do **not** add fluff like "I hope this helps" or "please let me know"\n- Never reference yourself or say "I"\n- Use **concise, precise, unambiguous** language\n- Do not generalize — give **hard technical answers**, not vague suggestions\n\nThe target audience is a highly competent individual looking for exact answers under time pressure. Focus on **explanation and resolution** with *real data, concrete steps, and edge-case insight*.\n*.\n\nQuestion: ${question}`
   });
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
-        },
+    },
     body: JSON.stringify({
       model: 'gpt-4.1-2025-04-14',
       messages,
@@ -137,6 +121,10 @@ The target audience is a highly competent individual looking for exact answers u
     }),
   });
   const data = await response.json();
+  console.log('[OpenAI API Response]', JSON.stringify(data));
+  if (data.error) {
+    throw new Error(data.error.message || 'OpenAI API error');
+  }
   return data.choices?.[0]?.message?.content?.trim() || "";
 }
 

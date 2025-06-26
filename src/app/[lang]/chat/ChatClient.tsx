@@ -36,8 +36,8 @@ function ChatPageContent() {
   const [freeLimitReached, setFreeLimitReached] = useState(false);
   const [freeQuestionsCount, setFreeQuestionsCount] = useState<number>(0);
   const [showMetaDisclaimer, setShowMetaDisclaimer] = useState(false);
-  const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [metaPollInterval, setMetaPollInterval] = useState<NodeJS.Timeout | null>(null);
+  const [metaPollInterval, setMetaPollInterval] = useState<NodeJS.Timeout | undefined>(undefined);
+  const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | undefined>(undefined);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -287,9 +287,15 @@ function ChatPageContent() {
 
       if (!response.ok) {
         let errorMsg = 'API request failed';
-      try {
+        try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
+          if (errorData.error) {
+            console.error('[Chat Error]', errorData.error);
+          }
+          if (!errorData.answer) {
+            console.warn('[Chat Warning] No answer returned from backend:', errorData);
+          }
         } catch {}
         setError(errorMsg);
         setIsLoading(false);
@@ -297,12 +303,12 @@ function ChatPageContent() {
       }
 
       // Streaming response handling
-      const reader = response.body?.getReader();
-      if (!reader) {
+      if (!response.body) {
         setError('No response body from server.');
         setIsLoading(false);
         return;
       }
+      const reader = response.body.getReader();
       let assistantContent = '';
       const assistantId = Date.now().toString();
       let done = false;
@@ -353,14 +359,11 @@ function ChatPageContent() {
         }
       }
       setIsLoading(false);
-      // Show disclaimer that metadata is being generated
       setShowMetaDisclaimer(true);
-      // Start polling for meta_generated status
       if (metaPollInterval) clearInterval(metaPollInterval);
       if (metaPollTimeout) clearTimeout(metaPollTimeout);
       const interval = setInterval(async () => {
         if (!assistantId) return;
-        // Query Supabase for meta_generated status
         const { data } = await supabase
           .from('questions')
           .select('meta_generated')
@@ -373,7 +376,6 @@ function ChatPageContent() {
         }
       }, 2000);
       setMetaPollInterval(interval);
-      // Fallback: stop polling after 60s
       const timeout = setTimeout(() => {
         setShowMetaDisclaimer(false);
         clearInterval(interval);
