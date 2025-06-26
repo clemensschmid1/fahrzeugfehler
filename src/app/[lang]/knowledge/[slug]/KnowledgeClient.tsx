@@ -205,7 +205,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                     ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2 text-black" {...props} />, 
                     ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2 text-black" {...props} />, 
                     code: (props) => <code className="bg-slate-200 px-1 rounded text-sm font-geist text-black" style={{fontFamily: 'GeistMono, Geist, Inter, Arial, monospace'}} {...props} />, 
-                    table: ({node, ...props}) => (
+                    table: (props) => (
                       <div className="overflow-x-auto w-full my-4">
                         <table className="min-w-max" {...props} />
                       </div>

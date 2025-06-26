@@ -477,7 +477,7 @@ function ChatPageContent() {
                               ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2" {...props} />,
                               ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2" {...props} />,
                               code: (props) => <code className="bg-slate-200 px-1 rounded text-sm" {...props} />,
-                              table: ({node, ...props}) => (
+                              table: (props) => (
                                 <div className="overflow-x-auto w-full my-4">
                                   <table className="min-w-max" {...props} />
                                 </div>
