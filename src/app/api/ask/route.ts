@@ -127,7 +127,7 @@ The target audience is a highly competent individual looking for exact answers u
     headers: {
       'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
-    },
+        },
     body: JSON.stringify({
       model: 'gpt-4.1-2025-04-14',
       messages,
@@ -259,7 +259,7 @@ export async function POST(req: Request) {
     // Decide streaming vs non-streaming
     if (!isBulkImport && !isSaveOnly && req.headers.get('accept') === 'text/event-stream') {
       // Streaming for chat
-      try {
+    try {
         console.log('5. Generating answer with OpenAI GPT-4.1 (streaming)...');
         const openaiStream = await streamOpenAIGPT4Answer(question, conversation_context);
         let fullAnswer = '';
@@ -364,81 +364,81 @@ export async function POST(req: Request) {
           if (!answer) {
             console.error('No answer returned from OpenAI GPT-4.1.');
             throw new Error('No answer from OpenAI GPT-4.1');
-          }
-          console.log('Answer generated successfully.');
-        } catch (error) {
-          console.error('Error generating answer from AI:', error);
-          throw new Error(`AI service failed: ${(error as Error).message}`);
+      }
+      console.log('Answer generated successfully.');
+    } catch (error) {
+      console.error('Error generating answer from AI:', error);
+      throw new Error(`AI service failed: ${(error as Error).message}`);
         }
-      }
+    }
 
-      console.log('6. Sanitizing and checking safety of the answer...');
-      if (isOutputUnsafe(answer)) {
-        console.warn('Unsafe output detected:', answer);
-        return new NextResponse(
-          JSON.stringify({ error: 'Blocked: unsafe output detected.' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
+    console.log('6. Sanitizing and checking safety of the answer...');
+    if (isOutputUnsafe(answer)) {
+      console.warn('Unsafe output detected:', answer);
+      return new NextResponse(
+        JSON.stringify({ error: 'Blocked: unsafe output detected.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
       const sanitizedAnswer = isSaveOnly ? answer : sanitizeAnswer(answer);
-      console.log('Answer sanitized and checked.');
+    console.log('Answer sanitized and checked.');
 
-      let finalConversationId: string | null = null;
-      let newQuestionId: string | null = null;
-      
-      try {
-        console.log('7. Saving question and answer to the database...');
-        if (conversation_id) {
+    let finalConversationId: string | null = null;
+    let newQuestionId: string | null = null;
+    
+    try {
+      console.log('7. Saving question and answer to the database...');
+      if (conversation_id) {
           finalConversationId = conversation_id ?? null;
-        } else if (parent_id) {
-          const { data: parentQuestion, error: parentError } = await supabase
-            .from('questions')
-            .select('conversation_id')
-            .eq('id', parent_id)
-            .single();
+      } else if (parent_id) {
+      const { data: parentQuestion, error: parentError } = await supabase
+        .from('questions')
+        .select('conversation_id')
+        .eq('id', parent_id)
+        .single();
           if (parentError || !parentQuestion) throw new Error(`Error fetching parent question: ${parentError?.message || 'Not found'}`);
           finalConversationId = parentQuestion?.conversation_id ?? null;
-        }
+      }
 
-        // Check if this is the first question in the conversation
-        const isMain = !parent_id;
+      // Check if this is the first question in the conversation
+      const isMain = !parent_id;
 
-        interface InsertData {
-          question: string;
-          answer: string;
-          meta_generated: boolean;
-          parent_id: string | null;
-          conversation_id: string | null;
-          status: 'draft' | 'live' | 'archived';
-          language_path: string;
-          created_at: string;
-          is_main: boolean;
-        }
+      interface InsertData {
+        question: string;
+        answer: string;
+        meta_generated: boolean;
+        parent_id: string | null;
+        conversation_id: string | null;
+        status: 'draft' | 'live' | 'archived';
+        language_path: string;
+        created_at: string;
+        is_main: boolean;
+      }
 
-        // Insert the new question/answer pair
-        const insertData: InsertData = {
-          question,
-          answer: sanitizedAnswer,
-          meta_generated: false,
-          parent_id: parent_id || null,
-          conversation_id: finalConversationId || null,
-          status: 'draft',
-          language_path: language,
-          created_at: new Date().toISOString(),
-          is_main: isMain,
-        };
+      // Insert the new question/answer pair
+      const insertData: InsertData = {
+        question,
+        answer: sanitizedAnswer,
+        meta_generated: false,
+        parent_id: parent_id || null,
+        conversation_id: finalConversationId || null,
+        status: 'draft',
+        language_path: language,
+        created_at: new Date().toISOString(),
+        is_main: isMain,
+      };
 
         const { data: inserted, error: insertError } = await supabase
-          .from('questions')
-          .insert(insertData)
-          .select('id')
-          .single();
+        .from('questions')
+        .insert(insertData)
+      .select('id')
+      .single();
         if (insertError || !inserted) {
           console.error('Supabase insert error:', insertError?.message || 'No new question returned');
           throw new Error(`Database insert failed: ${insertError?.message || 'No new question returned'}`);
-        }
+      }
         newQuestionId = inserted?.id ?? null;
-        console.log('Question saved to DB with ID:', newQuestionId);
+      console.log('Question saved to DB with ID:', newQuestionId);
 
         if (newQuestionId) {
           fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://infoneva.com'}/api/questions/generate-metadata`, {
@@ -447,17 +447,17 @@ export async function POST(req: Request) {
             body: JSON.stringify({ id: newQuestionId }),
           }).catch(() => {});
         }
-      } catch (error) {
+    } catch (error) {
         console.error('Error with database operation:', error);
         throw new Error(`Database operation failed: ${(error as Error).message}`);
-      }
+    }
 
-      console.log('8. Returning response to client.');
-      return NextResponse.json({ 
-        answer: sanitizedAnswer,
-        id: newQuestionId,
-        conversation_id: finalConversationId,
-      });
+    console.log('8. Returning response to client.');
+    return NextResponse.json({ 
+      answer: sanitizedAnswer,
+      id: newQuestionId,
+      conversation_id: finalConversationId,
+    });
     }
   } catch (error) {
     const err = error as Error;

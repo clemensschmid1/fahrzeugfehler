@@ -287,7 +287,7 @@ function ChatPageContent() {
 
       if (!response.ok) {
         let errorMsg = 'API request failed';
-        try {
+      try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
         } catch {}
@@ -338,8 +338,8 @@ function ChatPageContent() {
                         {
                           id: assistantId,
                           content: assistantContent,
-                          role: 'assistant',
-                          created_at: new Date().toISOString(),
+          role: 'assistant',
+          created_at: new Date().toISOString(),
                         },
                       ];
                     }
@@ -484,7 +484,7 @@ function ChatPageContent() {
                         )}
                       </>
                     ) : (
-                      <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
+                    <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
                     )}
                     <div className={`text-xs mt-3 opacity-70 ${
                       message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
