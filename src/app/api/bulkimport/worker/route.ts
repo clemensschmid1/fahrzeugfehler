@@ -53,77 +53,106 @@ export async function POST(req: Request) {
 
     console.log('[Worker] Config:', { maxConcurrency, analyzeBatchDelay, maxRequestsPerWindow, windowSeconds });
 
-    console.log('[Worker] Fetching next pending job...');
+    // First, check for any jobs that are currently processing
+    console.log('[Worker] Checking for processing jobs...');
     const { data: job, error: fetchError } = await supabase
       .from('bulk_import_jobs')
       .select('*')
-      .eq('status', 'pending')
+      .eq('status', 'processing')
       .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle<BulkImportJob>();
     
     if (fetchError) {
-      console.error('[Worker] Error fetching job:', fetchError.message);
+      console.error('[Worker] Error fetching processing job:', fetchError.message);
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
-    if (!job) {
-      console.log('[Worker] No pending jobs found.');
+    
+    // If no processing job, look for pending jobs
+    let finalJob = job;
+    if (!finalJob) {
+      console.log('[Worker] No processing jobs found, checking for pending jobs...');
+      const { data: pendingJob, error: pendingError } = await supabase
+        .from('bulk_import_jobs')
+        .select('*')
+        .in('status', ['pending'])
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle<BulkImportJob>();
+      
+      if (pendingError) {
+        console.error('[Worker] Error fetching pending job:', pendingError.message);
+        return NextResponse.json({ error: pendingError.message }, { status: 500 });
+      }
+      
+      if (!pendingJob) {
+        console.log('[Worker] No pending jobs found.');
+        return NextResponse.json({ message: 'No pending jobs' });
+      }
+      
+      finalJob = pendingJob;
+    }
+    
+    // Safety check: ensure we don't process completed or error jobs
+    if (finalJob.status === 'done' || finalJob.status === 'error') {
+      console.log(`[Worker] Job ${finalJob.id} is already ${finalJob.status}, skipping`);
       return NextResponse.json({ message: 'No pending jobs' });
     }
     
-    console.log(`[Worker] Found job: ${job.id}, file: ${job.filename}`);
+    console.log(`[Worker] Found job: ${finalJob.id}, file: ${finalJob.filename}, status: ${finalJob.status}`);
     
     // Mark job as processing if it's not already
-    if (job.status === 'pending') {
+    if (finalJob.status === 'pending') {
       await supabase.from('bulk_import_jobs').update({ 
         status: 'processing', 
         updated_at: new Date().toISOString() 
-      }).eq('id', job.id);
+      }).eq('id', finalJob.id);
     }
     
     try {
-      const result = await processJobBatch(job, { maxConcurrency, analyzeBatchDelay, maxRequestsPerWindow, windowSeconds });
+      const result = await processJobBatch(finalJob, { maxConcurrency, analyzeBatchDelay, maxRequestsPerWindow, windowSeconds });
       
       if (result.completed) {
-        // Job is fully completed
+        // Job is fully completed - mark as done
         await supabase.from('bulk_import_jobs').update({
           status: 'done',
           result: result.results,
+          processed_questions: finalJob.total_questions || result.results.length,
           updated_at: new Date().toISOString(),
-        }).eq('id', job.id);
-        console.log(`[Worker] Job ${job.id} completed successfully.`);
+        }).eq('id', finalJob.id);
+        console.log(`[Worker] Job ${finalJob.id} completed successfully. Marked as done.`);
         return NextResponse.json({ 
           success: true, 
-          jobId: job.id, 
+          jobId: finalJob.id, 
           completed: true,
           processed: result.results.length 
         });
       } else {
-        // Job is partially completed, more work to do
+        // Job is partially completed, more work to do - keep as processing
         await supabase.from('bulk_import_jobs').update({
           result: result.results,
-          processed_questions: (job.processed_questions || 0) + result.processedInThisBatch,
+          processed_questions: (finalJob.processed_questions || 0) + result.processedInThisBatch,
           updated_at: new Date().toISOString(),
-        }).eq('id', job.id);
-        console.log(`[Worker] Job ${job.id} partially processed. ${result.processedInThisBatch} questions processed in this batch.`);
+        }).eq('id', finalJob.id);
+        console.log(`[Worker] Job ${finalJob.id} partially processed. ${result.processedInThisBatch} questions processed in this batch. Status remains processing.`);
         return NextResponse.json({ 
           success: true, 
-          jobId: job.id, 
+          jobId: finalJob.id, 
           completed: false,
           processedInThisBatch: result.processedInThisBatch,
-          totalProcessed: (job.processed_questions || 0) + result.processedInThisBatch,
+          totalProcessed: (finalJob.processed_questions || 0) + result.processedInThisBatch,
           currentQuestion: result.currentQuestion,
-          totalQuestions: job.total_questions || 0
+          totalQuestions: finalJob.total_questions || 0
         });
       }
     } catch (error: unknown) {
       const err = error as Error;
-      console.error(`[Worker] Error processing job ${job.id}:`, err.message);
+      console.error(`[Worker] Error processing job ${finalJob.id}:`, err.message);
       await supabase.from('bulk_import_jobs').update({
         status: 'error',
         error_message: err.message,
         updated_at: new Date().toISOString(),
-      }).eq('id', job.id);
+      }).eq('id', finalJob.id);
       return NextResponse.json({ error: err.message }, { status: 500 });
     }
   } catch (outerError) {
@@ -253,6 +282,9 @@ async function processJobBatch(job: BulkImportJob, config: { maxConcurrency: num
     
     // Check if job is completed
     const completed = endIndex >= allQuestions.length;
+    
+    console.log(`[Worker] Completion check: endIndex=${endIndex}, allQuestions.length=${allQuestions.length}, completed=${completed}`);
+    console.log(`[Worker] Processed in this batch: ${questionsToProcess.length}, total processed: ${(job.processed_questions || 0) + questionsToProcess.length}`);
     
     return {
       completed,
