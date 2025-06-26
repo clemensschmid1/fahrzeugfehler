@@ -6,6 +6,9 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import ReactMarkdown from 'react-markdown';
+import 'katex/dist/katex.min.css';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface Message {
   id: string;
@@ -461,6 +464,8 @@ function ChatPageContent() {
                       <>
                         <div className="prose prose-blue max-w-none">
                           <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
                             components={{
                               h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
                               h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
@@ -472,6 +477,11 @@ function ChatPageContent() {
                               ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2" {...props} />,
                               ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2" {...props} />,
                               code: (props) => <code className="bg-slate-200 px-1 rounded text-sm" {...props} />,
+                              table: ({node, ...props}) => (
+                                <div className="overflow-x-auto w-full my-4">
+                                  <table className="min-w-max" {...props} />
+                                </div>
+                              ),
                             }}
                           >
                             {message.content}

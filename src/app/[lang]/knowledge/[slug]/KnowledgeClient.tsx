@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import 'katex/dist/katex.min.css';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 type Question = {
   id: string;
@@ -189,7 +192,8 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
               <span className="absolute -top-4 left-4 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">{t('AI Answer', 'KI-Antwort')}</span>
               <div className="prose prose-lg max-w-none font-geist" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}}>
                 <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
                   components={{
                     h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
                     h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
@@ -201,7 +205,11 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
                     ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2 text-black" {...props} />, 
                     ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2 text-black" {...props} />, 
                     code: (props) => <code className="bg-slate-200 px-1 rounded text-sm font-geist text-black" style={{fontFamily: 'GeistMono, Geist, Inter, Arial, monospace'}} {...props} />, 
-                    table: (props) => <table className="w-full my-6 border-collapse rounded-xl overflow-hidden shadow-md bg-white text-sm">{props.children}</table>,
+                    table: ({node, ...props}) => (
+                      <div className="overflow-x-auto w-full my-4">
+                        <table className="min-w-max" {...props} />
+                      </div>
+                    ),
                     thead: (props) => <thead className="bg-blue-100 text-blue-900 font-semibold" {...props} />, 
                     tbody: (props) => <tbody {...props} />, 
                     th: (props) => <th className="px-4 py-2 border-b border-blue-200 text-left" {...props} />, 

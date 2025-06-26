@@ -7,11 +7,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Processing parameters - reduced for Vercel timeout
-const MAX_QUESTIONS_PER_BATCH = 5; // Process only 5 questions per worker call
-const ANALYZE_BATCH_DELAY = 1; // Reduced delay between batches
+// Processing parameters - updated for new limits
+const MAX_QUESTIONS_PER_BATCH = 9; // Process 9 questions per worker call
+const ANALYZE_BATCH_DELAY = 1; // seconds
 const MAX_REQUESTS_PER_WINDOW = 9;
-const WINDOW_SECONDS = 56;
+const WINDOW_SECONDS = 60;
 
 interface BulkImportJob {
   id: string;
