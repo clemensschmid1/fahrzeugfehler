@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -8,6 +9,7 @@ import remarkGfm from 'remark-gfm';
 import 'katex/dist/katex.min.css';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { processMarkdownForLatex } from '@/lib/latex-utils';
 
 type Question = {
   id: string;
@@ -55,6 +57,60 @@ type KnowledgeClientProps = {
   lang: string;
   user: User | null; // User data from server
 };
+
+function MarkdownRenderer({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[[rehypeKatex, { strict: false }]]}
+      components={{
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        h1: ({children, ...props}: any) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h1>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        h2: ({children, ...props}: any) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h2>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        h3: ({children, ...props}: any) => <h3 className="font-geist font-medium text-lg mt-4 mb-2 text-blue-900" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h3>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        strong: ({children, ...props}: any) => <strong className="font-bold text-black" {...props}>{children}</strong>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        em: ({children, ...props}: any) => <em className="italic text-black" {...props}>{children}</em>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        p: ({children, ...props}: any) => <p className="my-3 leading-relaxed text-base text-black" {...props}>{children}</p>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        li: ({children, ...props}: any) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside text-black" {...props}>{children}</li>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ol: ({children, ...props}: any) => <ol className="list-decimal sm:ml-6 ml-2 my-2 text-black" {...props}>{children}</ol>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ul: ({children, ...props}: any) => <ul className="list-disc sm:ml-6 ml-2 my-2 text-black" {...props}>{children}</ul>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        code({inline, children, ...props}: any) {
+          const code = String(children).replace(/\n$/, '');
+          if (inline) {
+            return <code className="markdown-inline-code" {...props}>{children}</code>;
+          }
+          const lines = code.split('\n');
+          return (
+            <pre className="markdown-code-block" style={{borderTop: lines.length > 8 ? '3px solid #c7d6f9' : undefined}}>
+              <code>{code}</code>
+            </pre>
+          );
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        table: ({children, ...props}: any) => (
+          <div className="markdown-table-container">
+            <table className="markdown-table" {...props}>{children}</table>
+          </div>
+        ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tr: ({children, ...props}: any) => <tr {...props}>{children}</tr>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        td: ({children, ...props}: any) => <td {...props}>{children}</td>, 
+      } as any}
+    >
+      {processMarkdownForLatex(content)}
+    </ReactMarkdown>
+  );
+}
 
 export default function KnowledgeClient({ question, followUpQuestions, relatedQuestions, initialComments, initialVotes, initialUserVote, lang, user }: KnowledgeClientProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments || []);
@@ -191,34 +247,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
             <div className="relative my-8 p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border-2 border-blue-200 shadow-xl">
               <span className="absolute -top-4 left-4 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">{t('AI Answer', 'KI-Antwort')}</span>
               <div className="prose prose-lg max-w-none font-geist" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                  components={{
-                    h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
-                    h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2 text-black" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
-                    h3: (props) => <h3 className="font-geist font-medium text-lg mt-4 mb-2 text-blue-900" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />, 
-                    strong: (props) => <strong className="font-bold text-black" {...props} />, 
-                    em: (props) => <em className="italic text-black" {...props} />, 
-                    p: (props) => <p className="my-3 leading-relaxed text-base text-black" {...props} />, 
-                    li: (props) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside text-black" {...props} />, 
-                    ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2 text-black" {...props} />, 
-                    ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2 text-black" {...props} />, 
-                    code: (props) => <code className="bg-slate-200 px-1 rounded text-sm font-geist text-black" style={{fontFamily: 'GeistMono, Geist, Inter, Arial, monospace'}} {...props} />, 
-                    table: (props) => (
-                      <div className="overflow-x-auto w-full my-4">
-                        <table className="min-w-max" {...props} />
-                      </div>
-                    ),
-                    thead: (props) => <thead className="bg-blue-100 text-blue-900 font-semibold" {...props} />, 
-                    tbody: (props) => <tbody {...props} />, 
-                    th: (props) => <th className="px-4 py-2 border-b border-blue-200 text-left" {...props} />, 
-                    tr: (props) => <tr className="even:bg-blue-50" {...props} />, 
-                    td: (props) => <td className="px-4 py-2 border-b border-blue-100 text-black align-top" {...props} />, 
-                  }}
-                >
-                  {question.answer}
-                </ReactMarkdown>
+                <MarkdownRenderer content={question.answer} />
               </div>
             </div>
 

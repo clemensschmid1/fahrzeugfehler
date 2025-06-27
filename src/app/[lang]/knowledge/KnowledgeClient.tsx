@@ -29,8 +29,8 @@ export default function KnowledgeClient({ initialQuestions }: KnowledgeClientPro
   const params = useParams();
   const lang = params.lang as string;
 
-  const [questions] = useState<Question[]>(initialQuestions);
-  const [filteredQuestions, setFilteredQuestions] = useState<Question[]>(initialQuestions);
+  const [questions] = useState<Question[]>(initialQuestions.filter(q => q.slug && q.slug !== 'NULL'));
+  const [filteredQuestions, setFilteredQuestions] = useState<Question[]>(questions);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter questions based on search query

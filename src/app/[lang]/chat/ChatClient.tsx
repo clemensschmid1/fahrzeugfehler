@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
@@ -9,6 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { processMarkdownForLatex } from '@/lib/latex-utils';
 
 interface Message {
   id: string;
@@ -22,6 +24,60 @@ interface ConversationMessage {
   question: string;
   answer: string;
   created_at: string;
+}
+
+function MarkdownRenderer({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[[rehypeKatex, { strict: false }]]}
+      components={{
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        h1: ({children, ...props}: any) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h1>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        h2: ({children, ...props}: any) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h2>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        h3: ({children, ...props}: any) => <h3 className="font-geist font-medium text-lg mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h3>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        strong: ({children, ...props}: any) => <strong className="font-bold text-blue-800" {...props}>{children}</strong>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        em: ({children, ...props}: any) => <em className="italic text-blue-700" {...props}>{children}</em>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        p: ({children, ...props}: any) => <p className="my-3 leading-relaxed text-base" {...props}>{children}</p>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        li: ({children, ...props}: any) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside" {...props}>{children}</li>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ol: ({children, ...props}: any) => <ol className="list-decimal sm:ml-6 ml-2 my-2" {...props}>{children}</ol>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ul: ({children, ...props}: any) => <ul className="list-disc sm:ml-6 ml-2 my-2" {...props}>{children}</ul>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        code({inline, children, ...props}: any) {
+          const code = String(children).replace(/\n$/, '');
+          if (inline) {
+            return <code className="markdown-inline-code" {...props}>{children}</code>;
+          }
+          const lines = code.split('\n');
+          return (
+            <pre className="markdown-code-block" style={{borderTop: lines.length > 8 ? '3px solid #c7d6f9' : undefined}}>
+              <code>{code}</code>
+            </pre>
+          );
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        table: ({children, ...props}: any) => (
+          <div className="markdown-table-container">
+            <table className="markdown-table" {...props}>{children}</table>
+          </div>
+        ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tr: ({children, ...props}: any) => <tr {...props}>{children}</tr>, 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        td: ({children, ...props}: any) => <td {...props}>{children}</td>, 
+      } as any}
+    >
+      {processMarkdownForLatex(content)}
+    </ReactMarkdown>
+  );
 }
 
 function ChatPageContent() {
@@ -463,29 +519,7 @@ function ChatPageContent() {
                     {message.role === 'assistant' ? (
                       <>
                         <div className="prose prose-blue max-w-none">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                            components={{
-                              h1: (props) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
-                              h2: (props) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
-                              h3: (props) => <h3 className="font-geist font-medium text-lg mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props} />,
-                              strong: (props) => <strong className="font-bold text-blue-800" {...props} />,
-                              em: (props) => <em className="italic text-blue-700" {...props} />,
-                              p: (props) => <p className="my-3 leading-relaxed text-base" {...props} />,
-                              li: (props) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside" {...props} />,
-                              ol: (props) => <ol className="list-decimal sm:ml-6 ml-2 my-2" {...props} />,
-                              ul: (props) => <ul className="list-disc sm:ml-6 ml-2 my-2" {...props} />,
-                              code: (props) => <code className="bg-slate-200 px-1 rounded text-sm" {...props} />,
-                              table: (props) => (
-                                <div className="overflow-x-auto w-full my-4">
-                                  <table className="min-w-max" {...props} />
-                                </div>
-                              ),
-                            }}
-                          >
-                            {message.content}
-                          </ReactMarkdown>
+                          <MarkdownRenderer content={message.content} />
                         </div>
                         {showMetaDisclaimer && index === messages.length - 1 && (
                           <div className="mt-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">

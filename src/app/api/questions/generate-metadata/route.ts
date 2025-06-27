@@ -47,6 +47,7 @@ export async function POST(req: Request) {
   try {
     const { id } = await req.json();
     console.log('[generate-metadata] Received ID:', id);
+    console.log('[generate-metadata] Request headers:', Object.fromEntries(req.headers.entries()));
     if (!id) return NextResponse.json({ error: 'Missing question id' }, { status: 400 });
 
     const { data: questionRow, error: fetchError } = await supabase
