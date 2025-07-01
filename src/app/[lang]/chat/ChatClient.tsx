@@ -332,6 +332,9 @@ function ChatPageContent() {
         content: msg.content,
       }));
 
+      // In handleSubmit, determine if this is the first question in the conversation
+      const isFirstQuestion = messages.filter(m => m.role === 'user').length === 0;
+
       const response = await fetch('/api/ask', {
         method: 'POST',
         headers: {
@@ -344,6 +347,7 @@ function ChatPageContent() {
           conversation_id: conversationId,
           conversation_context: conversationContext,
           submitDeltaMs: delta,
+          is_main: isFirstQuestion,
         }),
       });
 

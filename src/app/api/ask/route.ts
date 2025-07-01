@@ -213,7 +213,8 @@ export async function POST(req: Request) {
       conversation_id, 
       conversation_context, 
       submitDeltaMs,
-      answer: providedAnswer
+      answer: providedAnswer,
+      is_main
     }: { 
       question: string;
       language: string;
@@ -222,6 +223,7 @@ export async function POST(req: Request) {
       conversation_context?: Array<{ role: string; content: string }>;
       submitDeltaMs?: number;
       answer?: string;
+      is_main?: boolean;
     } = await req.json();
     console.log('Request body parsed successfully:', { question, language, conversation_id });
 
@@ -278,7 +280,7 @@ export async function POST(req: Request) {
                       finalConversationId = parentQuestion?.conversation_id ?? null;
                     }
                   }
-                  const isMain = !parent_id;
+                  const isMain = typeof is_main === 'boolean' ? is_main : !parent_id;
                   const insertData = {
                     question,
                     answer: sanitizedAnswer,
@@ -394,7 +396,7 @@ export async function POST(req: Request) {
       }
 
       // Check if this is the first question in the conversation
-      const isMain = !parent_id;
+      const isMain = typeof is_main === 'boolean' ? is_main : !parent_id;
 
       interface InsertData {
         question: string;

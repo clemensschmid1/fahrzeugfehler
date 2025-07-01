@@ -388,18 +388,19 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
             {/* Follow-up Questions */}
             {followUpQuestions.length > 0 && (
               <div className="mt-8 pt-8 border-t border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">{t("Follow-up Questions", "Nachfragen")}</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                  <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                  {t("Follow-up Questions", "Nachfragen")}
+                </h2>
                 <div className="space-y-8">
                   {followUpQuestions.map((followUp, index) => (
-                    <div key={followUp.id} className="bg-gray-50 rounded-lg p-6">
-                      <div className="mb-4">
-                        <span className="block text-gray-500 text-sm mb-1">{t("Follow-up", "Nachfrage")} #{index + 1}</span>
+                    <div key={followUp.id} className="relative bg-gradient-to-br from-blue-50 via-white to-indigo-50 border-2 border-blue-200 shadow-lg rounded-2xl p-6">
+                      <span className="absolute -top-4 left-4 bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">{t("Follow-up", "Nachfrage")} #{index + 1}</span>
+                      <div className="mb-3">
                         <div className="text-lg font-semibold text-gray-800">{followUp.question}</div>
                       </div>
-                      <div className="prose prose-sm max-w-none">
-                        {followUp.answer.split('\n').map((paragraph, pIndex) => (
-                          <p key={pIndex} className="mb-3 text-gray-700">{paragraph}</p>
-                        ))}
+                      <div className="prose prose-lg max-w-none font-geist" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}}>
+                        <MarkdownRenderer content={followUp.answer} />
                       </div>
                       <div className="mt-4 text-xs text-gray-500">
                         {new Date(followUp.created_at).toLocaleDateString()}
