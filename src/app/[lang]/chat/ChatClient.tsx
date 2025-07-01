@@ -11,6 +11,7 @@ import 'katex/dist/katex.min.css';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { processMarkdownForLatex } from '@/lib/latex-utils';
+import { FaSpinner } from 'react-icons/fa';
 
 interface Message {
   id: string;
@@ -97,6 +98,8 @@ function ChatPageContent() {
   const [showMetaDisclaimer, setShowMetaDisclaimer] = useState(false);
   const [metaPollInterval, setMetaPollInterval] = useState<NodeJS.Timeout | undefined>(undefined);
   const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | undefined>(undefined);
+  const [metaWaitSeconds, setMetaWaitSeconds] = useState(0);
+  const [metaFadeOut, setMetaFadeOut] = useState(false);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -372,6 +375,7 @@ function ChatPageContent() {
       const assistantId = Date.now().toString();
       let done = false;
       let buffer = '';
+      let questionId: string | null = null;
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
@@ -387,6 +391,7 @@ function ChatPageContent() {
               try {
                 const parsed = JSON.parse(jsonStr);
                 const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || '';
+                if (parsed.id) questionId = parsed.id;
                 if (delta) {
                   assistantContent += delta;
                   setMessages(prev => {
@@ -403,8 +408,8 @@ function ChatPageContent() {
                         {
                           id: assistantId,
                           content: assistantContent,
-          role: 'assistant',
-          created_at: new Date().toISOString(),
+                          role: 'assistant',
+                          created_at: new Date().toISOString(),
                         },
                       ];
                     }
@@ -421,25 +426,33 @@ function ChatPageContent() {
       setShowMetaDisclaimer(true);
       if (metaPollInterval) clearInterval(metaPollInterval);
       if (metaPollTimeout) clearTimeout(metaPollTimeout);
-      const interval = setInterval(async () => {
-        if (!assistantId) return;
-        const { data } = await supabase
-          .from('questions')
-          .select('meta_generated')
-          .eq('id', assistantId)
-          .single();
-        if (data?.meta_generated) {
-          setShowMetaDisclaimer(false);
+      if (questionId) {
+        let seconds = 0;
+        setMetaWaitSeconds(0);
+        setMetaFadeOut(false);
+        const interval = setInterval(async () => {
+          seconds += 0.2;
+          setMetaWaitSeconds(seconds);
+          const { data } = await supabase
+            .from('questions')
+            .select('meta_generated')
+            .eq('id', questionId)
+            .single();
+          if (data?.meta_generated) {
+            setMetaFadeOut(true);
+            clearInterval(interval);
+            if (metaPollTimeout) clearTimeout(metaPollTimeout);
+            setTimeout(() => setShowMetaDisclaimer(false), 500); // fade out after 0.5s
+          }
+        }, 200);
+        setMetaPollInterval(interval);
+        const timeout = setTimeout(() => {
+          setMetaFadeOut(true);
           clearInterval(interval);
-          if (metaPollTimeout) clearTimeout(metaPollTimeout);
-        }
-      }, 2000);
-      setMetaPollInterval(interval);
-      const timeout = setTimeout(() => {
-        setShowMetaDisclaimer(false);
-        clearInterval(interval);
-      }, 60000);
-      setMetaPollTimeout(timeout);
+          setTimeout(() => setShowMetaDisclaimer(false), 500);
+        }, 5000);
+        setMetaPollTimeout(timeout);
+      }
     } catch (error) {
       const err = error as Error;
       setError(err.message);
@@ -522,10 +535,23 @@ function ChatPageContent() {
                           <MarkdownRenderer content={message.content} />
                         </div>
                         {showMetaDisclaimer && index === messages.length - 1 && (
-                          <div className="mt-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                            {lang === 'de'
-                              ? 'Die Frage wird intern ausgewertet. Bitte warten Sie, bevor Sie diese Seite verlassen.'
-                              : 'The question is being internally evaluated. Please wait before leaving this page.'}
+                          <div
+                            className={`mt-3 flex flex-col items-start gap-2 transition-all duration-500 ${metaFadeOut ? 'opacity-0 translate-y-2' : 'opacity-100'} bg-blue-50 border border-blue-200 rounded-lg shadow-md p-4 w-full`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <FaSpinner className="animate-spin text-blue-500 text-lg" />
+                              <span className="text-blue-900 font-medium">
+                                {lang === 'de'
+                                  ? `Die Frage wird intern ausgewertet. Bitte warten Sie, bevor Sie diese Seite verlassen. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`
+                                  : `The question is being processed internally. Please wait before leaving this page. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`}
+                              </span>
+                            </div>
+                            <div className="w-full bg-blue-100 rounded h-2 mt-1">
+                              <div
+                                className="bg-blue-500 h-2 rounded transition-all duration-200"
+                                style={{ width: `${Math.min((metaWaitSeconds / 5) * 100, 100)}%` }}
+                              ></div>
+                            </div>
                           </div>
                         )}
                       </>
@@ -644,12 +670,6 @@ function ChatPageContent() {
             </button>
           </div>
         )}
-        {/* Disclaimer */}
-        <div className="mt-8 text-center">
-          <span className="text-xs text-gray-500 opacity-70">
-            This answer was generated automatically. Please verify with official documentation where necessary.
-          </span>
-        </div>
       </div>
     </article>
   );

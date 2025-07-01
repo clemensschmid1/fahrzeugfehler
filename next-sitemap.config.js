@@ -22,6 +22,8 @@ module.exports = {
     '/signup', 
     '/profile',
     '/api/*',
+    '/developer',
+    '/debug-math',
   ],
 
   // Configure robots.txt
@@ -98,7 +100,7 @@ module.exports = {
     // Fetch all unique slugs for 'live' questions
     const { data: questions, error } = await supabase
       .from('questions')
-      .select('slug, updated_at')
+      .select('slug, updated_at, language')
       .eq('status', 'live')
       .eq('is_main', true);
       
@@ -109,30 +111,29 @@ module.exports = {
     
     // Create paths for each language
     for (const question of questions) {
-      const enPath = `/en/knowledge/${question.slug}`;
-      const dePath = `/de/knowledge/${question.slug}`;
-      
-      results.push({
-        loc: enPath,
-        changefreq: 'weekly',
-        priority: 0.8,
-        lastmod: new Date(question.updated_at).toISOString(),
-        alternateRefs: [
-          { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
-          { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
-        ],
-      });
-
-      results.push({
-        loc: dePath,
-        changefreq: 'weekly',
-        priority: 0.8,
-        lastmod: new Date(question.updated_at).toISOString(),
-        alternateRefs: [
-          { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
-          { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
-        ],
-      });
+      if (question.language === 'en') {
+        const enPath = `/en/knowledge/${question.slug}`;
+        results.push({
+          loc: enPath,
+          changefreq: 'weekly',
+          priority: 0.8,
+          lastmod: new Date(question.updated_at).toISOString(),
+          alternateRefs: [
+            { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
+          ],
+        });
+      } else if (question.language === 'de') {
+        const dePath = `/de/knowledge/${question.slug}`;
+        results.push({
+          loc: dePath,
+          changefreq: 'weekly',
+          priority: 0.8,
+          lastmod: new Date(question.updated_at).toISOString(),
+          alternateRefs: [
+            { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
+          ],
+        });
+      }
     }
 
     return results;
