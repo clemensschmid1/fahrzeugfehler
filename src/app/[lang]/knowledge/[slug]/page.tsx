@@ -7,8 +7,6 @@ import type { Metadata } from 'next';
 import Header from '@/components/Header';
 
 // Types
-type Params = { slug: string; lang: string };
-
 type Question = Omit<Database['public']['Tables']['questions']['Row'], 'status'> & {
   embedding?: number[] | null;
   conversation_id: string | null;
@@ -37,7 +35,7 @@ type RelatedQuestion = {
 export const dynamic = 'force-dynamic';
 
 // ✅ Fix: async param support
-export async function generateMetadata({ params }: { params: Promise<Params>; }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string; lang: string }> }): Promise<Metadata> {
   const { slug, lang } = await params;
   
   const cookieStore = await getCookies();
@@ -172,7 +170,7 @@ export async function generateMetadata({ params }: { params: Promise<Params>; })
   };
 }
 
-export default async function KnowledgeSlugPage({ params }: { params: { lang: string; slug: string } }) {
+export default async function KnowledgeSlugPage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
   const { lang, slug } = await params;
 
   const cookieStore = await getCookies();

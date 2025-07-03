@@ -39,8 +39,10 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   const { lang } = await params;
   const sp = await searchParams;
   const q = typeof sp.q === 'string' ? sp.q : '';
-  const page = parseIntOrDefault(typeof sp.page === 'string' ? sp.page : null, 1);
-  const pageSize = parseIntOrDefault(typeof sp.pageSize === 'string' ? sp.pageSize : null, 60);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _page = parseIntOrDefault(typeof sp.page === 'string' ? sp.page : null, 1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _pageSize = parseIntOrDefault(typeof sp.pageSize === 'string' ? sp.pageSize : null, 60);
   const title = lang === 'de' ? 'Wissensdatenbank' : 'Knowledge Base';
   let description = lang === 'de' ? 'Durchsuchen Sie unsere Wissensdatenbank.' : 'Browse our knowledge base.';
   if (q) description += ` ${lang === 'de' ? 'Suchbegriff:' : 'Search:'} ${q}`;
@@ -90,9 +92,9 @@ async function getFilterOptions({ lang, q, sector, manufacturer, complexity, par
   // Helper to build base query for each filter
   async function getOptions(column: keyof Question) {
     let query = supabase
-      .from('questions')
+            .from('questions')
       .select(`${column}`)
-      .eq('language_path', lang)
+            .eq('language_path', lang)
       .eq('is_main', true);
     if (q) query = query.ilike('title', `%${q}%`);
     if (column !== 'sector' && sector) query = query.eq('sector', sector);
@@ -173,15 +175,14 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
   const control_type = typeof sp.control_type === 'string' ? sp.control_type : '';
   const industry_tag = typeof sp.industry_tag === 'string' ? sp.industry_tag : '';
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _page = parseIntOrDefault(typeof sp.page === 'string' ? sp.page : null, 1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _pageSize = parseIntOrDefault(typeof sp.pageSize === 'string' ? sp.pageSize : null, 60);
+
   // Sanitize pageSize
   const allowedPageSizes = [30, 60, 100];
-  /* eslint-disable @typescript-eslint/no-unused-vars */
-  const page = parseIntOrDefault(typeof sp.page === 'string' ? sp.page : null, 1);
-  const pageSize = parseIntOrDefault(typeof sp.pageSize === 'string' ? sp.pageSize : null, 60);
-  void page;
-  void pageSize;
-  const safePageSize = allowedPageSizes.includes(pageSize) ? pageSize : 60;
-  /* eslint-enable @typescript-eslint/no-unused-vars */
+  const safePageSize = allowedPageSizes.includes(_pageSize) ? _pageSize : 60;
 
   // Build query
   let query = supabase
@@ -205,7 +206,7 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
   if (industry_tag) query = query.eq('industry_tag', industry_tag);
   if (sort === 'date-asc') query = query.order('created_at', { ascending: true });
   else query = query.order('created_at', { ascending: false });
-  const from = (page - 1) * safePageSize;
+  const from = (_page - 1) * safePageSize;
   const to = from + safePageSize - 1;
   query = query.range(from, to);
   const { data: questions, count: total, error } = await query;
@@ -224,8 +225,8 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
   if (partType) urlParams.set('partType', partType);
   if (safePageSize !== 60) urlParams.set('pageSize', String(safePageSize));
   const canonicalUrl = `${baseUrl}${urlParams.toString() ? '?' + urlParams.toString() : ''}`;
-  const prevUrl = page > 1 ? `${canonicalUrl}${urlParams.toString() ? '&' : '?'}page=${page - 1}` : null;
-  const nextUrl = page < totalPages ? `${canonicalUrl}${urlParams.toString() ? '&' : '?'}page=${page + 1}` : null;
+  const prevUrl = _page > 1 ? `${canonicalUrl}${urlParams.toString() ? '&' : '?'}page=${_page - 1}` : null;
+  const nextUrl = _page < totalPages ? `${canonicalUrl}${urlParams.toString() ? '&' : '?'}page=${_page + 1}` : null;
 
   // Get dynamic filter options
   const filterOptions = await getFilterOptions({ lang, q, sector, manufacturer, complexity, partType, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag });
@@ -260,7 +261,7 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
         questions={questions}
         total={total || 0}
         totalAvailable={total || 0}
-        page={page}
+        page={_page}
         pageSize={safePageSize}
         totalPages={totalPages}
         sort={sort}
