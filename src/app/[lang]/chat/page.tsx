@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import ChatClient from './ChatClient';
+import Header from '@/components/Header';
 
 type Params = { lang: string };
 
@@ -36,5 +37,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 }
 
 export default function ChatPage() {
-  return <ChatClient />;
+  return (
+    <>
+      <Header />
+      <main>
+        <ChatClient />
+      </main>
+    </>
+  );
 } 

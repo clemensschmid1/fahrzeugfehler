@@ -220,17 +220,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            {/* Navigation Buttons */}
-            <Link href={`/${lang}/knowledge`} 
-              className="w-full sm:w-auto bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 text-center"
-            >
-              Knowledge Base
-            </Link>
-            <Link href={`/${lang}/chat`}
-              className="w-full sm:w-auto bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 text-center"
-            >
-              Chat
-            </Link>
             {/* Logout button */}
             <button
               onClick={handleLogout}

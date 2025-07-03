@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import KnowledgeClient from './KnowledgeClient';
 import type { Database } from '@/lib/database.types';
 import type { Metadata } from 'next';
+import Header from '@/components/Header';
 
 // Types
 type Params = { slug: string; lang: string };
@@ -31,12 +32,6 @@ type RelatedQuestion = {
   slug: string;
   question: string;
   similarity: number;
-};
-
-type Vote = {
-  vote_type: boolean;
-  user_id?: string;
-  ip_address?: string;
 };
 
 export const dynamic = 'force-dynamic';
@@ -177,7 +172,7 @@ export async function generateMetadata({ params }: { params: Promise<Params>; })
   };
 }
 
-export default async function KnowledgePage({ params }: { params: Promise<Params>; }) {
+export default async function KnowledgeSlugPage({ params }: { params: { lang: string; slug: string } }) {
   const { lang, slug } = await params;
 
   const cookieStore = await getCookies();
@@ -303,42 +298,18 @@ export default async function KnowledgePage({ params }: { params: Promise<Params
     console.error('Error fetching comments:', commentsError);
   }
 
-  // 👍 Votes
-  const { data: votesData, error: votesError } = await supabase
-    .from('votes')
-    .select('vote_type, user_id, ip_address')
-    .eq('question_id', question.id)
-    .eq('vote_type', true); // Only count upvotes
-
-  const votes: Vote[] = votesData ?? [];
-
-  if (votesError) {
-    console.error('Error fetching votes:', votesError);
-  }
-
-  const upvotes = votes.length;
-  const initialVotes = { up: upvotes, down: 0 }; // No downvotes
-
-  let initialUserVote: 'up' | 'down' | null = null;
-  if (user) {
-    const userVoteData = votes.find(v => v.user_id === user.id);
-    if (userVoteData) {
-      initialUserVote = 'up'; // Only upvotes exist now
-    }
-  }
-  // Note: For unauthenticated users, the vote status will be checked client-side by IP
-
   // Pass all data to the client component
   return (
-    <KnowledgeClient
-      question={question}
-      followUpQuestions={followUpQuestions}
-      relatedQuestions={relatedQuestions}
-      initialComments={comments || []}
-      initialVotes={initialVotes}
-      initialUserVote={initialUserVote}
-      lang={lang}
-      user={user}
-    />
+    <>
+      <Header />
+      <KnowledgeClient
+        question={question}
+        followUpQuestions={followUpQuestions}
+        relatedQuestions={relatedQuestions}
+        initialComments={comments || []}
+        lang={lang}
+        user={user}
+      />
+    </>
   );
 }

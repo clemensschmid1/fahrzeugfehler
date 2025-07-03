@@ -100,18 +100,6 @@ export default function SignupPage() {
         >
           {t("Home", "Startseite")}
         </Link>
-        <Link 
-          href={`/${lang}/chat`} 
-          className="text-slate-600 hover:text-slate-800 font-medium transition-colors"
-        >
-          {t("Chat", "Chat")}
-        </Link>
-        <Link 
-          href={`/${lang}/knowledge`} 
-          className="text-slate-600 hover:text-slate-800 font-medium transition-colors"
-        >
-          {t("Knowledge Base", "Wissensdatenbank")}
-        </Link>
       </header>
 
       {/* Main Signup Card */}

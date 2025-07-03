@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import Script from 'next/script';
 import UserSessionProvider from '@/components/UserSessionProvider';
 import { Analytics } from '@vercel/analytics/next';
+import { headers } from 'next/headers';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,14 +48,30 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({
   children,
-  params,
-}: Readonly<{
+}: {
   children: ReactNode;
-  params: Promise<{ lang: string }>;
-}>) {
-  const { lang } = await params;
+}) {
+  // Try to get lang from pathname (e.g. /en/..., /de/...)
+  let lang = 'en';
+  if (typeof window === 'undefined') {
+    // On server, try to parse from headers
+    const headersList = await headers();
+    let pathname = headersList.get('x-invoke-path') || '';
+    if (!pathname && process.env.NEXT_PUBLIC_SITE_URL) {
+      try {
+        pathname = new URL(process.env.NEXT_PUBLIC_SITE_URL).pathname;
+      } catch {}
+    }
+    if (pathname.startsWith('/de')) lang = 'de';
+    else if (pathname.startsWith('/en')) lang = 'en';
+  } else {
+    // On client, use window.location.pathname
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/de')) lang = 'de';
+    else if (pathname.startsWith('/en')) lang = 'en';
+  }
   return (
-    <html lang={lang || 'en'} className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang={lang} className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
         <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.js"></Script>
         <Script id="plausible-inline">

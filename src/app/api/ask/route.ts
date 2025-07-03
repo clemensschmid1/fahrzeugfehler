@@ -297,11 +297,20 @@ export async function POST(req: Request) {
                     // Fire-and-forget metadata generation (only for non-bulk-import)
                     if (!isBulkImport) {
                       console.log('Triggering fire-and-forget metadata generation for question ID:', inserted.id);
-                      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://infoneva.com'}/api/questions/generate-metadata`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: inserted.id }),
-                      }).catch(() => {});
+                      (async () => {
+                        try {
+                          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+                          const metaRes = await fetch(`${siteUrl}/api/questions/generate-metadata`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: inserted.id }),
+                          });
+                          const metaText = await metaRes.text();
+                          console.log('[ask route] Metadata generation API response:', metaText);
+                        } catch (err) {
+                          console.error('[ask route] Metadata generation fire-and-forget error:', err);
+                        }
+                      })();
                     } else {
                       console.log('Skipping fire-and-forget metadata generation for bulk import question ID:', inserted.id);
                     }
@@ -439,11 +448,20 @@ export async function POST(req: Request) {
           // Fire-and-forget metadata generation (only for non-bulk-import)
           if (!isBulkImport) {
             console.log('Triggering fire-and-forget metadata generation for question ID:', newQuestionId);
-            fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://infoneva.com'}/api/questions/generate-metadata`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: newQuestionId }),
-            }).catch(() => {});
+            (async () => {
+              try {
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+                const metaRes = await fetch(`${siteUrl}/api/questions/generate-metadata`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id: newQuestionId }),
+                });
+                const metaText = await metaRes.text();
+                console.log('[ask route] Metadata generation API response:', metaText);
+              } catch (err) {
+                console.error('[ask route] Metadata generation fire-and-forget error:', err);
+              }
+            })();
           } else {
             console.log('Skipping fire-and-forget metadata generation for bulk import question ID:', newQuestionId);
           }

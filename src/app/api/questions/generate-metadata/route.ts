@@ -94,7 +94,29 @@ Return this JSON:
   content_score: integer from 1 to 99,
   expertise_score: integer from 1 to 99,
   helpfulness_score: integer from 1 to 99,
-  language: 'en' or 'de'
+  language: 'en' or 'de',
+  voltage: string | null,
+  current: string | null,
+  power_rating: string | null,
+  machine_type: string | null,
+  application_area: string[] | null,
+  product_category: string | null,
+  electrical_type: string | null,
+  control_type: string | null,
+  relevant_standards: string[] | null,
+  mounting_type: string | null,
+  cooling_method: string | null,
+  communication_protocols: string[] | null,
+  manufacturer_mentions: string[] | null,
+  risk_keywords: string[] | null,
+  tools_involved: string[] | null,
+  installation_context: string | null,
+  sensor_type: string | null,
+  mechanical_component: string | null,
+  industry_tag: string | null,
+  maintenance_relevance: boolean | null,
+  failure_mode: string | null,
+  software_context: string | null
 }`;
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -115,9 +137,28 @@ Return this JSON:
     const content = data.choices?.[0]?.message?.content?.trim();
     if (!content) throw new Error('No metadata from OpenAI');
 
+    // Log the raw OpenAI response content for debugging
+    console.log('[generate-metadata] Raw OpenAI response:', content);
+
     const cleaned = content.replace(/```json|```/g, '').trim();
-    // eslint-disable-next-line prefer-const
-    let metadata = JSON.parse(cleaned);
+    const metadata = JSON.parse(cleaned);
+
+    // Check for missing fields and log a warning if any are missing
+    const allFields = [
+      'seo_slug', 'manufacturer', 'part_type', 'part_series', 'sector', 'related_slugs', 'question_type',
+      'affected_components', 'error_code', 'complexity_level', 'related_processes', 'confidentiality_flag',
+      'seo_score', 'header', 'status', 'parent_id', 'meta_description',
+      'content_score', 'expertise_score', 'helpfulness_score', 'language',
+      'voltage', 'current', 'power_rating', 'machine_type', 'application_area', 'product_category',
+      'electrical_type', 'control_type', 'relevant_standards', 'mounting_type', 'cooling_method',
+      'communication_protocols', 'manufacturer_mentions', 'risk_keywords', 'tools_involved',
+      'installation_context', 'sensor_type', 'mechanical_component', 'industry_tag',
+      'maintenance_relevance', 'failure_mode', 'software_context'
+    ];
+    const missingFields = allFields.filter(field => !(field in metadata));
+    if (missingFields.length > 0) {
+      console.warn('[generate-metadata] WARNING: Missing fields in OpenAI response:', missingFields, '\nRaw content:', content);
+    }
 
     // Quality score thresholds
     const SCORE_THRESHOLDS = {
@@ -141,16 +182,6 @@ Return this JSON:
       metadata.status = 'bin';
     } else {
       metadata.status = 'live';
-    }
-
-    const allFields = [
-      'seo_slug', 'manufacturer', 'part_type', 'part_series', 'sector', 'related_slugs', 'question_type',
-      'affected_components', 'error_code', 'complexity_level', 'related_processes', 'confidentiality_flag',
-      'seo_score', 'header', 'status', 'parent_id', 'meta_description',
-      'content_score', 'expertise_score', 'helpfulness_score', 'language'
-    ];
-    for (const field of allFields) {
-      if (!(field in metadata)) metadata[field] = null;
     }
 
     // Ensure slug is unique

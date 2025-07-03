@@ -1,154 +1,285 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies as getCookies } from 'next/headers';
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import KnowledgeClient from './KnowledgeClient';
+import { supabase } from '@/lib/supabase';
+import Header from '@/components/Header';
 
 interface Question {
   id: string;
-  question: string;
+  title: string;
   answer: string;
   sector: string;
   created_at: string;
   slug: string;
   status: 'draft' | 'live' | 'bin';
-  header?: string;
   manufacturer?: string;
   part_type?: string;
-  part_series?: string;
-  embedding?: number[];
-  language_path: string;
+  complexity?: string;
+  lang: string;
+  is_main: boolean;
+  is_visible: boolean;
+  voltage?: string;
+  current?: string;
+  power_rating?: string;
+  machine_type?: string;
+  application_area?: string;
+  product_category?: string;
+  control_type?: string;
+  industry_tag?: string;
 }
 
-type Params = { lang: string };
+export const dynamic = 'force-dynamic';
 
-export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
+function parseIntOrDefault(val: string | null, def: number) {
+  const n = Number(val);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : def;
+}
+
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ lang: string }>, searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {
   const { lang } = await params;
-  const siteUrl = 'https://infoneva.com';
-
-  const title = lang === 'de'
-    ? 'Wissensdatenbank | Infoneva'
-    : 'Knowledge Base | Infoneva';
-  
-  const description = lang === 'de'
-    ? 'Durchsuchen Sie unsere Sammlung von technischen Artikeln, Lösungen und Anleitungen für die industrielle Automatisierung.'
-    : 'Browse our collection of technical articles, solutions, and guides for industrial automation.';
-
-  const canonicalUrl = `${siteUrl}/${lang}/knowledge`;
-
+  const sp = await searchParams;
+  const q = typeof sp.q === 'string' ? sp.q : '';
+  const page = parseIntOrDefault(typeof sp.page === 'string' ? sp.page : null, 1);
+  const pageSize = parseIntOrDefault(typeof sp.pageSize === 'string' ? sp.pageSize : null, 60);
+  const title = lang === 'de' ? 'Wissensdatenbank' : 'Knowledge Base';
+  let description = lang === 'de' ? 'Durchsuchen Sie unsere Wissensdatenbank.' : 'Browse our knowledge base.';
+  if (q) description += ` ${lang === 'de' ? 'Suchbegriff:' : 'Search:'} ${q}`;
+  const canonical = `/${lang}/knowledge${q ? `?q=${encodeURIComponent(q)}` : ''}`;
   return {
     title,
     description,
     alternates: {
-      canonical: canonicalUrl,
-      languages: {
-        'en': `${siteUrl}/en/knowledge`,
-        'de': `${siteUrl}/de/knowledge`,
-      },
+      canonical,
     },
-    other: {
-        'og:title': title,
-        'og:description': description,
-        'og:url': canonicalUrl,
-    }
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'website',
+      locale: lang === 'de' ? 'de_DE' : 'en_US',
+      },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
   };
 }
 
-export default async function KnowledgePage({ params }: { params: Promise<Params> }) {
-  const { lang } = await params;
-  
-  const cookieStore = await getCookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignore errors in Server Components
-          }
-        },
-      },
-    }
-  );
+// Add this type above getFilterOptions
 
-  let questions: Question[] = [];
-  let error: string | null = null;
-  let loading = true;
+type FilterOptionsParams = {
+  lang: string;
+  q: string;
+  sector: string;
+  manufacturer: string;
+  complexity: string;
+  partType: string;
+  voltage: string;
+  current: string;
+  power_rating: string;
+  machine_type: string;
+  application_area: string;
+  product_category: string;
+  control_type: string;
+  industry_tag: string;
+};
 
-  try {
-    const { data, error: dbError } = await supabase
-            .from('questions')
-            .select('*')
-            .eq('language_path', lang)
-      .in('status', ['live', 'draft']) // Fetch both live and draft
-      .eq('is_main', true)
-            .order('created_at', { ascending: false });
-          
-    if (dbError) {
-      console.error('Error fetching questions:', dbError);
-      throw new Error(dbError.message);
+// Add helper to get filter options
+async function getFilterOptions({ lang, q, sector, manufacturer, complexity, partType, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag }: FilterOptionsParams) {
+  // Helper to build base query for each filter
+  async function getOptions(column: keyof Question) {
+    let query = supabase
+      .from('questions')
+      .select(`${column}`)
+      .eq('language_path', lang)
+      .eq('is_main', true);
+    if (q) query = query.ilike('title', `%${q}%`);
+    if (column !== 'sector' && sector) query = query.eq('sector', sector);
+    if (column !== 'manufacturer' && manufacturer) query = query.eq('manufacturer', manufacturer);
+    if (column !== 'complexity' && complexity) query = query.eq('complexity', complexity);
+    if (column !== 'part_type' && partType) query = query.eq('part_type', partType);
+    if (column !== 'voltage' && voltage) query = query.eq('voltage', voltage);
+    if (column !== 'current' && current) query = query.eq('current', current);
+    if (column !== 'power_rating' && power_rating) query = query.eq('power_rating', power_rating);
+    if (column !== 'machine_type' && machine_type) query = query.eq('machine_type', machine_type);
+    if (column !== 'application_area' && application_area) query = query.contains('application_area', [application_area]);
+    if (column !== 'product_category' && product_category) query = query.eq('product_category', product_category);
+    if (column !== 'control_type' && control_type) query = query.eq('control_type', control_type);
+    if (column !== 'industry_tag' && industry_tag) query = query.eq('industry_tag', industry_tag);
+    const { data, error } = await query;
+    if (error) return [];
+    // Special handling for array fields
+    if (column === 'application_area') {
+      const counts: Record<string, number> = {};
+      (data as Record<string, unknown>[] || []).forEach(opt => {
+        const arr = opt[column] as string[] | string | undefined;
+        if (Array.isArray(arr)) {
+          arr.forEach((val: string) => {
+            if (val) counts[val] = (counts[val] || 0) + 1;
+          });
+        } else if (typeof arr === 'string' && arr) {
+          counts[arr] = (counts[arr] || 0) + 1;
         }
-
-    questions = data || [];
-
-  } catch (e) {
-    const fetchErr = e as Error;
-    console.error('Error in fetchQuestions:', fetchErr);
-    error = fetchErr.message;
-      } finally {
-    loading = false;
+      });
+      return Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 10)
+        .map(([value, count]) => ({ value, count }));
+        }
+    // Default for non-array fields
+    const counts: Record<string, number> = {};
+    (data as Record<string, unknown>[] || []).forEach(opt => {
+      const val = opt[column as string] as string | undefined;
+      if (val) counts[val] = (counts[val] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 10)
+      .map(([value, count]) => ({ value, count }));
+  }
+  const [sectors, manufacturers, complexities, partTypes, voltages, currents, power_ratings, machine_types, application_areas, product_categories, control_types, industry_tags] = await Promise.all([
+    getOptions('sector'),
+    getOptions('manufacturer'),
+    getOptions('complexity'),
+    getOptions('part_type'),
+    getOptions('voltage'),
+    getOptions('current'),
+    getOptions('power_rating'),
+    getOptions('machine_type'),
+    getOptions('application_area'),
+    getOptions('product_category'),
+    getOptions('control_type'),
+    getOptions('industry_tag'),
+  ]);
+  return { sectors, manufacturers, complexities, partTypes, voltages, currents, power_ratings, machine_types, application_areas, product_categories, control_types, industry_tags };
       }
 
-  const t = (en: string, de: string) => lang === 'de' ? de : en;
+export default async function KnowledgePage({ params, searchParams }: { params: Promise<{ lang: string }>, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const { lang } = await params;
+  const sp = await searchParams;
+  const q = typeof sp.q === 'string' ? sp.q : '';
+  const sort = typeof sp.sort === 'string' ? sp.sort : 'date-desc';
+  const sector = typeof sp.sector === 'string' ? sp.sector : '';
+  const manufacturer = typeof sp.manufacturer === 'string' ? sp.manufacturer : '';
+  const complexity = typeof sp.complexity === 'string' ? sp.complexity : '';
+  const partType = typeof sp.partType === 'string' ? sp.partType : '';
+  const voltage = typeof sp.voltage === 'string' ? sp.voltage : '';
+  const current = typeof sp.current === 'string' ? sp.current : '';
+  const power_rating = typeof sp.power_rating === 'string' ? sp.power_rating : '';
+  const machine_type = typeof sp.machine_type === 'string' ? sp.machine_type : '';
+  const application_area = typeof sp.application_area === 'string' ? sp.application_area : '';
+  const product_category = typeof sp.product_category === 'string' ? sp.product_category : '';
+  const control_type = typeof sp.control_type === 'string' ? sp.control_type : '';
+  const industry_tag = typeof sp.industry_tag === 'string' ? sp.industry_tag : '';
 
-  // Generate structured data for the page
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: t('Knowledge Base', 'Wissensdatenbank'),
-    description: t('Browse our collection of technical articles, solutions, and guides for industrial automation.', 'Durchsuchen Sie unsere Sammlung von technischen Artikeln, Lösungen und Anleitungen für die industrielle Automatisierung.'),
-    url: `https://infoneva.com/${lang}/knowledge`,
-    mainEntity: {
-      '@type': 'ItemList',
-      itemListElement: questions.map((question, index) => ({
-        '@type': 'ListItem',
-        position: index + 1,
-        item: {
-          '@type': 'Article',
-          headline: question.header || question.question,
-          url: `https://infoneva.com/${lang}/knowledge/${question.slug}`
-        }
-      }))
-    }
-  };
+  // Sanitize pageSize
+  const allowedPageSizes = [30, 60, 100];
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  const page = parseIntOrDefault(typeof sp.page === 'string' ? sp.page : null, 1);
+  const pageSize = parseIntOrDefault(typeof sp.pageSize === 'string' ? sp.pageSize : null, 60);
+  void page;
+  void pageSize;
+  const safePageSize = allowedPageSizes.includes(pageSize) ? pageSize : 60;
+  /* eslint-enable @typescript-eslint/no-unused-vars */
+
+  // Build query
+  let query = supabase
+    .from('questions')
+    .select('*', { count: 'exact' })
+    .eq('language_path', lang)
+    .eq('is_main', true)
+    .eq('meta_generated', true);
+  if (q) query = query.ilike('title', `%${q}%`);
+  if (sector) query = query.eq('sector', sector);
+  if (manufacturer) query = query.eq('manufacturer', manufacturer);
+  if (complexity) query = query.eq('complexity', complexity);
+  if (partType) query = query.eq('part_type', partType);
+  if (voltage) query = query.eq('voltage', voltage);
+  if (current) query = query.eq('current', current);
+  if (power_rating) query = query.eq('power_rating', power_rating);
+  if (machine_type) query = query.eq('machine_type', machine_type);
+  if (application_area) query = query.contains('application_area', [application_area]);
+  if (product_category) query = query.eq('product_category', product_category);
+  if (control_type) query = query.eq('control_type', control_type);
+  if (industry_tag) query = query.eq('industry_tag', industry_tag);
+  if (sort === 'date-asc') query = query.order('created_at', { ascending: true });
+  else query = query.order('created_at', { ascending: false });
+  const from = (page - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+  query = query.range(from, to);
+  const { data: questions, count: total, error } = await query;
+  if (error) throw error;
+  if (!questions) return notFound();
+  const totalPages = Math.max(1, Math.ceil((total || 0) / safePageSize));
+
+  // SEO: canonical, prev, next links
+  const baseUrl = `/${lang}/knowledge`;
+  const urlParams = new URLSearchParams();
+  if (q) urlParams.set('q', q);
+  if (sort && sort !== 'date-desc') urlParams.set('sort', sort);
+  if (sector) urlParams.set('sector', sector);
+  if (manufacturer) urlParams.set('manufacturer', manufacturer);
+  if (complexity) urlParams.set('complexity', complexity);
+  if (partType) urlParams.set('partType', partType);
+  if (safePageSize !== 60) urlParams.set('pageSize', String(safePageSize));
+  const canonicalUrl = `${baseUrl}${urlParams.toString() ? '?' + urlParams.toString() : ''}`;
+  const prevUrl = page > 1 ? `${canonicalUrl}${urlParams.toString() ? '&' : '?'}page=${page - 1}` : null;
+  const nextUrl = page < totalPages ? `${canonicalUrl}${urlParams.toString() ? '&' : '?'}page=${page + 1}` : null;
+
+  // Get dynamic filter options
+  const filterOptions = await getFilterOptions({ lang, q, sector, manufacturer, complexity, partType, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag });
+
+  // Build title and description for SEO and JSON-LD
+  const title = lang === 'de' ? 'Wissensdatenbank' : 'Knowledge Base';
+  let description = lang === 'de' ? 'Durchsuchen Sie unsere Wissensdatenbank.' : 'Browse our knowledge base.';
+  if (q) description += ` ${lang === 'de' ? 'Suchbegriff:' : 'Search:'} ${q}`;
 
   return (
-    <article className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      {/* Add JSON-LD script to the page */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    <>
+      <Header />
+      {/* SEO links */}
+      <link rel="canonical" href={canonicalUrl} />
+      {prevUrl && <link rel="prev" href={prevUrl} />}
+      {nextUrl && <link rel="next" href={nextUrl} />}
+      <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        'name': title,
+        'description': description,
+        'url': canonicalUrl,
+        'inLanguage': lang,
+        'hasPart': questions.map(q => ({
+          '@type': 'TechArticle',
+          'headline': q.title,
+          'datePublished': q.created_at,
+          'url': `https://infoneva.com/${lang}/knowledge/${q.slug}`
+        }))
+      }) }} />
+      <KnowledgeClient
+        questions={questions}
+        total={total || 0}
+        totalAvailable={total || 0}
+        page={page}
+        pageSize={safePageSize}
+        totalPages={totalPages}
+        sort={sort}
+        sector={sector}
+        manufacturer={manufacturer}
+        complexity={complexity}
+        partType={partType}
+        q={q}
+        lang={lang}
+        voltage={voltage}
+        current={current}
+        power_rating={power_rating}
+        machine_type={machine_type}
+        application_area={application_area}
+        product_category={product_category}
+        control_type={control_type}
+        industry_tag={industry_tag}
+        filterOptions={filterOptions}
       />
-      <div className="max-w-6xl mx-auto">
-          {error ? (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <strong className="font-bold">{t("Error:", "Fehler:")} </strong>
-              <span className="block sm:inline">{error}</span>
-            </div>
-          ) : loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">{t("Loading...", "Lädt...")}</p>
-            </div>
-          ) : (
-          <KnowledgeClient initialQuestions={questions} />
-          )}
-        </div>
-      </article>
+    </>
   );
 } 

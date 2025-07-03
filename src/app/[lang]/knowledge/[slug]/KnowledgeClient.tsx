@@ -10,6 +10,7 @@ import 'katex/dist/katex.min.css';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { processMarkdownForLatex } from '@/lib/latex-utils';
+import { visit } from 'unist-util-visit';
 
 type Question = {
   id: string;
@@ -23,6 +24,29 @@ type Question = {
   status?: string;
   language_path: string;
   conversation_id?: string | null;
+  voltage?: string;
+  current?: string;
+  power_rating?: string;
+  machine_type?: string;
+  application_area?: string[];
+  product_category?: string;
+  electrical_type?: string;
+  control_type?: string;
+  relevant_standards?: string[];
+  mounting_type?: string;
+  cooling_method?: string;
+  communication_protocols?: string[];
+  manufacturer_mentions?: string[];
+  risk_keywords?: string[];
+  tools_involved?: string[];
+  installation_context?: string;
+  sensor_type?: string;
+  mechanical_component?: string;
+  industry_tag?: string;
+  maintenance_relevance?: boolean;
+  failure_mode?: string;
+  software_context?: string;
+  created_at: string;
 };
 
 type RelatedQuestion = {
@@ -52,8 +76,6 @@ type KnowledgeClientProps = {
   followUpQuestions: FollowUpQuestion[];
   relatedQuestions: RelatedQuestion[];
   initialComments: Comment[];
-  initialVotes: { up: number; down: number };
-  initialUserVote: 'up' | 'down' | null;
   lang: string;
   user: User | null; // User data from server
 };
@@ -74,8 +96,19 @@ function MarkdownRenderer({ content }: { content: string }) {
         strong: ({children, ...props}: any) => <strong className="font-bold text-black" {...props}>{children}</strong>, 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         em: ({children, ...props}: any) => <em className="italic text-black" {...props}>{children}</em>, 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        p: ({children, ...props}: any) => <p className="my-3 leading-relaxed text-base text-black" {...props}>{children}</p>, 
+        p: ({node, children, ...props}: any) => {
+          // Recursively check for any block code child (not just direct child)
+          let hasBlockCode = false;
+          visit(node, (n: any) => {
+            if (n.tagName === 'code' && !n.properties?.inline) {
+              hasBlockCode = true;
+            }
+          });
+          if (hasBlockCode) {
+            return <>{children}</>;
+          }
+          return <p className="my-3 leading-relaxed text-base text-black" {...props}>{children}</p>;
+        },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         li: ({children, ...props}: any) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside text-black" {...props}>{children}</li>, 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,17 +145,12 @@ function MarkdownRenderer({ content }: { content: string }) {
   );
 }
 
-export default function KnowledgeClient({ question, followUpQuestions, relatedQuestions, initialComments, initialVotes, initialUserVote, lang, user }: KnowledgeClientProps) {
+export default function KnowledgeClient({ question, followUpQuestions, relatedQuestions, initialComments, lang, user }: KnowledgeClientProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments || []);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
-
-  // Voting state initialized from props - only track upvotes now
-  const [upvotes, setUpvotes] = useState<number>(initialVotes.up);
-  const [hasUserUpvoted, setHasUserUpvoted] = useState<boolean>(initialUserVote === 'up');
-  const [isVoting, setIsVoting] = useState(false);
 
   const formMountTime = useRef<number>(Date.now());
 
@@ -132,26 +160,6 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
 
   // Translation helper function
   const t = (en: string, de: string) => lang === 'de' ? de : en;
-
-  const handleUpvote = async () => {
-    setIsVoting(true);
-    try {
-      const res = await fetch('/api/votes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: question.id }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUpvotes(data.upvotes || 0);
-        setHasUserUpvoted(data.hasUserUpvoted || false);
-      }
-    } catch (e) {
-      console.error('Error voting:', e); // Add logging for voting errors
-    } finally {
-      setIsVoting(false);
-    }
-  };
 
   const handleCommentSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -204,50 +212,35 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-4xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
           <div className="p-8">
-            <div className="flex items-center justify-between mb-6">
-              <Link 
-                href={`/${question.language_path}/knowledge`}
-                className="text-blue-600 hover:text-blue-800 flex items-center"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                {t("Back to Knowledge Base", "Zurück zur Wissensdatenbank")}
-              </Link>
-              <div className="flex items-center gap-4">
-                <Link
-                  href={`/${lang}/chat`}
-                  className="inline-flex items-center bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  {t("Ask a Question", "Frage stellen")}
-              </Link>
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               {question.status === 'draft' && (
                 <span className="px-3 py-1 text-sm font-medium text-yellow-800 bg-yellow-100 rounded-full">
                     {t("Draft", "Entwurf")}
                 </span>
               )}
-              </div>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">{question.header || question.question}</h1>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 mt-2 leading-tight tracking-tight">
+              {question.header || question.question}
+            </h1>
 
             {/* Show the original question asked */}
-            <div className="mb-4">
-              <span className="block text-gray-500 text-sm mb-1">{t("Question asked:", "Gestellte Frage:")}</span>
-              <div className="text-lg font-semibold text-gray-800">{question.question}</div>
+            <div className="mb-8">
+              <span className="block text-gray-500 text-base mb-2 font-medium">{t("Question asked:", "Gestellte Frage:")}</span>
+              <div className="text-xl font-semibold text-gray-800 leading-snug">{question.question}</div>
             </div>
 
             {/* Pronounced Answer Segment */}
-            <div className="relative my-8 p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border-2 border-blue-200 shadow-xl">
+            <div className="relative my-8 p-2 sm:p-6 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border-2 border-blue-200 shadow-xl">
               <span className="absolute -top-4 left-4 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">{t('AI Answer', 'KI-Antwort')}</span>
               <div className="prose prose-lg max-w-none font-geist" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}}>
                 <MarkdownRenderer content={question.answer} />
+              </div>
+              <div className="absolute bottom-4 right-6 text-xs text-gray-400 select-none">
+                {new Date(question.created_at).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
               </div>
             </div>
 
@@ -264,69 +257,282 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
               </Link>
             </div>
 
-            {/* Voting UI */}
-            <div className="mt-6 flex items-center gap-4">
-              <button
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                  hasUserUpvoted 
-                    ? 'bg-green-100 border-green-400 text-green-700 hover:bg-green-200' 
-                    : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
-                }`}
-                disabled={isVoting}
-                onClick={handleUpvote}
-              >
-                <span className="text-lg">👍</span>
-                <span className="font-medium">{upvotes}</span>
-                <span className="text-sm">
-                  {upvotes === 1 ? t('upvote', 'Upvote') : t('upvotes', 'Upvotes')}
-                </span>
-              </button>
+            <div className="mt-8 pt-8">
+              <div className="rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-100 shadow-lg p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                  <span className="text-blue-900 font-medium text-base">{t('Click any detail to search for similar pages by that topic.', 'Klicken Sie auf ein Detail, um nach ähnlichen Seiten zu suchen.')}</span>
             </div>
-
-            <div className="mt-8 pt-8 border-t">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("Details", "Details")}</h2>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                  {/* Render all details as clickable links to filtered knowledge page */}
                 {question.manufacturer && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">{t("Manufacturer", "Hersteller")}</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{question.manufacturer}</dd>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?manufacturer=${encodeURIComponent(question.manufacturer)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.manufacturer}</Link>
+                      </dd>
                   </div>
                 )}
                 {question.part_type && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">{t("Part Type", "Teiletyp")}</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{question.part_type}</dd>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?partType=${encodeURIComponent(question.part_type)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.part_type}</Link>
+                      </dd>
                   </div>
                 )}
                 {question.part_series && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">{t("Part Series", "Teileserie")}</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{question.part_series}</dd>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?part_series=${encodeURIComponent(question.part_series)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.part_series}</Link>
+                      </dd>
                   </div>
                 )}
                 {question.sector && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">{t("Sector", "Sektor")}</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{question.sector}</dd>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?sector=${encodeURIComponent(question.sector)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.sector}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.voltage && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Voltage", "Spannung")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?voltage=${encodeURIComponent(question.voltage)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.voltage}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.current && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Current", "Strom")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?current=${encodeURIComponent(question.current)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.current}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.power_rating && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Power Rating", "Leistung")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?power_rating=${encodeURIComponent(question.power_rating)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.power_rating}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.machine_type && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Machine Type", "Maschinentyp")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?machine_type=${encodeURIComponent(question.machine_type)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.machine_type}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {Array.isArray(question.application_area) && question.application_area.length > 0 && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Application Area", "Anwendungsbereich")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                        {question.application_area.map((val) => (
+                          <Link key={val} href={`/${lang}/knowledge?application_area=${encodeURIComponent(val)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">
+                            {val}
+                          </Link>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {!Array.isArray(question.application_area) && question.application_area && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Application Area", "Anwendungsbereich")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                        <Link href={`/${lang}/knowledge?application_area=${encodeURIComponent(question.application_area)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">
+                          {question.application_area}
+                        </Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.product_category && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Product Category", "Produktkategorie")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?product_category=${encodeURIComponent(question.product_category)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.product_category}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.electrical_type && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Electrical Type", "Stromart")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?electrical_type=${encodeURIComponent(question.electrical_type)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.electrical_type}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.control_type && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Control Type", "Regelungstyp")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?control_type=${encodeURIComponent(question.control_type)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.control_type}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.relevant_standards && question.relevant_standards.length > 0 && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Relevant Standards", "Relevante Normen")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                        {question.relevant_standards.map((val) => (
+                          <Link key={val} href={`/${lang}/knowledge?relevant_standards=${encodeURIComponent(val)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">
+                            {val}
+                          </Link>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {question.mounting_type && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Mounting Type", "Montageart")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?mounting_type=${encodeURIComponent(question.mounting_type)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.mounting_type}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.cooling_method && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Cooling Method", "Kühlmethode")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?cooling_method=${encodeURIComponent(question.cooling_method)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.cooling_method}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.communication_protocols && question.communication_protocols.length > 0 && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Communication Protocols", "Kommunikationsprotokolle")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                        {question.communication_protocols.map((val) => (
+                          <Link key={val} href={`/${lang}/knowledge?communication_protocols=${encodeURIComponent(val)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">
+                            {val}
+                          </Link>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {question.manufacturer_mentions && question.manufacturer_mentions.length > 0 && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Manufacturer Mentions", "Erwähnte Hersteller")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                        {question.manufacturer_mentions.map((val) => (
+                          <Link key={val} href={`/${lang}/knowledge?manufacturer_mentions=${encodeURIComponent(val)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">
+                            {val}
+                          </Link>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {question.risk_keywords && question.risk_keywords.length > 0 && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Risk Keywords", "Risiko-Schlagwörter")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                        {question.risk_keywords.map((val) => (
+                          <Link key={val} href={`/${lang}/knowledge?risk_keywords=${encodeURIComponent(val)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">
+                            {val}
+                          </Link>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {question.tools_involved && question.tools_involved.length > 0 && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Tools Involved", "Verwendete Werkzeuge")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                        {question.tools_involved.map((val) => (
+                          <Link key={val} href={`/${lang}/knowledge?tools_involved=${encodeURIComponent(val)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">
+                            {val}
+                          </Link>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {question.installation_context && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Installation Context", "Installationskontext")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?installation_context=${encodeURIComponent(question.installation_context)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.installation_context}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.sensor_type && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Sensor Type", "Sensortyp")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?sensor_type=${encodeURIComponent(question.sensor_type)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.sensor_type}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.mechanical_component && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Mechanical Component", "Mechanisches Bauteil")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?mechanical_component=${encodeURIComponent(question.mechanical_component)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.mechanical_component}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.industry_tag && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Industry Tag", "Industrie-Tag")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?industry_tag=${encodeURIComponent(question.industry_tag)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.industry_tag}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {typeof question.maintenance_relevance === 'boolean' && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Maintenance Relevance", "Wartungsrelevanz")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{question.maintenance_relevance ? t('Yes', 'Ja') : t('No', 'Nein')}</dd>
+                    </div>
+                  )}
+                  {question.failure_mode && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Failure Mode", "Fehlermodus")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?failure_mode=${encodeURIComponent(question.failure_mode)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.failure_mode}</Link>
+                      </dd>
+                    </div>
+                  )}
+                  {question.software_context && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">{t("Software Context", "Software-Kontext")}</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        <Link href={`/${lang}/knowledge?software_context=${encodeURIComponent(question.software_context)}&page=1`} className="underline text-blue-700 hover:text-blue-900 transition-colors">{question.software_context}</Link>
+                      </dd>
                   </div>
                 )}
               </dl>
+              </div>
             </div>
 
             <div className="mt-8 pt-8 border-t">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("Related Questions", "Ähnliche Fragen")}</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                {t("Related Questions", "Ähnliche Fragen")}
+              </h2>
               {relatedQuestions.length > 0 ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {relatedQuestions.map((related) => (
                     <Link
                       key={related.id}
                       href={`/${question.language_path}/knowledge/${related.slug}`}
-                      className="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="group block bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-100 rounded-2xl shadow-md p-5 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                      tabIndex={0}
+                      aria-label={related.question}
                     >
-                      <h3 className="text-lg font-medium text-gray-900">{related.question}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {t("Similarity:", "Ähnlichkeit:")} {Math.round(related.similarity)}%
-                      </p>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 group-hover:bg-indigo-200">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 17l5-5-5-5" /></svg>
+                        </span>
+                        <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-auto">
+                          {t("Similarity", "Ähnlichkeit")}: {Math.round(related.similarity)}%
+                        </span>
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-900 group-hover:text-indigo-700 mb-1 line-clamp-2">{related.question}</h3>
                     </Link>
                   ))}
                 </div>

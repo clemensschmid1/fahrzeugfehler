@@ -468,15 +468,12 @@ function ChatPageContent() {
       <div className="max-w-4xl mx-auto">
         <nav className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-6" aria-label={t("Page navigation", "Seitennavigation")}>
           <header className="text-center sm:text-left">
-            <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 leading-tight">
-              {t("Technical AI", "Technische KI")}
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2 leading-tight tracking-tight">
+              Infoneva Chat
             </h1>
-            <p className="text-slate-600 text-lg">
-              {t("Get expert answers to your technical questions", "Erhalten Sie Expertenantworten auf Ihre technischen Fragen")}
+            <p className="text-gray-600 text-lg font-medium">
+              {t("Professional answers for industrial automation. Ask your question and get expert-level help instantly.", "Professionelle Antworten für die Industrieautomatisierung. Stellen Sie Ihre Frage und erhalten Sie sofort Expertenhilfe.")}
             </p>
-            <span className="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-4 py-2 rounded-full shadow-sm mt-3">
-              {t("AI Assistant", "KI-Assistent")}
-            </span>
           </header>
           
           <div className="flex flex-col sm:flex-row gap-3">
@@ -490,19 +487,14 @@ function ChatPageContent() {
               </svg>
               {lang === 'en' ? 'Deutsch' : 'English'}
             </Link>
-            <Link
-              href={`/${lang}/knowledge`}
-              className="inline-flex items-center justify-center px-6 py-3 bg-white text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl border border-slate-200 hover:border-slate-300"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              {t("Knowledge Base", "Wissensdatenbank")}
-            </Link>
           </div>
         </nav>
 
-        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-2xl border border-blue-100 overflow-hidden">
+          <div className="flex items-center gap-2 bg-blue-50 border-b border-blue-100 px-6 py-3">
+            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+            <span className="text-blue-900 font-medium text-base">{t('Ask anything about industrial automation. Your chat is private and secure.', 'Stellen Sie jede Frage zur industriellen Automatisierung. Ihr Chat ist privat und sicher.')}</span>
+          </div>
           <div className="p-6 pb-4">
             <div className="space-y-6 mb-6 max-h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
               {messages.length === 0 && (
@@ -618,29 +610,27 @@ function ChatPageContent() {
           </div>
 
           <div className="border-t border-slate-200 p-6 bg-slate-50">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <div className="flex-1 relative">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={t("Type your question...", "Frage eingeben...")}
-                  className="w-full px-5 py-3 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white text-gray-900 resize-none min-h-[48px] max-h-40"
-                  disabled={isLoading || (freeLimitReached && !user)}
-                  maxLength={1000}
-                  rows={1}
-                  aria-label={t("Type your question...", "Frage eingeben...")}
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={t("Type your question...", "Frage eingeben...")}
+                className="flex-1 w-full px-3 py-3 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white text-gray-900 resize-none min-h-[48px] max-h-40"
+                disabled={isLoading || (freeLimitReached && !user)}
+                maxLength={1000}
+                rows={1}
+                aria-label={t("Type your question...", "Frage eingeben...")}
+              />
               <button
                 type="submit"
                 disabled={isLoading || !input.trim() || (freeLimitReached && !user)}
-                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md flex items-center text-sm"
+                className="ml-2 p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md flex items-center justify-center"
+                aria-label={t("Send", "Senden")}
               >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
-                {t("Send", "Senden")}
               </button>
             </form>
             
