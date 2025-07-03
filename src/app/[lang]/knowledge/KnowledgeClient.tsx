@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 
 // Keep the same Question interface
 interface Question {
@@ -76,6 +77,7 @@ function Skeleton({ className = '' }: { className?: string }) {
 export default function KnowledgeClient({ questions, totalAvailable, page, pageSize, totalPages, sort, sector, manufacturer, complexity, partType, q, lang, filterOptions, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag }: KnowledgeClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const toggleLanguage = lang === 'en' ? 'de' : 'en';
   const toggleLanguageText = lang === 'en' ? 'Deutsch' : 'English';
@@ -173,9 +175,242 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
           </div>
         </motion.div>
 
-        {/* Sticky filter bar on desktop */}
+        {/* Mobile: Sticky collapsed filter bar */}
+        <div className="sm:hidden sticky top-0 z-30">
+          <div className="bg-white border-b border-gray-100 shadow-sm py-3 px-2 flex items-center justify-between gap-2 rounded-xl">
+            <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
+              <span className="font-medium text-gray-700 text-sm">{t('Sort & Filter', 'Sortieren & Filtern')}</span>
+              {filterSummaries.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1 text-xs">
+                  {filterSummaries.map((f) => (
+                    <span key={f.param} className="inline-flex items-center bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">
+                      {f.label}: <span className="ml-1 font-bold">{f.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="ml-auto px-3 py-1 rounded-lg border border-indigo-600 bg-indigo-50 text-indigo-700 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label={t('Open sort and filter menu', 'Sortier- und Filtermenü öffnen')}
+              aria-expanded={filterOpen}
+            >
+              <svg className="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              {t('Show', 'Anzeigen')}
+            </button>
+          </div>
+          {/* Slide-down filter panel */}
+          {filterOpen && (
+            <div className="fixed inset-0 z-40 bg-black bg-opacity-30" onClick={() => setFilterOpen(false)} aria-label={t('Close filter overlay', 'Filter-Overlay schließen')}></div>
+          )}
+          <AnimatePresence>
+            {filterOpen && (
+              <motion.div
+                className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-lg p-4 rounded-b-xl"
+                initial={{ y: -100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -100, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('Sort and filter menu', 'Sortier- und Filtermenü')}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-lg text-gray-800">{t('Sort & Filter', 'Sortieren & Filtern')}</span>
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    className="p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label={t('Close sort and filter menu', 'Sortier- und Filtermenü schließen')}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                {/* --- All filter/sort controls (copied from desktop, but vertical) --- */}
+                <div className="flex flex-col gap-4">
+                  {/* Sort buttons */}
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={() => { updateParams({ sort: 'date-desc' }, true); setFilterOpen(false); }}
+                      className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${sort === 'date-desc' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                      aria-pressed={sort === 'date-desc'}
+                    >
+                      {t('Date (newest first)', 'Datum (neueste zuerst)')}
+                    </button>
+                    <button
+                      onClick={() => { updateParams({ sort: 'date-asc' }, true); setFilterOpen(false); }}
+                      className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${sort === 'date-asc' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                      aria-pressed={sort === 'date-asc'}
+                    >
+                      {t('Date (oldest first)', 'Datum (älteste zuerst)')}
+                    </button>
+                  </div>
+                  {/* All dropdowns, stacked */}
+                  <div className="grid grid-cols-1 gap-2">
+                    {/* Repeat all dropdowns vertically, same as desktop but full width */}
+                    {/* Sector dropdown */}
+                    <select
+                      value={sector || ''}
+                      onChange={e => { updateParams({ sector: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by sector', 'Nach Sektor filtern')}
+                    >
+                      <option value="">{t('All Sectors', 'Alle Sektoren')}</option>
+                      {filterOptions.sectors.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Manufacturer dropdown */}
+                    <select
+                      value={manufacturer || ''}
+                      onChange={e => { updateParams({ manufacturer: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by manufacturer', 'Nach Hersteller filtern')}
+                    >
+                      <option value="">{t('All Manufacturers', 'Alle Hersteller')}</option>
+                      {filterOptions.manufacturers.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Complexity dropdown */}
+                    <select
+                      value={complexity || ''}
+                      onChange={e => { updateParams({ complexity: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by complexity', 'Nach Komplexität filtern')}
+                    >
+                      <option value="">{t('All Complexities', 'Alle Komplexitätsgrade')}</option>
+                      {filterOptions.complexities.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Part Type dropdown */}
+                    <select
+                      value={partType || ''}
+                      onChange={e => { updateParams({ partType: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by part type', 'Nach Teiltyp filtern')}
+                    >
+                      <option value="">{t('All Part Types', 'Alle Teiletypen')}</option>
+                      {filterOptions.partTypes.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Voltage dropdown */}
+                    <select
+                      value={voltage || ''}
+                      onChange={e => { updateParams({ voltage: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by voltage', 'Nach Spannung filtern')}
+                    >
+                      <option value="">{t('All Voltages', 'Alle Spannungen')}</option>
+                      {filterOptions.voltages.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Current dropdown */}
+                    <select
+                      value={current || ''}
+                      onChange={e => { updateParams({ current: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by current', 'Nach Strom filtern')}
+                    >
+                      <option value="">{t('All Currents', 'Alle Ströme')}</option>
+                      {filterOptions.currents.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Power Rating dropdown */}
+                    <select
+                      value={power_rating || ''}
+                      onChange={e => { updateParams({ power_rating: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by power rating', 'Nach Leistung filtern')}
+                    >
+                      <option value="">{t('All Power Ratings', 'Alle Leistungsgrade')}</option>
+                      {filterOptions.power_ratings.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Machine Type dropdown */}
+                    <select
+                      value={machine_type || ''}
+                      onChange={e => { updateParams({ machine_type: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by machine type', 'Nach Maschinentyp filtern')}
+                    >
+                      <option value="">{t('All Machine Types', 'Alle Maschinentypen')}</option>
+                      {filterOptions.machine_types.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Application Area dropdown */}
+                    <select
+                      value={application_area || ''}
+                      onChange={e => { updateParams({ application_area: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by application area', 'Nach Anwendungsbereich filtern')}
+                    >
+                      <option value="">{t('All Application Areas', 'Alle Anwendungsbereiche')}</option>
+                      {filterOptions.application_areas.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Product Category dropdown */}
+                    <select
+                      value={product_category || ''}
+                      onChange={e => { updateParams({ product_category: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by product category', 'Nach Produktkategorie filtern')}
+                    >
+                      <option value="">{t('All Product Categories', 'Alle Produktkategorien')}</option>
+                      {filterOptions.product_categories.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Control Type dropdown */}
+                    <select
+                      value={control_type || ''}
+                      onChange={e => { updateParams({ control_type: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by control type', 'Nach Regelungstyp filtern')}
+                    >
+                      <option value="">{t('All Control Types', 'Alle Regelungstypen')}</option>
+                      {filterOptions.control_types.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                    {/* Industry Tag dropdown */}
+                    <select
+                      value={industry_tag || ''}
+                      onChange={e => { updateParams({ industry_tag: e.target.value }, true); setFilterOpen(false); }}
+                      className="w-full px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      aria-label={t('Filter by industry tag', 'Nach Industrie-Tag filtern')}
+                    >
+                      <option value="">{t('All Industry Tags', 'Alle Industrie-Tags')}</option>
+                      {filterOptions.industry_tags.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.value} ({opt.count})</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Reset button */}
+                  <button
+                    onClick={() => { updateParams({ sector: '', manufacturer: '', complexity: '', partType: '', voltage: '', current: '', power_rating: '', machine_type: '', application_area: '', product_category: '', control_type: '', industry_tag: '', sort: 'date-desc', q: '' }, true); setFilterOpen(false); }}
+                    className="mt-3 w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-600 text-sm font-medium hover:bg-red-50 hover:text-red-700 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                    title={t('Reset all filters', 'Alle Filter zurücksetzen')}
+                    aria-label={t('Reset all filters', 'Alle Filter zurücksetzen')}
+                  >
+                    {t('Reset', 'Zurücksetzen')}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Desktop: Always expanded sticky filter bar */}
         <motion.div
-          className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm mb-8 py-4 px-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl"
+          className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm mb-8 py-4 px-2 flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl hidden sm:flex"
           role="region"
           aria-label={t('Filter and sort controls', 'Filter- und Sortierleiste')}
           initial={{ opacity: 0, y: 8 }}
