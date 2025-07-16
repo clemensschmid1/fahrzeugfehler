@@ -13,6 +13,7 @@ module.exports = {
   generateRobotsTxt: true,
   changefreq: 'daily',
   priority: 0.7,
+  sitemapSize: 1000,
   
   // Exclude internal routes, auth pages, and API endpoints
   exclude: [
@@ -101,47 +102,55 @@ module.exports = {
   
   // Function to dynamically add paths from the database
   additionalPaths: async (config) => {
-    const results = [];
-    
-    // Fetch all unique slugs for 'live' questions
-    const { data: questions, error } = await supabase
-      .from('questions')
-      .select('slug, updated_at, language')
-      .eq('status', 'live')
-      .eq('is_main', true);
-      
-    if (error) {
-      console.error('Error fetching questions for sitemap:', error);
-      return [];
-    }
-    
-    // Create paths for each language
-    for (const question of questions) {
-      if (question.language === 'en') {
-      const enPath = `/en/knowledge/${question.slug}`;
-      results.push({
-        loc: enPath,
-        changefreq: 'weekly',
-        priority: 0.8,
-        lastmod: new Date(question.updated_at).toISOString(),
-        alternateRefs: [
-          { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
-        ],
-      });
-      } else if (question.language === 'de') {
-        const dePath = `/de/knowledge/${question.slug}`;
-      results.push({
-        loc: dePath,
-        changefreq: 'weekly',
-        priority: 0.8,
-        lastmod: new Date(question.updated_at).toISOString(),
-        alternateRefs: [
-          { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
-        ],
-      });
+    // Fetch all eligible questions in batches of 1000
+    async function fetchAllQuestions() {
+      const all = [];
+      let from = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('slug, updated_at, language_path')
+          .eq('status', 'live')
+          .eq('is_main', true)
+          .range(from, from + batchSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < batchSize) break;
+        from += batchSize;
       }
+      return all;
     }
 
+    const questions = await fetchAllQuestions();
+    const results = [];
+    for (const question of questions) {
+      if (question.language_path === 'en') {
+        const enPath = `/en/knowledge/${question.slug}`;
+        results.push({
+          loc: enPath,
+          changefreq: 'weekly',
+          priority: 0.8,
+          lastmod: new Date(question.updated_at).toISOString(),
+          alternateRefs: [
+            { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
+          ],
+        });
+      } else if (question.language_path === 'de') {
+        const dePath = `/de/knowledge/${question.slug}`;
+        results.push({
+          loc: dePath,
+          changefreq: 'weekly',
+          priority: 0.8,
+          lastmod: new Date(question.updated_at).toISOString(),
+          alternateRefs: [
+            { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
+          ],
+        });
+      }
+    }
+    console.log('SITEMAP DEBUG: additionalPaths results count:', results.length);
     return results;
   },
 }; 
