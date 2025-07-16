@@ -5,6 +5,9 @@ Allow: /
 # *
 User-agent: *
 Disallow: /internal/
+Disallow: /internal/promptcheck
+Disallow: /en/internal/promptcheck
+Disallow: /de/internal/promptcheck
 Disallow: /login
 Disallow: /signup
 Disallow: /profile

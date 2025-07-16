@@ -14,6 +14,7 @@ import { visit } from 'unist-util-visit';
 
 type Question = {
   id: string;
+  slug: string; // <-- Add this line
   question: string;
   answer: string;
   header?: string;
@@ -211,10 +212,10 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 pt-4 pb-10">
       <div className="w-full max-w-4xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          <div className="p-8">
+          <div className="pt-0.5 pb-6 px-4 sm:px-7">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               {question.status === 'draft' && (
                 <span className="px-3 py-1 text-sm font-medium text-yellow-800 bg-yellow-100 rounded-full">
@@ -223,7 +224,7 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
               )}
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 mt-2 leading-tight tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3 mt-0 leading-tight tracking-tight" style={{marginTop: 0, paddingTop: 0}}>
               {question.header || question.question}
             </h1>
 
@@ -510,10 +511,13 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
               </div>
             </div>
 
-            <div className="mt-8 pt-8 border-t">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {t("Related Questions", "Ähnliche Fragen")}
-              </h2>
+            <div className="mt-12">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">{t('Related Questions', 'Verwandte Fragen')}</h2>
+                <Link href={`/${lang}/knowledge?similarTo=${question.slug}`} className="text-blue-600 hover:underline text-sm font-medium" style={{marginLeft: 'auto'}}>
+                  {t('See all related questions', 'Alle verwandten Fragen anzeigen')}
+                </Link>
+              </div>
               {relatedQuestions.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {relatedQuestions.map((related) => (

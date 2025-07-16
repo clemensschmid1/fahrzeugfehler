@@ -6,26 +6,28 @@ import Header from '@/components/Header';
 
 interface Question {
   id: string;
-  title: string;
+  question: string;
   answer: string;
   sector: string;
   created_at: string;
   slug: string;
   status: 'draft' | 'live' | 'bin';
+  header?: string;
   manufacturer?: string;
   part_type?: string;
-  complexity?: string;
-  lang: string;
-  is_main: boolean;
-  is_visible: boolean;
+  part_series?: string;
+  embedding?: number[];
+  language_path: string;
+  complexity_level?: string;
   voltage?: string;
   current?: string;
   power_rating?: string;
   machine_type?: string;
-  application_area?: string;
+  application_area?: string[];
   product_category?: string;
   control_type?: string;
   industry_tag?: string;
+  _similarity?: number;
 }
 
 export const dynamic = 'force-dynamic';
@@ -96,10 +98,10 @@ async function getFilterOptions({ lang, q, sector, manufacturer, complexity, par
       .select(`${column}`)
             .eq('language_path', lang)
       .eq('is_main', true);
-    if (q) query = query.ilike('title', `%${q}%`);
+    if (q) query = query.ilike('header', `%${q}%`);
     if (column !== 'sector' && sector) query = query.eq('sector', sector);
     if (column !== 'manufacturer' && manufacturer) query = query.eq('manufacturer', manufacturer);
-    if (column !== 'complexity' && complexity) query = query.eq('complexity', complexity);
+    if (column !== 'complexity_level' && complexity) query = query.eq('complexity_level', complexity);
     if (column !== 'part_type' && partType) query = query.eq('part_type', partType);
     if (column !== 'voltage' && voltage) query = query.eq('voltage', voltage);
     if (column !== 'current' && current) query = query.eq('current', current);
@@ -143,7 +145,7 @@ async function getFilterOptions({ lang, q, sector, manufacturer, complexity, par
   const [sectors, manufacturers, complexities, partTypes, voltages, currents, power_ratings, machine_types, application_areas, product_categories, control_types, industry_tags] = await Promise.all([
     getOptions('sector'),
     getOptions('manufacturer'),
-    getOptions('complexity'),
+    getOptions('complexity_level'),
     getOptions('part_type'),
     getOptions('voltage'),
     getOptions('current'),
@@ -157,11 +159,23 @@ async function getFilterOptions({ lang, q, sector, manufacturer, complexity, par
   return { sectors, manufacturers, complexities, partTypes, voltages, currents, power_ratings, machine_types, application_areas, product_categories, control_types, industry_tags };
       }
 
+function cosineSimilarity(a: number[], b: number[]) {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+      }
+
 export default async function KnowledgePage({ params, searchParams }: { params: Promise<{ lang: string }>, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { lang } = await params;
   const sp = await searchParams;
   const q = typeof sp.q === 'string' ? sp.q : '';
   const sort = typeof sp.sort === 'string' ? sp.sort : 'date-desc';
+  const similarTo = typeof sp.similarTo === 'string' ? sp.similarTo : '';
+  const similaritySort = typeof sp.similaritySort === 'string' ? sp.similaritySort : 'desc';
   const sector = typeof sp.sector === 'string' ? sp.sector : '';
   const manufacturer = typeof sp.manufacturer === 'string' ? sp.manufacturer : '';
   const complexity = typeof sp.complexity === 'string' ? sp.complexity : '';
@@ -184,17 +198,52 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
   const allowedPageSizes = [30, 60, 100];
   const safePageSize = allowedPageSizes.includes(_pageSize) ? _pageSize : 60;
 
-  // Build query
+  let questions: Question[] = [];
+  let total = 0;
+  let referenceQuestion: Question | undefined = undefined;
+  if (similarTo) {
+    // Fetch all questions and the reference question
+    const { data: allQuestions, error: allError } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('language_path', lang)
+      .eq('is_main', true)
+      .eq('meta_generated', true);
+    if (allError) throw allError;
+    const { data: refQ, error: refError } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('slug', similarTo)
+      .eq('language_path', lang)
+      .maybeSingle();
+    if (refError) throw refError;
+    referenceQuestion = refQ;
+    if (refQ && refQ.embedding) {
+      // Compute similarity for each question
+      questions = allQuestions.map(q => ({ ...q, _similarity: q.embedding ? cosineSimilarity(refQ.embedding, q.embedding) : -1 }));
+      // Sort by similaritySort param
+      if (similaritySort === 'asc') {
+        questions.sort((a, b) => (a._similarity ?? -1) - (b._similarity ?? -1));
+      } else {
+        questions.sort((a, b) => (b._similarity ?? -1) - (a._similarity ?? -1));
+      }
+    } else {
+      questions = allQuestions;
+    }
+    total = questions.length;
+    // Pagination
+    questions = questions.slice((_page - 1) * safePageSize, (_page - 1) * safePageSize + safePageSize);
+  } else {
   let query = supabase
     .from('questions')
     .select('*', { count: 'exact' })
     .eq('language_path', lang)
     .eq('is_main', true)
     .eq('meta_generated', true);
-  if (q) query = query.ilike('title', `%${q}%`);
+    if (q) query = query.ilike('header', `%${q}%`);
   if (sector) query = query.eq('sector', sector);
   if (manufacturer) query = query.eq('manufacturer', manufacturer);
-  if (complexity) query = query.eq('complexity', complexity);
+  if (complexity) query = query.eq('complexity_level', complexity);
   if (partType) query = query.eq('part_type', partType);
   if (voltage) query = query.eq('voltage', voltage);
   if (current) query = query.eq('current', current);
@@ -209,9 +258,12 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
   const from = (_page - 1) * safePageSize;
   const to = from + safePageSize - 1;
   query = query.range(from, to);
-  const { data: questions, count: total, error } = await query;
+    const { data, count, error } = await query;
   if (error) throw error;
-  if (!questions) return notFound();
+    if (!data) return notFound();
+    questions = data;
+    total = count || 0;
+  }
   const totalPages = Math.max(1, Math.ceil((total || 0) / safePageSize));
 
   // SEO: canonical, prev, next links
@@ -252,7 +304,7 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
         'inLanguage': lang,
         'hasPart': questions.map(q => ({
           '@type': 'TechArticle',
-          'headline': q.title,
+          'headline': q.question,
           'datePublished': q.created_at,
           'url': `https://infoneva.com/${lang}/knowledge/${q.slug}`
         }))
@@ -280,6 +332,9 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
         control_type={control_type}
         industry_tag={industry_tag}
         filterOptions={filterOptions}
+        referenceQuestion={referenceQuestion}
+        similarityMode={!!similarTo}
+        similaritySort={similaritySort}
       />
     </>
   );

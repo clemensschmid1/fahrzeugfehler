@@ -29,6 +29,7 @@ interface Question {
   product_category?: string;
   control_type?: string;
   industry_tag?: string;
+  _similarity?: number; // Added for similarity sort
 }
 
 interface KnowledgeClientProps {
@@ -67,6 +68,9 @@ interface KnowledgeClientProps {
   product_category: string;
   control_type: string;
   industry_tag: string;
+  referenceQuestion?: Question;
+  similarityMode?: boolean;
+  similaritySort?: string;
 }
 
 // Simple skeleton component
@@ -74,13 +78,14 @@ function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
 }
 
-export default function KnowledgeClient({ questions, totalAvailable, page, pageSize, totalPages, sort, sector, manufacturer, complexity, partType, q, lang, filterOptions, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag }: KnowledgeClientProps) {
+export default function KnowledgeClient({ questions, totalAvailable, page, pageSize, totalPages, sort, sector, manufacturer, complexity, partType, q, lang, filterOptions, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag, referenceQuestion, similarityMode, similaritySort }: KnowledgeClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filterOpen, setFilterOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(q || '');
 
   const toggleLanguage = lang === 'en' ? 'de' : 'en';
-  const toggleLanguageText = lang === 'en' ? 'Deutsch' : 'English';
+  const toggleLanguageText = lang === 'en' ? 'English' : 'Deutsch';
 
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
@@ -96,6 +101,21 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
     });
     if (resetPage) params.set('page', '1');
     router.push(`/${lang}/knowledge?${params.toString()}`);
+  }
+
+  // Helper to highlight search term in a string
+  function highlightText(text: string, term: string) {
+    if (!term) return text;
+    try {
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return text.split(regex).map((part, i) =>
+        regex.test(part)
+          ? <mark key={i} style={{ background: '#fef08a', fontWeight: 700 }}>{part}</mark>
+          : part
+      );
+    } catch {
+      return text;
+    }
   }
 
   // Simulate loading state (replace with real loading logic if needed)
@@ -117,6 +137,18 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
   if (industry_tag) filterSummaries.push({ label: t('Industry Tag', 'Industrie-Tag'), value: industry_tag, param: 'industry_tag' });
   // Add more filters as needed
 
+  // Show reference question banner if in similarity mode
+  const showReferenceBanner = similarityMode && referenceQuestion;
+
+  // If in similarity mode, sort questions by similaritySort
+  let sortedQuestions = questions;
+  if (similarityMode) {
+    sortedQuestions = [...questions].sort((a, b) => {
+      if (similaritySort === 'asc') return (a._similarity ?? -1) - (b._similarity ?? -1);
+      return (b._similarity ?? -1) - (a._similarity ?? -1);
+    });
+  }
+
   return (
     <motion.div
       className="min-h-screen bg-white font-sans"
@@ -126,6 +158,38 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
       transition={{ duration: 0.4, ease: 'easeOut' }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {showReferenceBanner && (
+          <div className="mb-6 p-4 rounded-xl bg-blue-50 border border-blue-200 shadow flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex-1">
+              <div className="text-sm text-blue-900 font-semibold mb-1">Sorting by similarity to:</div>
+              <div className="text-lg font-bold text-blue-900">{referenceQuestion?.header || referenceQuestion?.question}</div>
+              <div className="text-gray-700 text-sm mt-1 line-clamp-2">{referenceQuestion?.question}</div>
+            </div>
+            <Link href={`/${lang}/knowledge/${referenceQuestion?.slug}`} className="text-blue-600 hover:underline text-sm font-medium mt-2 sm:mt-0" style={{whiteSpace: 'nowrap'}}>
+              View page
+            </Link>
+          </div>
+        )}
+        {/* Similarity sort controls */}
+        {similarityMode && (
+          <div className="mb-4 flex gap-2 items-center">
+            <span className="text-sm font-medium text-gray-700">Sort by similarity:</span>
+            <button
+              onClick={() => updateParams({ similaritySort: 'desc' }, false)}
+              className={`px-3 py-1 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${similaritySort === 'desc' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              aria-pressed={similaritySort === 'desc'}
+            >
+              Highest Similarity
+            </button>
+            <button
+              onClick={() => updateParams({ similaritySort: 'asc' }, false)}
+              className={`px-3 py-1 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${similaritySort === 'asc' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              aria-pressed={similaritySort === 'asc'}
+            >
+              Lowest Similarity
+            </button>
+          </div>
+        )}
         <motion.div
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4"
           aria-label={t("Page navigation", "Seitennavigation")}
@@ -133,46 +197,46 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <header>
+        <header>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2 leading-tight tracking-tight" tabIndex={0} aria-label={t('Knowledge Base', 'Wissensdatenbank')}>
-              {t("Knowledge Base", "Wissensdatenbank")}
-            </h1>
+            {t("Knowledge Base", "Wissensdatenbank")}
+          </h1>
             <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full shadow-sm mt-1" aria-hidden="true">
               {t("Knowledge Base", "Wissensdatenbank")}
             </span>
-          </header>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link
-              href={`/${lang}`}
+        </header>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link
+            href={`/${lang}`}
               className="inline-flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 shadow-sm transition-colors"
               aria-label={t('Go to Home', 'Zur Startseite')}
-            >
+          >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              {t("Home", "Startseite")}
-            </Link>
-            <Link
-              href={`/${toggleLanguage}/knowledge`}
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            {t("Home", "Startseite")}
+          </Link>
+          <Link
+            href={`/${toggleLanguage}/knowledge`}
               className="inline-flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 shadow-sm transition-colors"
               aria-label={t('Switch language', 'Sprache wechseln')}
-            >
+          >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-              </svg>
-              {toggleLanguageText}
-            </Link>
-            <Link
-              href={`/${lang}/chat`}
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+            {toggleLanguageText}
+          </Link>
+          <Link
+            href={`/${lang}/chat`}
               className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md transition-colors"
               aria-label={t('Ask a Question', 'Frage stellen')}
-            >
+          >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-              {t("Ask a Question", "Frage stellen")}
-            </Link>
-          </div>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+            {t("Ask a Question", "Frage stellen")}
+          </Link>
+        </div>
         </motion.div>
 
         {/* Mobile: Sticky collapsed filter bar */}
@@ -406,7 +470,7 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+      </div>
 
         {/* Desktop: Always expanded sticky filter bar */}
         <motion.div
@@ -669,32 +733,37 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <div className="relative max-w-md mx-auto sm:mx-0 flex items-center">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <div className="relative max-w-md mx-auto sm:mx-0 flex items-center">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder={t("Search topics...", "Themen durchsuchen...")}
-              value={q}
-              onChange={(e) => updateParams({ q: e.target.value }, true)}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder={t("Search Question", "Frage suchen")}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                updateParams({ q: searchInput }, true);
+              }
+            }}
               className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-              aria-label={t('Search topics', 'Themen durchsuchen')}
+            aria-label={t('Search Question', 'Frage suchen')}
             />
             <span className="ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow" title="Total available knowledge pages" aria-label={t('Total available knowledge pages', 'Verfügbare Wissensseiten insgesamt')}>
               {totalAvailable}
-            </span>
-          </div>
+          </span>
+        </div>
           {q && (
-            <p className="mt-2 text-sm text-gray-600">
-              {t(
+          <p className="mt-2 text-sm text-gray-600">
+            {t(
                 `Found ${questions.length} result${questions.length !== 1 ? 's' : ''}`,
                 `${questions.length} Ergebnis${questions.length !== 1 ? 'se' : ''} gefunden`
-              )}
-            </p>
-          )}
+            )}
+          </p>
+        )}
         </motion.div>
 
         {/* Knowledge cards grid */}
@@ -719,11 +788,11 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
                   <Skeleton className="h-5 w-16 rounded-full" />
                   <Skeleton className="h-5 w-20 rounded-full" />
                 </div>
-              </div>
+      </div>
             ))
-          ) : questions.length > 0 ? (
+          ) : sortedQuestions.length > 0 ? (
             <AnimatePresence>
-              {questions.map((q) => (
+              {sortedQuestions.map((q) => (
                 <motion.div
                   key={q.id}
                   className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 flex flex-col hover:shadow-xl transition-shadow duration-200"
@@ -733,11 +802,11 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
                   exit={{ opacity: 0, y: 16 }}
                   transition={{ duration: 0.4, ease: 'easeOut' }}
                 >
-                  <Link href={`/${lang}/knowledge/${q.slug}`} className="text-lg font-semibold text-indigo-700 hover:underline mb-2 truncate" aria-label={q.question} tabIndex={0}>
-                    {q.question}
+                  <Link href={`/${lang}/knowledge/${q.slug}`} className="text-lg font-semibold text-indigo-700 hover:underline mb-2 line-clamp-2" aria-label={q.question} tabIndex={0}>
+                    {highlightText(q.header ? q.header : q.question, searchInput)}
                   </Link>
-                  <div className="text-gray-600 text-sm mb-2 line-clamp-3">{q.answer}</div>
-                  <div className="flex flex-wrap gap-2 mt-auto pt-2">
+                  <div className="text-gray-600 text-sm mb-2 line-clamp-3">{q.question}</div>
+                  <div className="flex flex-wrap gap-2 mt-auto pt-2 items-end">
                     {q.sector && <span className="inline-block bg-indigo-50 text-indigo-700 text-xs font-medium px-2 py-1 rounded-full">{q.sector}</span>}
                     {q.manufacturer && <span className="inline-block bg-gray-100 text-gray-700 text-xs font-medium px-2 py-1 rounded-full">{q.manufacturer}</span>}
                     {q.part_type && <span className="inline-block bg-gray-100 text-gray-700 text-xs font-medium px-2 py-1 rounded-full">{q.part_type}</span>}
@@ -747,6 +816,9 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
                       </span>
                     ))}
                     <span className="inline-block text-gray-400 text-xs">{new Date(q.created_at).toLocaleDateString()}</span>
+                    {similarityMode && typeof q._similarity === 'number' && (
+                      <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full ml-auto">Similarity: {q._similarity.toFixed(3)}</span>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -773,8 +845,8 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
               >
                 {size} / {t('page', 'Seite')}
               </button>
-            ))}
-          </div>
+          ))}
+        </div>
           <div className="flex flex-wrap gap-1 items-center justify-center">
             <button
               onClick={() => updateParams({ page: page - 1 })}
@@ -802,7 +874,7 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
             </button>
           </div>
         </div>
-      </div>
+        </div>
     </motion.div>
   );
 } 

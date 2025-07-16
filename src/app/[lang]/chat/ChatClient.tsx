@@ -412,8 +412,8 @@ function ChatPageContent() {
                         {
                           id: assistantId,
                           content: assistantContent,
-                          role: 'assistant',
-                          created_at: new Date().toISOString(),
+          role: 'assistant',
+          created_at: new Date().toISOString(),
                         },
                       ];
                     }
@@ -434,28 +434,28 @@ function ChatPageContent() {
         let seconds = 0;
         setMetaWaitSeconds(0);
         setMetaFadeOut(false);
-        const interval = setInterval(async () => {
+      const interval = setInterval(async () => {
           seconds += 0.2;
           setMetaWaitSeconds(seconds);
-          const { data } = await supabase
-            .from('questions')
-            .select('meta_generated')
+        const { data } = await supabase
+          .from('questions')
+          .select('meta_generated')
             .eq('id', questionId)
-            .single();
-          if (data?.meta_generated) {
+          .single();
+        if (data?.meta_generated) {
             setMetaFadeOut(true);
-            clearInterval(interval);
-            if (metaPollTimeout) clearTimeout(metaPollTimeout);
-            setTimeout(() => setShowMetaDisclaimer(false), 500); // fade out after 0.5s
-          }
-        }, 200);
-        setMetaPollInterval(interval);
-        const timeout = setTimeout(() => {
-          setMetaFadeOut(true);
           clearInterval(interval);
+          if (metaPollTimeout) clearTimeout(metaPollTimeout);
+            setTimeout(() => setShowMetaDisclaimer(false), 500); // fade out after 0.5s
+        }
+        }, 200);
+      setMetaPollInterval(interval);
+      const timeout = setTimeout(() => {
+          setMetaFadeOut(true);
+        clearInterval(interval);
           setTimeout(() => setShowMetaDisclaimer(false), 500);
         }, 5000);
-        setMetaPollTimeout(timeout);
+      setMetaPollTimeout(timeout);
       }
     } catch (error) {
       const err = error as Error;
@@ -485,7 +485,7 @@ function ChatPageContent() {
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
               </svg>
-              {lang === 'en' ? 'Deutsch' : 'English'}
+              {lang === 'en' ? 'English' : 'Deutsch'}
             </Link>
           </div>
         </nav>
@@ -537,7 +537,7 @@ function ChatPageContent() {
                             <div className="flex items-center gap-2">
                               <FaSpinner className="animate-spin text-blue-500 text-lg" />
                               <span className="text-blue-900 font-medium">
-                                {lang === 'de'
+                            {lang === 'de'
                                   ? `Die Frage wird intern ausgewertet. Bitte warten Sie, bevor Sie diese Seite verlassen. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`
                                   : `The question is being processed internally. Please wait before leaving this page. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`}
                               </span>
@@ -611,17 +611,17 @@ function ChatPageContent() {
 
           <div className="border-t border-slate-200 p-6 bg-slate-50">
             <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={t("Type your question...", "Frage eingeben...")}
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={t("Type your question...", "Frage eingeben...")}
                 className="flex-1 w-full px-3 py-3 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white text-gray-900 resize-none min-h-[48px] max-h-40"
-                disabled={isLoading || (freeLimitReached && !user)}
-                maxLength={1000}
-                rows={1}
-                aria-label={t("Type your question...", "Frage eingeben...")}
-              />
+                  disabled={isLoading || (freeLimitReached && !user)}
+                  maxLength={1000}
+                  rows={1}
+                  aria-label={t("Type your question...", "Frage eingeben...")}
+                />
               <button
                 type="submit"
                 disabled={isLoading || !input.trim() || (freeLimitReached && !user)}

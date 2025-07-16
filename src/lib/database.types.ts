@@ -65,6 +65,27 @@ export type Database = {
             software_context?: string;
           };
         };
+        generated_questions: {
+          Row: {
+            id: string;
+            question_text: string;
+            question_hash: string;
+            language: string;
+            generated_at: string;
+            exported_at?: string;
+            export_filename?: string;
+            prompt_used?: string;
+            ai_model_used?: string;
+          };
+        };
+        removed_slugs: {
+          Row: {
+            id: string;
+            slug: string;
+            language: string;
+            removed_at: string;
+          };
+        };
       };
     };
   };

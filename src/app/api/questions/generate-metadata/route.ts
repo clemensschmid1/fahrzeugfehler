@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { submitToIndexNow } from '@/lib/submitToIndexNow';
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   throw new Error('Missing Supabase environment variables');
@@ -14,7 +13,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Function to generate embedding
+// Minimal embedding generation
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
     const openaiRes = await fetch('https://api.openai.com/v1/embeddings', {
@@ -30,15 +29,12 @@ async function generateEmbedding(text: string): Promise<number[]> {
     });
 
     if (!openaiRes.ok) {
-      const errorBody = await openaiRes.json();
-      console.error('OpenAI Embedding API error:', errorBody);
       throw new Error('Failed to generate embedding from OpenAI');
     }
 
     const openaiData = await openaiRes.json();
     return openaiData.data[0].embedding;
   } catch (error) {
-    console.error('Error generating embedding:', error);
     throw error;
   }
 }
@@ -46,8 +42,6 @@ async function generateEmbedding(text: string): Promise<number[]> {
 export async function POST(req: Request) {
   try {
     const { id } = await req.json();
-    console.log('[generate-metadata] Received ID:', id);
-    console.log('[generate-metadata] Request headers:', Object.fromEntries(req.headers.entries()));
     if (!id) return NextResponse.json({ error: 'Missing question id' }, { status: 400 });
 
     const { data: questionRow, error: fetchError } = await supabase
@@ -56,67 +50,57 @@ export async function POST(req: Request) {
       .eq('id', id)
       .single();
     if (fetchError || !questionRow) {
-      console.log('[generate-metadata] Question not found for ID:', id);
       return NextResponse.json({ error: 'Question not found' }, { status: 404 });
     }
 
     const { question, answer } = questionRow;
 
-    // Only generate embedding
+    // Generate embedding
     const embedding = await generateEmbedding(`${question} ${answer}`);
 
-    // Add language field to the prompt and parse it from the response
-    const prompt = `Given the following question and answer, generate ONLY the metadata fields for a technical knowledge base. Respond ONLY with valid JSON. Include a 'language' field as 'en' or 'de'.
+    // Generate metadata with all fields (emphasize most important fields)
+    const prompt = `Generate metadata for the following technical question and answer.  
+Return **ONLY valid JSON** (no markdown, no code blocks, no explanations, no extra text).
 
-Question: ${question}
+**The following fields are REQUIRED and must ALWAYS be filled with the best possible value (never null or empty):**
+- content_score (integer 1–10)
+- expertise_score (integer 1–10)
+- helpfulness_score (integer 1–10)
+- seo_slug (URL-friendly, 5–8 words, unique for this question)
+- header (short, clear, human-readable)
+- meta_description (1–2 sentences, no markdown)
 
-Answer: ${answer}
+**The following fields are STRONGLY PREFERRED and should be filled if possible, otherwise use null:**
+- manufacturer
+- part_type
+- part_series
+- sector
+- error_code
+- question_type
+- confidentiality_flag (boolean, TRUE or FALSE)
+- complexity_level
 
-Return this JSON:
+**For all fields:**
+- Do not omit any fields; always include all fields in the output.
+- Use concise values or lists, not full sentences (except meta_description).
+- Do not include markdown, code blocks, or any text before or after the JSON.
+
+**Example structure:**
 {
-  seo_slug: string,
-  manufacturer: string | null,
-  part_type: string | null,
-  part_series: string | null,
-  sector: string | null,
-  related_slugs: string[] | null,
-  question_type: string | null,
-  affected_components: string[] | null,
-  error_code: string | null,
-  complexity_level: string | null,
-  related_processes: string[] | null,
-  confidentiality_flag: boolean,
-  seo_score: integer from 1 to 99,
-  header: string,
-  status: string,
-  parent_id: string | null,
-  meta_description: string (max 155 characters, high-CTR industrial tone),
-  content_score: integer from 1 to 99,
-  expertise_score: integer from 1 to 99,
-  helpfulness_score: integer from 1 to 99,
-  language: 'en' or 'de',
-  voltage: string | null,
-  current: string | null,
-  power_rating: string | null,
-  machine_type: string | null,
-  application_area: string[] | null,
-  product_category: string | null,
-  electrical_type: string | null,
-  control_type: string | null,
-  relevant_standards: string[] | null,
-  mounting_type: string | null,
-  cooling_method: string | null,
-  communication_protocols: string[] | null,
-  manufacturer_mentions: string[] | null,
-  risk_keywords: string[] | null,
-  tools_involved: string[] | null,
-  installation_context: string | null,
-  sensor_type: string | null,
-  mechanical_component: string | null,
-  industry_tag: string | null,
-  maintenance_relevance: boolean | null,
-  failure_mode: string | null,
-  software_context: string | null
+  "content_score": 9,
+  "expertise_score": 8,
+  "helpfulness_score": 9,
+  "seo_slug": "causes-of-signal-loss-ifm-sensors",
+  "header": "Causes of Signal Loss in IFM Sensors",
+  "meta_description": "Explore the technical factors contributing to signal loss in IFM sensors, including target material, sensing distance, alignment, and environmental factors.",
+  "manufacturer": "IFM",
+  "part_type": "Sensor",
+  "part_series": "OG Series",
+  "sector": "Industrial Automation",
+  "error_code": null,
+  "question_type": "Troubleshooting",
+  "confidentiality_flag": false,
+  "complexity_level": "Intermediate"
 }`;
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -126,9 +110,10 @@ Return this JSON:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini-2024-07-18',
+        model: 'gpt-3.5-turbo', // Faster model
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.4
+        temperature: 0.35,
+        max_tokens: 1000 // Increased to prevent truncation
       })
     });
 
@@ -137,117 +122,170 @@ Return this JSON:
     const content = data.choices?.[0]?.message?.content?.trim();
     if (!content) throw new Error('No metadata from OpenAI');
 
-    // Log the raw OpenAI response content for debugging
-    console.log('[generate-metadata] Raw OpenAI response:', content);
-
     const cleaned = content.replace(/```json|```/g, '').trim();
-    const metadata = JSON.parse(cleaned);
-
-    // Check for missing fields and log a warning if any are missing
-    const allFields = [
-      'seo_slug', 'manufacturer', 'part_type', 'part_series', 'sector', 'related_slugs', 'question_type',
-      'affected_components', 'error_code', 'complexity_level', 'related_processes', 'confidentiality_flag',
-      'seo_score', 'header', 'status', 'parent_id', 'meta_description',
-      'content_score', 'expertise_score', 'helpfulness_score', 'language',
-      'voltage', 'current', 'power_rating', 'machine_type', 'application_area', 'product_category',
-      'electrical_type', 'control_type', 'relevant_standards', 'mounting_type', 'cooling_method',
-      'communication_protocols', 'manufacturer_mentions', 'risk_keywords', 'tools_involved',
-      'installation_context', 'sensor_type', 'mechanical_component', 'industry_tag',
-      'maintenance_relevance', 'failure_mode', 'software_context'
-    ];
-    const missingFields = allFields.filter(field => !(field in metadata));
-    if (missingFields.length > 0) {
-      console.warn('[generate-metadata] WARNING: Missing fields in OpenAI response:', missingFields, '\nRaw content:', content);
+    let metadata: Record<string, unknown>;
+    try {
+      metadata = extractFirstJson(cleaned);
+      // Post-processing: trim, limit arrays, ensure types
+      const arrayFields = [
+        'related_slugs', 'affected_components', 'application_area', 'relevant_standards',
+        'communication_protocols', 'manufacturer_mentions', 'risk_keywords', 'tools_involved', 'related_processes'
+      ];
+      for (const key of Object.keys(metadata)) {
+        if (typeof metadata[key] === 'string') {
+          metadata[key] = metadata[key].trim();
+          if (metadata[key] === '') metadata[key] = null;
+        }
+        if (arrayFields.includes(key)) {
+          if (typeof metadata[key] === 'string') {
+            // Convert comma-separated string to array
+            metadata[key] = metadata[key].split(',').map(s => s.trim()).filter(Boolean);
+          }
+          if (!Array.isArray(metadata[key])) metadata[key] = [];
+          // Limit to 2 entries
+          if (Array.isArray(metadata[key])) metadata[key] = (metadata[key] as unknown[]).slice(0, 2);
+          if (Array.isArray(metadata[key]) && metadata[key].length === 0) metadata[key] = [];
+        }
+        if (typeof metadata[key] === 'boolean') {
+          // already correct
+        }
+        if (metadata[key] === undefined) metadata[key] = null;
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error('[generate-metadata] JSON parse error. Raw response:', cleaned, err.message);
+        return NextResponse.json({ error: err.message, raw: cleaned }, { status: 500 });
+      }
+      if (typeof err === 'string') {
+        console.error('[generate-metadata] JSON parse error. Raw response:', cleaned, err);
+        return NextResponse.json({ error: err, raw: cleaned }, { status: 500 });
+      }
+      const errorMsg = String(err);
+      console.error('[generate-metadata] JSON parse error. Raw response:', cleaned, errorMsg);
+      return NextResponse.json({ error: errorMsg, raw: cleaned }, { status: 500 });
     }
 
-    // Quality score thresholds
-    const SCORE_THRESHOLDS = {
-      seo_score: 50,
-      content_score: 70,
-      expertise_score: 60,
-      helpfulness_score: 40
+    // Fallback: ensure slug is always present
+    if (!metadata.seo_slug || typeof metadata.seo_slug !== 'string' || !metadata.seo_slug.trim()) {
+      metadata.seo_slug =
+        question.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 60) ||
+        'question-' + id.substring(0, 8);
+    }
+
+    // Map all fields to DB columns, fallback to null/default if missing
+    const defaultMetadata = {
+      manufacturer: metadata.manufacturer ?? null,
+      part_type: metadata.part_type ?? null,
+      part_series: metadata.part_series ?? null,
+      sector: metadata.sector ?? null,
+      related_slugs: metadata.related_slugs ?? null,
+      question_type: metadata.question_type ?? null,
+      affected_components: metadata.affected_components ?? null,
+      error_code: metadata.error_code ?? null,
+      complexity_level: metadata.complexity_level ?? null,
+      related_processes: metadata.related_processes ?? null,
+      confidentiality_flag: metadata.confidentiality_flag ?? false,
+      parent_id: metadata.parent_id ?? null,
+      voltage: metadata.voltage ?? null,
+      current: metadata.current ?? null,
+      power_rating: metadata.power_rating ?? null,
+      machine_type: metadata.machine_type ?? null,
+      application_area: metadata.application_area ?? null,
+      product_category: metadata.product_category ?? null,
+      electrical_type: metadata.electrical_type ?? null,
+      control_type: metadata.control_type ?? null,
+      relevant_standards: metadata.relevant_standards ?? null,
+      mounting_type: metadata.mounting_type ?? null,
+      cooling_method: metadata.cooling_method ?? null,
+      communication_protocols: metadata.communication_protocols ?? null,
+      manufacturer_mentions: metadata.manufacturer_mentions ?? null,
+      risk_keywords: metadata.risk_keywords ?? null,
+      tools_involved: metadata.tools_involved ?? null,
+      installation_context: metadata.installation_context ?? null,
+      sensor_type: metadata.sensor_type ?? null,
+      mechanical_component: metadata.mechanical_component ?? null,
+      industry_tag: metadata.industry_tag ?? null,
+      maintenance_relevance: metadata.maintenance_relevance ?? false,
+      failure_mode: metadata.failure_mode ?? null,
+      software_context: metadata.software_context ?? null,
+      seo_score: metadata.seo_score ?? null,
+      content_score: metadata.content_score ?? null,
+      expertise_score: metadata.expertise_score ?? null,
+      helpfulness_score: metadata.helpfulness_score ?? null,
+      header: metadata.header ?? null,
+      meta_description: metadata.meta_description ?? null,
+      status: metadata.status ?? 'live',
+      language: metadata.language ?? 'en',
+      seo_slug: metadata.seo_slug,
     };
 
-    // Check if any score is below threshold and set status accordingly
-    const failedScores = [];
-    for (const [scoreField, threshold] of Object.entries(SCORE_THRESHOLDS)) {
-      const score = metadata[scoreField];
-      if (score !== null && score !== undefined && score < threshold) {
-        failedScores.push(`${scoreField}: ${score} < ${threshold}`);
-      }
+    // Ensure slug is unique (simplified)
+    let uniqueSlug = defaultMetadata.seo_slug;
+    let counter = 1;
+    while (counter <= 5) { // Limit retries
+      const { data: existing } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('slug', uniqueSlug)
+        .neq('id', id)
+        .maybeSingle();
+      if (!existing) break;
+      uniqueSlug = `${defaultMetadata.seo_slug}-${counter}`;
+      counter++;
     }
+    defaultMetadata.seo_slug = uniqueSlug;
 
-    if (failedScores.length > 0) {
-      console.log('[generate-metadata] Quality check failed:', failedScores.join(', '));
-      metadata.status = 'bin';
-    } else {
-      metadata.status = 'live';
-    }
+    // Update the question with metadata and embedding
+    const { error: updateError } = await supabase
+      .from('questions')
+      .update({
+        ...defaultMetadata,
+        slug: defaultMetadata.seo_slug,
+        embedding,
+        meta_generated: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
 
-    // Ensure slug is unique
-    const baseSlug = metadata.seo_slug || null;
-    let uniqueSlug = baseSlug;
-    if (uniqueSlug) {
-      let counter = 1;
-      while (true) {
-        const { data: existing, error: slugError } = await supabase
-          .from('questions')
-          .select('id')
-          .eq('slug', uniqueSlug)
-          .neq('id', id)
-          .maybeSingle();
-        if (slugError) throw slugError;
-        if (!existing) break;
-        uniqueSlug = `${baseSlug}${counter}`;
-        counter++;
-      }
-    }
-    metadata.slug = uniqueSlug;
-    delete metadata.seo_slug;
-
-    metadata.language = metadata.language || 'en';
-    metadata.language_path = metadata.language;
-
-    if (typeof metadata.parent_id !== 'string' || !/^[0-9a-fA-F-]{36}$/.test(metadata.parent_id)) {
-      metadata.parent_id = null;
-    }
-
-    if (metadata.meta_description && metadata.meta_description.length > 155) {
-      metadata.meta_description = metadata.meta_description.substring(0, 155).trim();
-    }
-
-    console.log('[generate-metadata] language:', metadata.language);
-    console.log('[generate-metadata] seo_score:', metadata.seo_score);
-    console.log('[generate-metadata] content_score:', metadata.content_score);
-    console.log('[generate-metadata] expertise_score:', metadata.expertise_score);
-    console.log('[generate-metadata] helpfulness_score:', metadata.helpfulness_score);
-    console.log('[generate-metadata] final_status:', metadata.status);
-    console.log('[generate-metadata] metadata:', { ...metadata, embedding: 'generated' });
-
-    const { error: updateError } = await supabase.from('questions').update({
-      ...metadata,
-      embedding,
-      meta_generated: true
-    }).eq('id', id);
     if (updateError) {
-      console.log('[generate-metadata] Update error:', updateError);
-      throw updateError;
+      throw new Error('Failed to update question with metadata');
     }
 
-    // Submit to Bing IndexNow if the page is live (non-blocking)
-    if (metadata.status === 'live' && metadata.slug) {
-      // Construct the full URL for the new page
-      const fullUrl = `https://infoneva.com/${metadata.language}/knowledge/${metadata.slug}`;
-      // Submit to IndexNow in the background (non-blocking)
-      submitToIndexNow(fullUrl).catch(error => {
-        console.warn('[generate-metadata] IndexNow submission failed:', error);
-      });
-    }
+    return NextResponse.json({ 
+      success: true, 
+      metadata: defaultMetadata
+    });
 
-    return NextResponse.json({ success: true, metadata: { ...metadata, embedding: 'generated' } });
   } catch (error) {
-    const err = error as Error;
-    console.log('[generate-metadata] Caught error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    let errorMsg = 'Unknown error';
+    if (error instanceof Error) {
+      errorMsg = error.message;
+    } else if (typeof error === 'string') {
+      errorMsg = error;
+    } else {
+      errorMsg = String(error);
+    }
+    console.error('[generate-metadata] Error:', errorMsg);
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
+}
+
+// Utility: Extract first valid JSON object from a string
+function extractFirstJson(str: string): Record<string, unknown> {
+  // Find the first {...} block
+  const firstBrace = str.indexOf('{');
+  if (firstBrace === -1) throw new Error('No opening brace found');
+  let depth = 0;
+  let end = -1;
+  for (let i = firstBrace; i < str.length; i++) {
+    if (str[i] === '{') depth++;
+    if (str[i] === '}') depth--;
+    if (depth === 0) {
+      end = i + 1;
+      break;
+    }
+  }
+  if (end === -1) throw new Error('No closing brace found');
+  const jsonStr = str.slice(firstBrace, end);
+  return JSON.parse(jsonStr);
 }

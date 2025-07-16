@@ -136,15 +136,12 @@ function checkMinSubmitDelta(delta: number | undefined, minMs = 3000) {
 }
 
 export async function POST(req: Request) {
-  console.log('--- POST /api/ask ---');
-  try {
-    // Check if this is a bulk import request
     const isBulkImport = req.headers.get('X-Bulk-Import') === 'true';
     const isSaveOnly = req.headers.get('X-Save-Only') === 'true';
-    console.log('Bulk import request:', isBulkImport, 'Save-only request:', isSaveOnly);
 
-    // --- Geoblocking ---
-    console.log('1. Checking geoblock...');
+  try {
+    // Skip geoblocking for bulk import (local use only)
+    if (!isBulkImport) {
     const geoblock = checkGeoblock(req);
     if (geoblock.blocked) {
       return new NextResponse(
@@ -152,19 +149,15 @@ export async function POST(req: Request) {
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    console.log('Geoblock check passed.');
-    // --- End geoblocking ---
+    }
 
-    // --- Rate limiting (skip for bulk import and save-only) ---
+    // Skip rate limiting for bulk import and save-only
     if (!isBulkImport && !isSaveOnly) {
-      console.log('2. Checking rate limit...');
       let userId: string | null = null;
       let ip: string | null = null;
-      // Try to get userId from Supabase JWT (Authorization header)
       const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const jwt = authHeader.slice(7);
-        // Parse JWT payload (base64url, no padding)
         try {
           const payload = JSON.parse(Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
           userId = payload.sub || null;
@@ -172,15 +165,10 @@ export async function POST(req: Request) {
           userId = null;
         }
       }
-      // Fallback: get IP from headers (X-Forwarded-For or cf-connecting-ip)
       ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
-
-      console.log('Rate limit params:', { userId: !!userId, ip: !!ip, routeKey: 'ask' });
       
       try {
         const rate = await checkRateLimit({ userId, ip, routeKey: 'ask' });
-        console.log('Rate limit result:', { allowed: rate.allowed, reason: rate.reason });
-        
         if (!rate.allowed) {
           return new NextResponse(
             JSON.stringify({ error: 'Too Many Requests', reason: rate.reason }),
@@ -196,16 +184,9 @@ export async function POST(req: Request) {
         }
       } catch (error) {
         console.error('Rate limiting error:', error);
-        // Continue without rate limiting if it fails
       }
-      
-      console.log('Rate limit check passed.');
-    } else {
-      console.log('2. Skipping rate limit check for bulk import or save-only request.');
     }
-    // --- End rate limiting ---
 
-    console.log('3. Parsing request body...');
     const { 
       question, 
       language,
@@ -225,11 +206,9 @@ export async function POST(req: Request) {
       answer?: string;
       is_main?: boolean;
     } = await req.json();
-    console.log('Request body parsed successfully:', { question, language, conversation_id });
 
-    // Prompt injection filter
-    console.log('4. Checking for banned phrases...');
-    if (!isSaveOnly && containsBannedPhrase(question)) {
+    // Skip prompt injection filter for bulk import
+    if (!isSaveOnly && !isBulkImport && containsBannedPhrase(question)) {
       return new NextResponse(
         JSON.stringify({ error: 'Unsafe prompt detected' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -238,19 +217,16 @@ export async function POST(req: Request) {
     
     // Skip submit delta check for bulk import requests
     if (!isBulkImport && !isSaveOnly && !checkMinSubmitDelta(submitDeltaMs)) {
-      console.warn('Form submitted too quickly.');
       return new NextResponse(
         JSON.stringify({ error: 'Form submitted too quickly.' }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    console.log('Security checks passed.');
 
     // Decide streaming vs non-streaming
     if (!isBulkImport && !isSaveOnly && req.headers.get('accept') === 'text/event-stream') {
       // Streaming for chat
     try {
-        console.log('5. Generating answer with OpenAI GPT-4.1 (streaming)...');
         const openaiStream = await streamOpenAIGPT4Answer(question, conversation_context);
         let fullAnswer = '';
         const reader = openaiStream.getReader();
@@ -263,7 +239,6 @@ export async function POST(req: Request) {
               (async () => {
                 try {
                   if (isOutputUnsafe(fullAnswer)) {
-                    console.warn('Unsafe output detected (post-stream):', fullAnswer);
                     return;
                   }
                   const sanitizedAnswer = sanitizeAnswer(fullAnswer);
@@ -293,31 +268,27 @@ export async function POST(req: Request) {
                     is_main: isMain,
                   };
                   const { data: inserted, error: insertError } = await supabase.from('questions').insert(insertData).select('id').single();
-                  if (!insertError && inserted?.id) {
+                  if (!insertError && inserted?.id && !isBulkImport) {
                     // Fire-and-forget metadata generation (only for non-bulk-import)
-                    if (!isBulkImport) {
-                      console.log('Triggering fire-and-forget metadata generation for question ID:', inserted.id);
-                      (async () => {
-                        try {
-                          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-                          const metaRes = await fetch(`${siteUrl}/api/questions/generate-metadata`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: inserted.id }),
-                          });
-                          const metaText = await metaRes.text();
-                          console.log('[ask route] Metadata generation API response:', metaText);
-                        } catch (err) {
-                          console.error('[ask route] Metadata generation fire-and-forget error:', err);
+                    (async () => {
+                      try {
+                        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+                        await fetch(`${siteUrl}/api/questions/generate-metadata`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: inserted.id }),
+                        });
+                                              } catch (err) {
+                          if (!isBulkImport) {
+                            console.error('[ask route] Metadata generation fire-and-forget error:', err);
+                          }
                         }
-                      })();
-                    } else {
-                      console.log('Skipping fire-and-forget metadata generation for bulk import question ID:', inserted.id);
-                    }
+                    })();
                   }
-                  console.log('Question saved to DB after streaming.');
-                } catch (err) {
-                  console.error('Error saving Q&A after streaming:', err);
+                                  } catch (err) {
+                    if (!isBulkImport) {
+                      console.error('Error saving Q&A after streaming:', err);
+                    }
                 }
               })();
               return;
@@ -347,7 +318,9 @@ export async function POST(req: Request) {
           },
         });
       } catch (error) {
+        if (!isBulkImport) {
         console.error('Error generating answer from AI:', error);
+        }
         throw new Error(`AI service failed: ${(error as Error).message}`);
       }
     } else {
@@ -363,126 +336,91 @@ export async function POST(req: Request) {
         }
       } else {
         try {
-          console.log('5. Generating answer with OpenAI GPT-4.1 (non-streaming)...');
           answer = await getOpenAIGPT4Answer(question, conversation_context);
           if (!answer) {
-            console.error('No answer returned from OpenAI GPT-4.1.');
             throw new Error('No answer from OpenAI GPT-4.1');
       }
-      console.log('Answer generated successfully.');
     } catch (error) {
+          if (!isBulkImport) {
       console.error('Error generating answer from AI:', error);
+          }
       throw new Error(`AI service failed: ${(error as Error).message}`);
         }
     }
 
-    console.log('6. Sanitizing and checking safety of the answer...');
-    if (isOutputUnsafe(answer)) {
-      console.warn('Unsafe output detected:', answer);
+      // Skip safety check for bulk import (local use only)
+      if (!isBulkImport && isOutputUnsafe(answer)) {
       return new NextResponse(
         JSON.stringify({ error: 'Blocked: unsafe output detected.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
       const sanitizedAnswer = isSaveOnly ? answer : sanitizeAnswer(answer);
-    console.log('Answer sanitized and checked.');
 
     let finalConversationId: string | null = null;
     let newQuestionId: string | null = null;
+    let inserted: { id?: string; slug?: string } | null = null;
     
     try {
-      console.log('7. Saving question and answer to the database...');
       if (conversation_id) {
-          finalConversationId = conversation_id ?? null;
+        finalConversationId = conversation_id ?? null;
       } else if (parent_id) {
-      const { data: parentQuestion, error: parentError } = await supabase
-        .from('questions')
-        .select('conversation_id')
-        .eq('id', parent_id)
-        .single();
-          if (parentError || !parentQuestion) throw new Error(`Error fetching parent question: ${parentError?.message || 'Not found'}`);
+        const { data: parentQuestion, error: parentError } = await supabase
+          .from('questions')
+          .select('conversation_id')
+          .eq('id', parent_id)
+          .single();
+        if (!parentError && parentQuestion) {
           finalConversationId = parentQuestion?.conversation_id ?? null;
+        }
       }
-
-      // Check if this is the first question in the conversation
       const isMain = typeof is_main === 'boolean' ? is_main : !parent_id;
-
-      interface InsertData {
-        question: string;
-        answer: string;
-        meta_generated: boolean;
-        parent_id: string | null;
-        conversation_id: string | null;
-        status: 'draft' | 'live' | 'archived';
-        language_path: string;
-        created_at: string;
-        is_main: boolean;
-      }
-
-      // Insert the new question/answer pair
-      const insertData: InsertData = {
+      // For bulk import, always generate a new conversation_id
+      const conversationIdToUse = isBulkImport ? crypto.randomUUID() : (finalConversationId || null);
+      const insertData = {
         question,
         answer: sanitizedAnswer,
         meta_generated: false,
         parent_id: parent_id || null,
-        conversation_id: finalConversationId || null,
+        conversation_id: conversationIdToUse,
         status: 'draft',
         language_path: language,
         created_at: new Date().toISOString(),
         is_main: isMain,
       };
-
-        const { data: inserted, error: insertError } = await supabase
-        .from('questions')
-        .insert(insertData)
-      .select('id')
-      .single();
-        if (insertError || !inserted) {
-          console.error('Supabase insert error:', insertError?.message || 'No new question returned');
-          throw new Error(`Database insert failed: ${insertError?.message || 'No new question returned'}`);
+      const { data: insertedData, error: insertError } = await supabase.from('questions').insert(insertData).select('id, slug').single();
+      if (insertError) {
+        throw new Error('Failed to save question to database');
       }
-        newQuestionId = inserted?.id ?? null;
-      console.log('Question saved to DB with ID:', newQuestionId);
-
-        if (newQuestionId) {
-          // Fire-and-forget metadata generation (only for non-bulk-import)
-          if (!isBulkImport) {
-            console.log('Triggering fire-and-forget metadata generation for question ID:', newQuestionId);
-            (async () => {
-              try {
-                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-                const metaRes = await fetch(`${siteUrl}/api/questions/generate-metadata`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ id: newQuestionId }),
-                });
-                const metaText = await metaRes.text();
-                console.log('[ask route] Metadata generation API response:', metaText);
-              } catch (err) {
-                console.error('[ask route] Metadata generation fire-and-forget error:', err);
-              }
-            })();
-          } else {
-            console.log('Skipping fire-and-forget metadata generation for bulk import question ID:', newQuestionId);
-          }
-        }
+      inserted = insertedData;
+      newQuestionId = inserted?.id || null;
     } catch (error) {
-        console.error('Error with database operation:', error);
-        throw new Error(`Database operation failed: ${(error as Error).message}`);
+      if (!isBulkImport) {
+        console.error('Error saving question to database:', error);
+      }
+      throw new Error(`Database error: ${(error as Error).message}`);
     }
 
-    console.log('8. Returning response to client.');
-    return NextResponse.json({ 
-      answer: sanitizedAnswer,
-      id: newQuestionId,
-      conversation_id: finalConversationId,
-    });
+      // Return the response
+      return new NextResponse(
+        JSON.stringify({ 
+          id: newQuestionId, 
+          slug: inserted?.slug || null,
+          answer: sanitizedAnswer 
+        }),
+        { 
+          status: 200, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
     }
-  } catch (error) {
-    const err = error as Error;
-    console.error('[API/ASK ERROR]', err.message);
+  } catch (err: unknown) {
+    // Only log errors for non-bulk-import requests
+    if (!isBulkImport) {
+      console.error('Error in /api/ask:', err);
+    }
     return new NextResponse(
-      JSON.stringify({ error: err.message || 'An internal server error occurred.' }),
+      JSON.stringify({ error: (err as Error).message || 'Internal server error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

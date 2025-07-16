@@ -34,6 +34,12 @@ type RelatedQuestion = {
 
 export const dynamic = 'force-dynamic';
 
+// Helper to return 410 Gone
+function gone(): never {
+  // This will throw and stop rendering, similar to notFound()
+  throw new Response('410 Gone', { status: 410 });
+}
+
 // ✅ Fix: async param support
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; lang: string }> }): Promise<Metadata> {
   const { slug, lang } = await params;
@@ -197,6 +203,15 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
     }
   );
 
+  // Check removed_slugs first
+  const { data: removed } = await supabase
+    .from('removed_slugs')
+    .select('id')
+    .eq('slug', slug)
+    .eq('language', lang)
+    .maybeSingle();
+  if (removed) return gone();
+
   // Get the current user
   let user = null;
   try {
@@ -300,14 +315,14 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
   return (
     <>
       <Header />
-      <KnowledgeClient
-        question={question}
-        followUpQuestions={followUpQuestions}
-        relatedQuestions={relatedQuestions}
-        initialComments={comments || []}
-        lang={lang}
-        user={user}
-      />
+    <KnowledgeClient
+      question={question}
+      followUpQuestions={followUpQuestions}
+      relatedQuestions={relatedQuestions}
+      initialComments={comments || []}
+      lang={lang}
+      user={user}
+    />
     </>
   );
 }

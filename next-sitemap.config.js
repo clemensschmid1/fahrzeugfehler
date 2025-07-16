@@ -18,6 +18,9 @@ module.exports = {
   exclude: [
     '/internal', 
     '/internal/*', 
+    '/internal/promptcheck',
+    '/en/internal/promptcheck',
+    '/de/internal/promptcheck',
     '/login', 
     '/signup', 
     '/profile',
@@ -37,6 +40,9 @@ module.exports = {
         userAgent: '*',
         disallow: [
           '/internal/', 
+          '/internal/promptcheck',
+          '/en/internal/promptcheck',
+          '/de/internal/promptcheck',
           '/login', 
           '/signup', 
           '/profile',
@@ -112,27 +118,27 @@ module.exports = {
     // Create paths for each language
     for (const question of questions) {
       if (question.language === 'en') {
-        const enPath = `/en/knowledge/${question.slug}`;
-        results.push({
-          loc: enPath,
-          changefreq: 'weekly',
-          priority: 0.8,
-          lastmod: new Date(question.updated_at).toISOString(),
-          alternateRefs: [
-            { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
-          ],
-        });
+      const enPath = `/en/knowledge/${question.slug}`;
+      results.push({
+        loc: enPath,
+        changefreq: 'weekly',
+        priority: 0.8,
+        lastmod: new Date(question.updated_at).toISOString(),
+        alternateRefs: [
+          { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
+        ],
+      });
       } else if (question.language === 'de') {
         const dePath = `/de/knowledge/${question.slug}`;
-        results.push({
-          loc: dePath,
-          changefreq: 'weekly',
-          priority: 0.8,
-          lastmod: new Date(question.updated_at).toISOString(),
-          alternateRefs: [
-            { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
-          ],
-        });
+      results.push({
+        loc: dePath,
+        changefreq: 'weekly',
+        priority: 0.8,
+        lastmod: new Date(question.updated_at).toISOString(),
+        alternateRefs: [
+          { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
+        ],
+      });
       }
     }
 
