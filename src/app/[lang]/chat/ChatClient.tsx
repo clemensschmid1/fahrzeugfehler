@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback, memo, useMemo } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -27,7 +27,11 @@ interface ConversationMessage {
   created_at: string;
 }
 
-function MarkdownRenderer({ content }: { content: string }) {
+// 🔥 OPTIMIZATION: Memoized MarkdownRenderer for better performance
+const MarkdownRenderer = memo(({ content }: { content: string }) => {
+  // 🔥 OPTIMIZATION: Memoize the processed content
+  const processedContent = useMemo(() => processMarkdownForLatex(content), [content]);
+  
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
@@ -76,10 +80,88 @@ function MarkdownRenderer({ content }: { content: string }) {
         td: ({children, ...props}: any) => <td {...props}>{children}</td>, 
       } as any}
     >
-      {processMarkdownForLatex(content)}
+      {processedContent}
     </ReactMarkdown>
   );
-}
+});
+
+MarkdownRenderer.displayName = 'MarkdownRenderer';
+
+// 🔥 OPTIMIZATION: Memoized message component for better rendering performance
+const MessageComponent = memo(({ 
+  message, 
+  index, 
+  showMetaDisclaimer, 
+  metaFadeOut, 
+  metaWaitSeconds, 
+  lang 
+}: {
+  message: Message;
+  index: number;
+  showMetaDisclaimer: boolean;
+  metaFadeOut: boolean;
+  metaWaitSeconds: number;
+  lang: string;
+}) => {
+  const isLastMessage = index === 0; // Assuming messages are rendered in reverse order
+  
+  return (
+    <div
+      className={`flex ${
+        message.role === 'user' ? 'justify-end' : 'justify-start'
+      } animate-in fade-in duration-300`}
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      <div
+        className={`max-w-[85%] rounded-2xl p-5 shadow-lg ${
+          message.role === 'user'
+            ? 'bg-blue-600 text-white shadow-blue-200'
+            : 'bg-slate-100 text-slate-900 shadow-slate-200'
+        }`}
+      >
+        {message.role === 'assistant' ? (
+          <>
+            <div className="prose prose-blue max-w-none">
+              <MarkdownRenderer content={message.content} />
+            </div>
+            {showMetaDisclaimer && isLastMessage && (
+              <div
+                className={`mt-3 flex flex-col items-start gap-2 transition-all duration-500 ${metaFadeOut ? 'opacity-0 translate-y-2' : 'opacity-100'} bg-blue-50 border border-blue-200 rounded-lg shadow-md p-4 w-full`}
+              >
+                <div className="flex items-center gap-2">
+                  <FaSpinner className="animate-spin text-blue-500 text-lg" />
+                  <span className="text-blue-900 font-medium">
+                    {lang === 'de'
+                      ? `Die Frage wird intern ausgewertet. Bitte warten Sie, bevor Sie diese Seite verlassen. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`
+                      : `The question is being processed internally. Please wait before leaving this page. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`}
+                  </span>
+                </div>
+                <div className="w-full bg-blue-100 rounded h-2 mt-1">
+                  <div
+                    className="bg-blue-500 h-2 rounded transition-all duration-200"
+                    style={{ width: `${Math.min((metaWaitSeconds / 5) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
+        )}
+        <div className={`text-xs mt-3 opacity-70 ${
+          message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
+        }`}>
+          {new Date(message.created_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+MessageComponent.displayName = 'MessageComponent';
 
 function ChatPageContent() {
   const params = useParams();
@@ -100,10 +182,11 @@ function ChatPageContent() {
   const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | undefined>(undefined);
   const [metaWaitSeconds, setMetaWaitSeconds] = useState(0);
   const [metaFadeOut, setMetaFadeOut] = useState(false);
-  const supabase = createBrowserClient(
+  // 🔥 OPTIMIZATION: Memoize expensive operations
+  const supabase = useMemo(() => createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  ), []);
 
   const formMountTime = useRef<number>(Date.now());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -124,7 +207,7 @@ function ChatPageContent() {
     });
   };
 
-  // Load conversation history from Supabase
+  // 🔥 OPTIMIZATION: Memoize conversation history loading
   const loadConversationHistory = useCallback(async (convId: string) => {
     try {
       const { data: conversationMessages, error } = await supabase
@@ -162,6 +245,7 @@ function ChatPageContent() {
     }
   }, [supabase]);
 
+  // 🔥 OPTIMIZATION: Memoize user fetching
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -510,60 +594,17 @@ function ChatPageContent() {
                 </div>
               )}
               
+              {/* 🔥 OPTIMIZATION: Use memoized message components */}
               {messages.map((message, index) => (
-                <div
+                <MessageComponent
                   key={message.id}
-                  className={`flex ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  } animate-in fade-in duration-300`}
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div
-                    className={`max-w-[85%] rounded-2xl p-5 shadow-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white shadow-blue-200'
-                        : 'bg-slate-100 text-slate-900 shadow-slate-200'
-                    }`}
-                  >
-                    {message.role === 'assistant' ? (
-                      <>
-                        <div className="prose prose-blue max-w-none">
-                          <MarkdownRenderer content={message.content} />
-                        </div>
-                        {showMetaDisclaimer && index === messages.length - 1 && (
-                          <div
-                            className={`mt-3 flex flex-col items-start gap-2 transition-all duration-500 ${metaFadeOut ? 'opacity-0 translate-y-2' : 'opacity-100'} bg-blue-50 border border-blue-200 rounded-lg shadow-md p-4 w-full`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <FaSpinner className="animate-spin text-blue-500 text-lg" />
-                              <span className="text-blue-900 font-medium">
-                            {lang === 'de'
-                                  ? `Die Frage wird intern ausgewertet. Bitte warten Sie, bevor Sie diese Seite verlassen. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`
-                                  : `The question is being processed internally. Please wait before leaving this page. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`}
-                              </span>
-                            </div>
-                            <div className="w-full bg-blue-100 rounded h-2 mt-1">
-                              <div
-                                className="bg-blue-500 h-2 rounded transition-all duration-200"
-                                style={{ width: `${Math.min((metaWaitSeconds / 5) * 100, 100)}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                    <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
-                    )}
-                    <div className={`text-xs mt-3 opacity-70 ${
-                      message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
-                    }`}>
-                      {new Date(message.created_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-                </div>
+                  message={message}
+                  index={index}
+                  showMetaDisclaimer={showMetaDisclaimer}
+                  metaFadeOut={metaFadeOut}
+                  metaWaitSeconds={metaWaitSeconds}
+                  lang={lang}
+                />
               ))}
               
               {isLoading && (

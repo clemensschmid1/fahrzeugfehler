@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import ReactMarkdown from 'react-markdown';
@@ -81,7 +81,7 @@ type KnowledgeClientProps = {
   user: User | null; // User data from server
 };
 
-function MarkdownRenderer({ content }: { content: string }) {
+const MarkdownRenderer = memo(({ content }: { content: string }) => {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath]}
@@ -144,7 +144,9 @@ function MarkdownRenderer({ content }: { content: string }) {
       {processMarkdownForLatex(content)}
     </ReactMarkdown>
   );
-}
+});
+
+MarkdownRenderer.displayName = 'MarkdownRenderer';
 
 export default function KnowledgeClient({ question, followUpQuestions, relatedQuestions, initialComments, lang, user }: KnowledgeClientProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments || []);

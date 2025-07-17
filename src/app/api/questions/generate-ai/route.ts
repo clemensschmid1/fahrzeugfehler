@@ -1,22 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'edge';
-
-// Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-// Function to create a hash for fast duplicate checking using Web Crypto API
-async function createQuestionHash(question: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(question.toLowerCase().trim());
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 export async function POST(req: Request) {
   try {
@@ -73,39 +57,13 @@ export async function POST(req: Request) {
       .map((line: string) => line.trim())
       .filter((line: string) => line.length > 0);
     
-    // Check for duplicates in the database
-    const questionHashes = await Promise.all(lines.map(createQuestionHash));
-    const { data: existingQuestions, error: dbError } = await supabase
-      .from('generated_questions')
-      .select('question_text, question_hash')
-      .in('question_hash', questionHashes);
-    
-    if (dbError) {
-      console.error('Database error checking duplicates:', dbError);
-    }
-    
-    // Find duplicates
-    const existingHashes = new Set(existingQuestions?.map(q => q.question_hash) || []);
-    const duplicates = lines.filter((_: string, index: number) => existingHashes.has(questionHashes[index]));
-    const unique = lines.filter((_: string, index: number) => !existingHashes.has(questionHashes[index]));
-    
-    console.log('=== Duplicate Check Results ===');
+    console.log('=== Generation Results ===');
     console.log(`Total questions generated: ${lines.length}`);
-    console.log(`New unique questions: ${unique.length}`);
-    console.log(`Duplicate questions found: ${duplicates.length}`);
-    if (duplicates.length > 0) {
-      console.log('Duplicate questions:');
-      duplicates.forEach((q: string, i: number) => console.log(`${i + 1}. ${q}`));
-    }
-    console.log('=== End Duplicate Check ===');
+    console.log('=== End Generation Results ===');
     
-    // Return questions with duplicate information
+    // Return questions directly without database operations
     const responseData = {
       questions: lines.join('\n'),
-      totalGenerated: lines.length,
-      uniqueCount: unique.length,
-      duplicateCount: duplicates.length,
-      duplicates: duplicates,
     };
     
     return new NextResponse(JSON.stringify(responseData), {

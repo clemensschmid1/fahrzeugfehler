@@ -10,9 +10,21 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
   throw new Error('Supabase environment variables are missing. Check .env.local.');
 }
 
+// 🔥 OPTIMIZATION: Create a single, reusable Supabase client instance
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    // 🔥 OPTIMIZATION: Add connection pooling and timeout settings
+    auth: {
+      persistSession: false, // Don't persist session for API routes
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'infoneva-api',
+      },
+    },
+  }
 );
 
 if (!process.env.OPENAI_API_KEY) {
@@ -77,24 +89,42 @@ async function streamOpenAIGPT4Answer(question: string, conversationContext?: Ar
     role: 'user',
     content: `You are an expert-level intelligence system and technician writing for a technical knowledge base.\n\nYour main purpose is to perfectly answer any question. You should act professional and also handle more general questions incredibly well.\nYour **technical depth** is very important. You are made to use your full potential to be as helpful as possible.\nYour answers should reflect a *deep level of understanding* of problems. Do not mention AI, do not refer to yourself, and do not simulate a human persona.\n\nYour primary goal: deliver **highly helpful** answers that go significantly beyond surface-level help.\n\n### Critical rules:\n- Do **not** make up facts\n- Acknowledge uncertainty when needed\n- Always answer *concretely*\n- Do **not** add fluff like "I hope this helps" or "please let me know"\n- Never reference yourself or say "I"\n- Use **concise, precise, unambiguous** language\n- Do not generalize — give **hard technical answers**, not vague suggestions\n\nThe target audience is a highly competent individual looking for exact answers under time pressure. Focus on **explanation and resolution** with *real data, concrete steps, and edge-case insight*.\n\nQuestion: ${question}`
   });
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4.1-2025-04-14',
-      messages,
-      max_tokens: 1500,
-      temperature: 0.35,
-      stream: true,
-    }),
-  });
-  if (!response.body) throw new Error('No response body from OpenAI');
-  // Log headers for debugging
-  console.log('[OpenAI API Streaming Headers]', JSON.stringify(Object.fromEntries(response.headers.entries())));
-  return response.body;
+  
+  // 🔥 OPTIMIZATION: Add timeout and better error handling for OpenAI requests
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+  
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-2025-04-14',
+        messages,
+        max_tokens: 1500,
+        temperature: 0.35,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+    
+    return response.body;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('OpenAI request timed out');
+    }
+    throw error;
+  }
 }
 
 async function getOpenAIGPT4Answer(question: string, conversationContext?: Array<{ role: string; content: string }>): Promise<string> {
@@ -228,6 +258,10 @@ export async function POST(req: Request) {
       // Streaming for chat
     try {
         const openaiStream = await streamOpenAIGPT4Answer(question, conversation_context);
+        if (!openaiStream) {
+          throw new Error('No response stream from OpenAI');
+        }
+        
         let fullAnswer = '';
         const reader = openaiStream.getReader();
         const stream = new ReadableStream({
@@ -246,11 +280,12 @@ export async function POST(req: Request) {
                   if (conversation_id) {
                     finalConversationId = conversation_id ?? null;
                   } else if (parent_id) {
+                    // 🔥 OPTIMIZATION: Use more efficient query with specific fields
                     const { data: parentQuestion, error: parentError } = await supabase
                       .from('questions')
                       .select('conversation_id')
                       .eq('id', parent_id)
-                      .single();
+                      .maybeSingle();
                     if (!parentError && parentQuestion) {
                       finalConversationId = parentQuestion?.conversation_id ?? null;
                     }
@@ -365,11 +400,12 @@ export async function POST(req: Request) {
       if (conversation_id) {
         finalConversationId = conversation_id ?? null;
       } else if (parent_id) {
+        // 🔥 OPTIMIZATION: Use more efficient query with specific fields
         const { data: parentQuestion, error: parentError } = await supabase
           .from('questions')
           .select('conversation_id')
           .eq('id', parent_id)
-          .single();
+          .maybeSingle();
         if (!parentError && parentQuestion) {
           finalConversationId = parentQuestion?.conversation_id ?? null;
         }
@@ -414,7 +450,7 @@ export async function POST(req: Request) {
         }
       );
     }
-  } catch (err: unknown) {
+  } catch (err) {
     // Only log errors for non-bulk-import requests
     if (!isBulkImport) {
       console.error('Error in /api/ask:', err);

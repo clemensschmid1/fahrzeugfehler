@@ -23,17 +23,17 @@ export default function QuestionGenerationPage() {
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState("");
   const [modelUsed, setModelUsed] = useState<string>("gpt-4o");
-  const [dbDuplicates, setDbDuplicates] = useState<string[]>([]);
-  const [uniqueCount, setUniqueCount] = useState(0);
-  const [totalGenerated, setTotalGenerated] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // New: Store all generated answers with their prompts
+  const [allAnswers, setAllAnswers] = useState<{ prompt: string; questions: string }[]>([]);
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setQuestions("");
-    setDbDuplicates([]);
     setModelUsed(model);
     try {
       const body: { prompt: string; language: string; model: string; count?: number } = { prompt: topic ? `${topic}: ${prompt}` : prompt, language, model };
@@ -44,12 +44,11 @@ export default function QuestionGenerationPage() {
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text());
-      const data: { questions: string; duplicates: string[]; uniqueCount: number; totalGenerated: number } = await res.json();
+      const data: { questions: string } = await res.json();
       setQuestions(data.questions);
-      setDbDuplicates(data.duplicates || []);
-      setUniqueCount(data.uniqueCount || 0);
-      setTotalGenerated(data.totalGenerated || 0);
       setModelUsed(res.headers.get('x-ai-model-used') || model);
+      // New: Save this answer to allAnswers
+      setAllAnswers(prev => [...prev, { prompt: topic ? `${topic}: ${prompt}` : prompt, questions: data.questions }]);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || "Unknown error");
@@ -61,37 +60,144 @@ export default function QuestionGenerationPage() {
     }
   }
 
+  // New: Remove an answer from allAnswers
+  function handleRemoveAnswer(idx: number) {
+    setAllAnswers(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  // New: Clear all answers
+  function handleClearAllAnswers() {
+    setAllAnswers([]);
+  }
+
+  // New: Download all answers as one txt file
+  function handleDownloadAllAnswers() {
+    if (allAnswers.length === 0) {
+      alert('No generated answers to download.');
+      return;
+    }
+    // Collect all questions, split by line, deduplicate, trim
+    const allQuestions = allAnswers
+      .flatMap(ans => parseTxtFile(ans.questions))
+      .map(q => q.trim())
+      .filter(q => q.length > 0);
+    const uniqueQuestions = Array.from(new Set(allQuestions));
+    const content = uniqueQuestions.join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `all_generated_questions_${new Date().toISOString().split('T')[0]}.txt`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+
   async function handleExportTxt() {
-    // Save questions to database before exporting
-    const lines = questions.split("\n").map(q => q.trim()).filter(q => q.length > 0);
-    if (lines.length > 0) {
-      try {
-        const res = await fetch("/api/questions/save-generated", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            questions: lines,
-            language,
-            prompt: topic ? `${topic}: ${prompt}` : prompt,
-            ai_model: modelUsed,
-            export_filename: `questions_${new Date().toISOString().split('T')[0]}.txt`
-          }),
-        });
-        if (!res.ok) {
-          console.warn("Failed to save questions to database:", await res.text());
-        }
-      } catch (err) {
-        console.warn("Error saving to database:", err);
-      }
+    // Prevent multiple simultaneous downloads
+    if (isDownloading) {
+      console.log('Download already in progress, skipping...');
+      return;
     }
     
-    const blob = new Blob([questions], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "questions.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+    console.log('Starting download process...');
+    setIsDownloading(true);
+    
+    try {
+      // Ensure we have questions to export
+      if (!questions || questions.trim().length === 0) {
+        alert('No questions to export. Please generate questions first.');
+        setIsDownloading(false);
+        return;
+      }
+
+      console.log('Creating download with data URL method...');
+      
+      // Create a data URL instead of blob URL (more reliable for multiple downloads)
+      const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(questions);
+      
+      // Create download link
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `questions_${new Date().toISOString().split('T')[0]}.txt`;
+      a.style.display = 'none';
+      
+      // Add to DOM, click, and remove immediately
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      console.log('Data URL download completed');
+      
+      // Reset state after a short delay
+      setTimeout(() => {
+        setIsDownloading(false);
+        console.log('Download state reset');
+      }, 300);
+      
+    } catch (error) {
+      console.error('Data URL download failed:', error);
+      setIsDownloading(false);
+      
+      // Fallback: try blob method
+      try {
+        console.log('Trying blob fallback method...');
+        const blob = new Blob([questions], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `questions_${new Date().toISOString().split('T')[0]}.txt`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        setTimeout(() => {
+          setIsDownloading(false);
+        }, 300);
+        
+      } catch (blobError) {
+        console.error('Blob fallback also failed:', blobError);
+        
+        // Final fallback: new window
+        try {
+          const newWindow = window.open('', '_blank');
+          if (newWindow) {
+            newWindow.document.write(`
+              <html>
+                <head><title>Questions Export</title></head>
+                <body>
+                  <pre style="white-space: pre-wrap; font-family: monospace;">${questions}</pre>
+                  <script>
+                    const content = document.querySelector('pre').textContent;
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'questions_${new Date().toISOString().split('T')[0]}.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  </script>
+                </body>
+              </html>
+            `);
+            newWindow.document.close();
+          } else {
+            alert('Download failed. Please copy the questions manually from the text area above.');
+          }
+        } catch (windowError) {
+          console.error('Window fallback failed:', windowError);
+          alert('Download failed. Please copy the questions manually from the text area above.');
+        }
+        
+        setIsDownloading(false);
+      }
+    }
   }
 
   function handleMergeFiles(event: React.ChangeEvent<HTMLInputElement>) {
@@ -121,14 +227,36 @@ export default function QuestionGenerationPage() {
   }
 
   function handleDownloadMerged() {
-    if (!mergedQuestions.length) return;
-    const blob = new Blob([mergedQuestions.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'merged_questions.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+    if (!mergedQuestions.length) {
+      alert('No merged questions to download. Please upload and merge files first.');
+      return;
+    }
+    
+    try {
+      const content = mergedQuestions.join('\n');
+      const blob = new Blob([content], { 
+        type: 'text/plain;charset=utf-8' 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `merged_questions_${new Date().toISOString().split('T')[0]}.txt`;
+      a.style.display = 'none';
+      
+      // Add to DOM, click, and cleanup
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup after a short delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+    } catch (error) {
+      console.error('Merged download failed:', error);
+      alert('Download failed. Please copy the merged questions manually.');
+    }
   }
 
   return (
@@ -230,25 +358,6 @@ export default function QuestionGenerationPage() {
           </button>
         </form>
         {error && <div className="text-red-600 mb-4">{error}</div>}
-        {totalGenerated > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-            <div className="text-sm text-blue-800">
-              <strong>Generation Summary:</strong> {totalGenerated} questions generated, {uniqueCount} unique, {dbDuplicates.length} duplicates found in database.
-            </div>
-          </div>
-        )}
-        {dbDuplicates.length > 0 && (
-          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
-            <div className="text-sm text-orange-800">
-              <strong>Database Duplicates Found:</strong> {dbDuplicates.length} questions already exist in the database.
-            </div>
-            <div className="mt-2 text-xs text-orange-700 max-h-20 overflow-y-auto">
-              {dbDuplicates.map((q, i) => (
-                <div key={i}>• {q}</div>
-              ))}
-            </div>
-          </div>
-        )}
         <div className="mb-4">
           <label className="block font-medium mb-1">Generated Questions (one per line, editable)</label>
           <textarea
@@ -262,13 +371,52 @@ export default function QuestionGenerationPage() {
         <div className="flex gap-4 mb-4 flex-wrap">
           <button
             type="button"
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleExportTxt}
-            disabled={!questions}
+            disabled={!questions || isDownloading}
           >
-            Export as .txt
+            {isDownloading ? "Downloading..." : "Export as .txt"}
           </button>
         </div>
+        {/* New: List of all generated answers */}
+        {allAnswers.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-2">All Generated Answers</h2>
+            <button
+              type="button"
+              className="mb-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mr-2"
+              onClick={handleDownloadAllAnswers}
+            >
+              Download All as .txt
+            </button>
+            <button
+              type="button"
+              className="mb-2 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+              onClick={handleClearAllAnswers}
+            >
+              Clear All
+            </button>
+            <div className="space-y-4 mt-4">
+              {allAnswers.map((ans, idx) => (
+                <div key={idx} className="border border-gray-200 rounded p-3 bg-gray-50">
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="font-semibold text-sm text-gray-700">Prompt:</div>
+                    <button
+                      type="button"
+                      className="text-xs text-red-600 hover:underline"
+                      onClick={() => handleRemoveAnswer(idx)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-800 mb-2 whitespace-pre-line">{ans.prompt}</div>
+                  <div className="font-semibold text-sm text-gray-700 mb-1">Questions:</div>
+                  <pre className="bg-white border border-gray-100 rounded p-2 text-xs max-h-32 overflow-auto">{ans.questions}</pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </InternalAuth>
   );
