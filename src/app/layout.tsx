@@ -73,8 +73,8 @@ export default async function RootLayout({
   return (
     <html lang={lang} className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.js"></Script>
-        <Script id="plausible-inline">
+        <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.js" strategy="lazyOnload"></Script>
+        <Script id="plausible-inline" strategy="lazyOnload">
           {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
         </Script>
         <Script
@@ -82,7 +82,7 @@ export default async function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9438397722476631"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
         <meta name="msvalidate.01" content="04FC17AA84330E866FDBF4F1C78EFD59" />
       </head>

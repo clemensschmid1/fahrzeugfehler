@@ -42,6 +42,7 @@ type Comment = {
 };
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 
 // Helper to return 410 Gone
 function gone(): never {

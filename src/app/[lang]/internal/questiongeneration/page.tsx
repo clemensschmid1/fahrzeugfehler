@@ -1,12 +1,19 @@
 "use client";
 import InternalAuth from '@/components/InternalAuth';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
 function parseTxtFile(content: string): string[] {
   return content
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(line => line.length > 0);
+}
+
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 export default function QuestionGenerationPage() {
@@ -19,66 +26,88 @@ export default function QuestionGenerationPage() {
   const [language, setLanguage] = useState("en");
   const [count, setCount] = useState<number | undefined>(undefined);
   const [model, setModel] = useState("gpt-4.1-2025-04-14");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [questions, setQuestions] = useState("");
-  const [modelUsed, setModelUsed] = useState<string>("gpt-4o");
-  const [isDownloading, setIsDownloading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // New: Store all generated answers with their prompts
-  const [allAnswers, setAllAnswers] = useState<{ prompt: string; questions: string }[]>([]);
+  // New: Store all generations, each with its own status
+  const [generations, setGenerations] = useState<{
+    id: string;
+    prompt: string;
+    topic: string;
+    language: string;
+    count?: number;
+    model: string;
+    modelUsed?: string;
+    questions: string;
+    status: 'loading' | 'done' | 'error';
+    error?: string;
+  }[]>([]);
 
+  // Handle new generation submission
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setQuestions("");
-    setModelUsed(model);
-    try {
-      const body: { prompt: string; language: string; model: string; count?: number } = { prompt: topic ? `${topic}: ${prompt}` : prompt, language, model };
-      if (count !== undefined) body.count = count;
-      const res = await fetch("/api/questions/generate-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data: { questions: string } = await res.json();
-      setQuestions(data.questions);
-      setModelUsed(res.headers.get('x-ai-model-used') || model);
-      // New: Save this answer to allAnswers
-      setAllAnswers(prev => [...prev, { prompt: topic ? `${topic}: ${prompt}` : prompt, questions: data.questions }]);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || "Unknown error");
-      } else {
-        setError("An unexpected error occurred.");
+    const id = uuidv4();
+    const fullPrompt = topic ? `${topic}: ${prompt}` : prompt;
+    // Add new generation with status 'loading'
+    setGenerations(prev => [
+      ...prev,
+      {
+        id,
+        prompt: fullPrompt,
+        topic,
+        language,
+        count,
+        model,
+        questions: '',
+        status: 'loading',
       }
-    } finally {
-      setLoading(false);
-    }
+    ]);
+    // Start fetch in background
+    (async () => {
+      try {
+        const body: { prompt: string; language: string; model: string; count?: number } = { prompt: fullPrompt, language, model };
+        if (count !== undefined) body.count = count;
+        const res = await fetch("/api/questions/generate-ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data: { questions: string } = await res.json();
+        const usedModel = res.headers.get('x-ai-model-used') || model;
+        setGenerations(prev => prev.map(g =>
+          g.id === id
+            ? { ...g, questions: data.questions, status: 'done', modelUsed: usedModel }
+            : g
+        ));
+      } catch (err: unknown) {
+        setGenerations(prev => prev.map(g =>
+          g.id === id
+            ? { ...g, status: 'error', error: err instanceof Error ? err.message : 'Unknown error' }
+            : g
+        ));
+      }
+    })();
   }
 
-  // New: Remove an answer from allAnswers
-  function handleRemoveAnswer(idx: number) {
-    setAllAnswers(prev => prev.filter((_, i) => i !== idx));
+  // Remove a generation
+  function handleRemoveGeneration(id: string) {
+    setGenerations(prev => prev.filter(g => g.id !== id));
   }
 
-  // New: Clear all answers
-  function handleClearAllAnswers() {
-    setAllAnswers([]);
+  // Clear all generations
+  function handleClearAllGenerations() {
+    setGenerations([]);
   }
 
-  // New: Download all answers as one txt file
+  // Download all questions from all generations
   function handleDownloadAllAnswers() {
-    if (allAnswers.length === 0) {
+    if (generations.length === 0) {
       alert('No generated answers to download.');
       return;
     }
     // Collect all questions, split by line, deduplicate, trim
-    const allQuestions = allAnswers
-      .flatMap(ans => parseTxtFile(ans.questions))
+    const allQuestions = generations
+      .filter(g => g.status === 'done')
+      .flatMap(g => parseTxtFile(g.questions))
       .map(q => q.trim())
       .filter(q => q.length > 0);
     const uniqueQuestions = Array.from(new Set(allQuestions));
@@ -95,109 +124,6 @@ export default function QuestionGenerationPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
-  }
-
-  async function handleExportTxt() {
-    // Prevent multiple simultaneous downloads
-    if (isDownloading) {
-      console.log('Download already in progress, skipping...');
-      return;
-    }
-    
-    console.log('Starting download process...');
-    setIsDownloading(true);
-    
-    try {
-      // Ensure we have questions to export
-      if (!questions || questions.trim().length === 0) {
-        alert('No questions to export. Please generate questions first.');
-        setIsDownloading(false);
-        return;
-      }
-
-      console.log('Creating download with data URL method...');
-      
-      // Create a data URL instead of blob URL (more reliable for multiple downloads)
-      const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(questions);
-      
-      // Create download link
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `questions_${new Date().toISOString().split('T')[0]}.txt`;
-      a.style.display = 'none';
-      
-      // Add to DOM, click, and remove immediately
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      console.log('Data URL download completed');
-      
-      // Reset state after a short delay
-      setTimeout(() => {
-        setIsDownloading(false);
-        console.log('Download state reset');
-      }, 300);
-      
-    } catch (error) {
-      console.error('Data URL download failed:', error);
-      setIsDownloading(false);
-      
-      // Fallback: try blob method
-      try {
-        console.log('Trying blob fallback method...');
-        const blob = new Blob([questions], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `questions_${new Date().toISOString().split('T')[0]}.txt`;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        setTimeout(() => {
-          setIsDownloading(false);
-        }, 300);
-        
-      } catch (blobError) {
-        console.error('Blob fallback also failed:', blobError);
-        
-        // Final fallback: new window
-        try {
-          const newWindow = window.open('', '_blank');
-          if (newWindow) {
-            newWindow.document.write(`
-              <html>
-                <head><title>Questions Export</title></head>
-                <body>
-                  <pre style="white-space: pre-wrap; font-family: monospace;">${questions}</pre>
-                  <script>
-                    const content = document.querySelector('pre').textContent;
-                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'questions_${new Date().toISOString().split('T')[0]}.txt';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  </script>
-                </body>
-              </html>
-            `);
-            newWindow.document.close();
-          } else {
-            alert('Download failed. Please copy the questions manually from the text area above.');
-          }
-        } catch (windowError) {
-          console.error('Window fallback failed:', windowError);
-          alert('Download failed. Please copy the questions manually from the text area above.');
-        }
-        
-        setIsDownloading(false);
-      }
-    }
   }
 
   function handleMergeFiles(event: React.ChangeEvent<HTMLInputElement>) {
@@ -258,6 +184,8 @@ export default function QuestionGenerationPage() {
       alert('Download failed. Please copy the merged questions manually.');
     }
   }
+
+  const lastGen = generations.length > 0 ? generations[generations.length - 1] : undefined;
 
   return (
     <InternalAuth>
@@ -346,40 +274,19 @@ export default function QuestionGenerationPage() {
               </select>
             </div>
             <div className="flex items-end">
-              <span className="text-xs text-gray-500 ml-2">Current model: <span className="font-semibold text-indigo-700">{modelUsed}</span></span>
+              <span className="text-xs text-gray-500 ml-2">Current model: <span className="font-semibold text-indigo-700">{lastGen?.modelUsed || model}</span></span>
             </div>
           </div>
           <button
             type="submit"
             className="bg-indigo-600 text-white px-6 py-2 rounded font-semibold hover:bg-indigo-700 disabled:opacity-50"
-            disabled={loading || !prompt}
+            disabled={!prompt}
           >
-            {loading ? "Generating..." : "Generate Questions"}
+            Generate Questions
           </button>
         </form>
-        {error && <div className="text-red-600 mb-4">{error}</div>}
-        <div className="mb-4">
-          <label className="block font-medium mb-1">Generated Questions (one per line, editable)</label>
-          <textarea
-            ref={textareaRef}
-            className="w-full border rounded px-3 py-2 font-mono min-h-[400px] text-sm leading-relaxed"
-            value={questions}
-            onChange={e => setQuestions(e.target.value)}
-            placeholder="Questions will appear here..."
-          />
-        </div>
-        <div className="flex gap-4 mb-4 flex-wrap">
-          <button
-            type="button"
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleExportTxt}
-            disabled={!questions || isDownloading}
-          >
-            {isDownloading ? "Downloading..." : "Export as .txt"}
-          </button>
-        </div>
-        {/* New: List of all generated answers */}
-        {allAnswers.length > 0 && (
+        {/* New: List of all generations */}
+        {generations.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-2">All Generated Answers</h2>
             <button
@@ -392,26 +299,35 @@ export default function QuestionGenerationPage() {
             <button
               type="button"
               className="mb-2 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-              onClick={handleClearAllAnswers}
+              onClick={handleClearAllGenerations}
             >
               Clear All
             </button>
             <div className="space-y-4 mt-4">
-              {allAnswers.map((ans, idx) => (
-                <div key={idx} className="border border-gray-200 rounded p-3 bg-gray-50">
+              {generations.map(g => (
+                <div key={g.id} className="border border-gray-200 rounded p-3 bg-gray-50">
                   <div className="flex justify-between items-center mb-1">
                     <div className="font-semibold text-sm text-gray-700">Prompt:</div>
                     <button
                       type="button"
                       className="text-xs text-red-600 hover:underline"
-                      onClick={() => handleRemoveAnswer(idx)}
+                      onClick={() => handleRemoveGeneration(g.id)}
                     >
                       Remove
                     </button>
                   </div>
-                  <div className="text-xs text-gray-800 mb-2 whitespace-pre-line">{ans.prompt}</div>
+                  <div className="text-xs text-gray-800 mb-2 whitespace-pre-line">{g.prompt}</div>
                   <div className="font-semibold text-sm text-gray-700 mb-1">Questions:</div>
-                  <pre className="bg-white border border-gray-100 rounded p-2 text-xs max-h-32 overflow-auto">{ans.questions}</pre>
+                  {g.status === 'loading' && (
+                    <div className="text-blue-600 text-xs mb-2">Generating...</div>
+                  )}
+                  {g.status === 'error' && (
+                    <div className="text-red-600 text-xs mb-2">Error: {g.error}</div>
+                  )}
+                  <pre className="bg-white border border-gray-100 rounded p-2 text-xs max-h-32 overflow-auto">{g.questions}</pre>
+                  {g.modelUsed && (
+                    <div className="text-xs text-gray-500 mt-1">Model used: {g.modelUsed}</div>
+                  )}
                 </div>
               ))}
             </div>

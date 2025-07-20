@@ -30,6 +30,8 @@ interface Question {
   _similarity?: number;
 }
 
+export const revalidate = 600;
+
 export const dynamic = 'force-dynamic';
 
 function parseIntOrDefault(val: string | null, def: number) {
