@@ -21,6 +21,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/:path*.xml',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/xml',
+          },
+        ],
+      },
+      {
         source: '/:lang/knowledge/:slug*',
         headers: [
           {

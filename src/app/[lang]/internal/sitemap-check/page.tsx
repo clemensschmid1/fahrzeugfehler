@@ -35,13 +35,26 @@ export default function SitemapCheckPage() {
     async function checkSitemap() {
       setResult(r => ({ ...r, loading: true, error: null }));
       try {
-        // Fetch sitemap XML
-        const sitemapRes = await fetch('/sitemap-0.xml');
-        if (!sitemapRes.ok) throw new Error('Failed to fetch sitemap');
-        const xmlText = await sitemapRes.text();
+        // Fetch sitemap index XML
+        const indexRes = await fetch('/sitemap.xml');
+        if (!indexRes.ok) throw new Error('Failed to fetch sitemap index');
+        const indexText = await indexRes.text();
         const parser = new window.DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-        const locs = Array.from(xmlDoc.getElementsByTagName('loc')).map(el => el.textContent || '');
+        const indexDoc = parser.parseFromString(indexText, 'application/xml');
+        const sitemapLocs = Array.from(indexDoc.getElementsByTagName('loc')).map(el => el.textContent || '');
+        // Fetch all child sitemaps and aggregate URLs
+        const locs: string[] = [];
+        for (const sitemapUrl of sitemapLocs) {
+          try {
+            const res = await fetch(sitemapUrl.replace('https://infoneva.com', ''));
+            if (!res.ok) continue;
+            const xmlText = await res.text();
+            const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+            locs.push(...Array.from(xmlDoc.getElementsByTagName('loc')).map(el => el.textContent || ''));
+          } catch {
+            // skip on error
+          }
+        }
         // Stats
         const totalUrls = locs.length;
         const enKnowledge = locs.filter(url => url.startsWith('/en/knowledge/') || url.startsWith('https://infoneva.com/en/knowledge/')).length;
@@ -54,17 +67,14 @@ export default function SitemapCheckPage() {
             .map(getSlugFromUrl)
             .filter((slug): slug is string => Boolean(slug))
         );
-
         // Fetch live slugs from API
         const liveRes = await fetch('/api/internal/live-slugs');
         if (!liveRes.ok) throw new Error('Failed to fetch live slugs');
         const { slugs } = (await liveRes.json()) as { slugs: string[] };
         const liveSlugs = new Set(slugs);
-
         // Compare
         const missingInSitemap = Array.from(liveSlugs).filter(slug => !sitemapSlugs.has(slug));
         const extraInSitemap = Array.from(sitemapSlugs).filter(slug => !liveSlugs.has(slug));
-
         setResult({ missingInSitemap, extraInSitemap, loading: false, error: null });
       } catch (err: unknown) {
         let errorMsg = 'Unknown error';
