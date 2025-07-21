@@ -73,6 +73,21 @@ export default async function RootLayout({
   return (
     <html lang={lang} className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
+        {/* Google tag (gtag.js) */}
+        <Script
+          id="google-gtag-src"
+          src="https://www.googletagmanager.com/gtag/js?id=G-HQBPXZ8LHX"
+          strategy="afterInteractive"
+          async
+        />
+        <Script id="google-gtag-inline" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-HQBPXZ8LHX');
+          `}
+        </Script>
         <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.js" strategy="lazyOnload"></Script>
         <Script id="plausible-inline" strategy="lazyOnload">
           {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
