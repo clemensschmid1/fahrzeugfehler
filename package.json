@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "sitemap:generate": "tsx scripts/generateSitemaps.ts",
     "sitemap:split": "tsx scripts/splitSitemapIndexes.ts",
     "sitemap:safeguard": "echo '🚫 next-sitemap is disabled to prevent conflicts with our custom sitemap structure' && exit 0",
-    "postbuild": "npm run sitemap:split",
+    "postbuild": "npm run sitemap:generate && npm run sitemap:split",
     "start": "next start",
     "lint": "next lint",
     "bulk-indexnow": "npx tsx scripts/bulkSubmitToIndexNow.ts"
