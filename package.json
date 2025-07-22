@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "sitemap:split": "tsx scripts/splitSitemapIndexes.ts",
+    "sitemap:safeguard": "echo '🚫 next-sitemap is disabled to prevent conflicts with our custom sitemap structure' && exit 0",
     "postbuild": "npm run sitemap:split",
     "start": "next start",
     "lint": "next lint",
