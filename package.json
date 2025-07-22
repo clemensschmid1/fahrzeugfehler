@@ -5,9 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "sitemap:generate": "next-sitemap",
     "sitemap:split": "tsx scripts/splitSitemapIndexes.ts",
-    "sitemap:all": "npm run sitemap:generate && npm run sitemap:split",
     "postbuild": "npm run sitemap:split",
     "start": "next start",
     "lint": "next lint",
