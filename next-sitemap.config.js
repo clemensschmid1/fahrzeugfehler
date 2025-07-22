@@ -13,7 +13,8 @@ module.exports = {
   generateRobotsTxt: true,
   changefreq: 'daily',
   priority: 0.7,
-  sitemapSize: 1000,
+  sitemapSize: 50000, // 🔥 Prevent sitemap index generation - we handle this manually
+  generateIndexSitemap: false, // 🔥 Disable automatic sitemap index generation
   
   // Exclude internal routes, auth pages, and API endpoints
   exclude: [

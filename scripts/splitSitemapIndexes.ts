@@ -4,7 +4,6 @@ import path from 'path';
 
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const SITEMAP_PATTERN = /^sitemap-(\d+)\.xml$/;
-const INDEXES_PER_FILE = 10;
 
 function getSitemapFiles(): string[] {
   return fs.readdirSync(PUBLIC_DIR)
@@ -16,12 +15,12 @@ function getSitemapFiles(): string[] {
     });
 }
 
-function makeIndexXml(sitemapFiles: string[]): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapFiles.map(f => `  <sitemap><loc>https://infoneva.com/${f}</loc></sitemap>`).join('\n')}\n</sitemapindex>\n`;
-}
-
-function makeRootIndexXml(indexFiles: string[]): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${indexFiles.map(f => `  <sitemap><loc>https://infoneva.com/${f}</loc></sitemap>`).join('\n')}\n</sitemapindex>\n`;
+function makeRootSitemapIndex(sitemapFiles: string[]): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapFiles.map(f => `  <sitemap><loc>https://infoneva.com/${f}</loc></sitemap>`).join('\n')}
+</sitemapindex>
+`;
 }
 
 function main() {
@@ -31,21 +30,26 @@ function main() {
     process.exit(1);
   }
 
-  // Group into sets of 10
-  const indexFiles: string[] = [];
-  for (let i = 0; i < sitemapFiles.length; i += INDEXES_PER_FILE) {
-    const group = sitemapFiles.slice(i, i + INDEXES_PER_FILE);
-    const indexName = `sitemap-index-${Math.floor(i / INDEXES_PER_FILE)}.xml`;
-    const indexXml = makeIndexXml(group);
-    fs.writeFileSync(path.join(PUBLIC_DIR, indexName), indexXml, { encoding: 'utf8' });
-    indexFiles.push(indexName);
-    console.log(`Wrote ${indexName} for sitemaps: ${group.join(', ')}`);
-  }
-
-  // Write root sitemap.xml referencing all index files
-  const rootXml = makeRootIndexXml(indexFiles);
+  // 🔥 SEO BEST PRACTICE: Create single sitemap.xml pointing to all child sitemaps
+  // This is what Google and Bing prefer - no nested indexes
+  const rootXml = makeRootSitemapIndex(sitemapFiles);
   fs.writeFileSync(path.join(PUBLIC_DIR, 'sitemap.xml'), rootXml, { encoding: 'utf8' });
-  console.log(`Wrote root sitemap.xml referencing: ${indexFiles.join(', ')}`);
+  
+  console.log(`✅ Created sitemap.xml with ${sitemapFiles.length} child sitemaps:`);
+  sitemapFiles.forEach(file => console.log(`   - ${file}`));
+  
+  // Clean up old index files if they exist
+  const oldIndexFiles = ['sitemap-index-0.xml', 'sitemap-index-1.xml'];
+  oldIndexFiles.forEach(file => {
+    const filePath = path.join(PUBLIC_DIR, file);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`🗑️  Removed old ${file}`);
+    }
+  });
+  
+  console.log('\n🎯 SEO OPTIMIZED: Single sitemap index pointing to all child sitemaps');
+  console.log('📊 Total URLs: ~' + (sitemapFiles.length * 1000) + ' (1000 per sitemap)');
 }
 
 main(); 
