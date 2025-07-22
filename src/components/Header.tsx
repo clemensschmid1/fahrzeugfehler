@@ -15,8 +15,6 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Remove all auto-hide/collapsing logic: header is always visible if rendered
-
   useEffect(() => {
     if (!menuOpen) return;
     function handleClick(e: MouseEvent) {
@@ -49,23 +47,19 @@ export default function Header() {
           Infoneva
         </Link>
         <nav className="flex items-center gap-2">
-          <Link
-            href={`/${lang}/knowledge`}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-all"
-            tabIndex={0}
-          >
-            {t('Knowledge Base', 'Wissensdatenbank')}
-          </Link>
+          {/* Desktop: Only show Chat link */}
           <Link
             href={`/${lang}/chat`}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-all"
+            className="hidden md:block px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-all"
             tabIndex={0}
           >
             {t('Chat', 'Chat')}
           </Link>
+          
+          {/* Mobile: Only show dropdown menu */}
           <button
             aria-label={t('Open menu', 'Menü öffnen')}
-            className="p-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 hover:bg-indigo-50 transition"
+            className="md:hidden p-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 hover:bg-indigo-50 transition"
             onClick={() => setMenuOpen(v => !v)}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
@@ -73,6 +67,8 @@ export default function Header() {
             <span className="sr-only">{t('Open menu', 'Menü öffnen')}</span>
             <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
           </button>
+          
+          {/* Mobile dropdown menu - only show Chat */}
           {menuOpen && (
             <motion.div
               id="mobile-menu"
@@ -83,14 +79,6 @@ export default function Header() {
               transition={{ duration: 0.2 }}
               className="absolute right-4 top-16 mt-2 w-48 rounded-xl shadow-lg bg-white border border-gray-100 z-50 flex flex-col py-2"
             >
-              <Link
-                href={`/${lang}/knowledge`}
-                className="block px-4 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg text-base font-medium transition-colors"
-                tabIndex={0}
-                onClick={() => setMenuOpen(false)}
-              >
-                {t('Knowledge Base', 'Wissensdatenbank')}
-              </Link>
               <Link
                 href={`/${lang}/chat`}
                 className="block px-4 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg text-base font-medium transition-colors"
