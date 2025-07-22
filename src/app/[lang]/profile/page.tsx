@@ -64,7 +64,8 @@ export default function ProfilePage() {
           .from('comments')
           .select('*, question:question_id(slug, question)')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(20); // Limit to 20 most recent comments
 
         if (commentsError) {
           console.error('Error fetching user comments:', commentsError);
@@ -103,7 +104,8 @@ export default function ProfilePage() {
             .from('comments')
             .select('*, question:question_id(slug, question)')
             .eq('user_id', session.user.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(20); // Limit to 20 most recent comments
 
           if (commentsError) {
             console.error('Error refetching user comments on auth change:', commentsError);

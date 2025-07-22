@@ -28,6 +28,8 @@ export default function EmailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'signup_notification' | 'pending' | 'sent'>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 50; // Limit to 50 emails per page
   const params = useParams();
   const lang = params.lang as string;
 
@@ -47,18 +49,29 @@ export default function EmailsPage() {
         query = query.eq('status', 'sent');
       }
 
-      const { data, error } = await query;
+      // Add pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const { data, error } = await query.range(from, to);
 
       if (error) throw error;
-      setEmails(data || []);
+      if (page === 1) {
+        setEmails(data || []);
+      } else {
+        setEmails(prev => [...prev, ...(data || [])]);
+      }
     } catch (error) {
       const err = error as Error;
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, page]);
 
+  useEffect(() => {
+    setPage(1); // Reset to first page when filter changes
+  }, [filter]);
+  
   useEffect(() => {
     fetchEmails();
   }, [fetchEmails]);

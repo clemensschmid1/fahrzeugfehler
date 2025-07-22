@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import InternalAuth from '@/components/InternalAuth';
@@ -22,17 +22,21 @@ export default function CommentsPage() {
   const [slugsMap, setSlugsMap] = useState<{[key: string]: string}>({});
   const [filter, setFilter] = useState<'all' | 'live' | 'binned'>('all');
   const [error, setError] = useState<string | null>(null);
+  const pageSize = 50; // Limit to 50 comments per page
 
-  useEffect(() => {
-    fetchComments();
-  }, []);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('comments')
       .select('*')
       .order('created_at', { ascending: false });
+    
+    if (filter !== 'all') {
+      query = query.eq('status', filter);
+    }
+    
+    // Add pagination
+    const { data, error } = await query.limit(pageSize);
 
     if (error) {
       console.error('Error fetching comments:', error);
@@ -58,7 +62,7 @@ export default function CommentsPage() {
           console.error('Failed to fetch usernames');
         } else {
           const fetchedUsernamesMap = await usernamesResponse.json();
-          setUsernamesMap(fetchedUsernamesMap);
+          setUsernamesMap(prev => ({ ...prev, ...fetchedUsernamesMap }));
         }
       } catch (usernameFetchError) {
         console.error('Error fetching usernames:', usernameFetchError);
@@ -79,13 +83,17 @@ export default function CommentsPage() {
           console.error('Failed to fetch slugs');
         } else {
           const fetchedSlugsMap = await slugsResponse.json();
-          setSlugsMap(fetchedSlugsMap);
+          setSlugsMap(prev => ({ ...prev, ...fetchedSlugsMap }));
         }
-      } catch (slugFetchError) {
-        console.error('Error fetching slugs:', slugFetchError);
+      } catch (slugsFetchError) {
+        console.error('Error fetching slugs:', slugsFetchError);
       }
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
 
   const handleToggleSelect = (commentId: string) => {
     setSelectedComments(prevSelected =>

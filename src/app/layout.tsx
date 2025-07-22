@@ -6,7 +6,9 @@ import Footer from '@/components/Footer';
 import Script from 'next/script';
 import UserSessionProvider from '@/components/UserSessionProvider';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { headers } from 'next/headers';
+import ClientClarityInit from '@/components/ClientClarityInit';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -88,6 +90,16 @@ export default async function RootLayout({
             gtag('config', 'G-HQBPXZ8LHX');
           `}
         </Script>
+        {/* Bing Clarity tracking code */}
+        <Script id="bing-clarity-inline" strategy="afterInteractive">
+          {`
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i+"?ref=bwt";
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "sigphxs9mi");
+          `}
+        </Script>
         <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.js" strategy="lazyOnload"></Script>
         <Script id="plausible-inline" strategy="lazyOnload">
           {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
@@ -109,6 +121,8 @@ export default async function RootLayout({
           <Footer />
         </UserSessionProvider>
         <Analytics />
+        <SpeedInsights />
+        <ClientClarityInit />
       </body>
     </html>
   );

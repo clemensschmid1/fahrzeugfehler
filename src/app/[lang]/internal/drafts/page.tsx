@@ -23,6 +23,8 @@ export default function DraftsPage() {
   const [selectAll, setSelectAll] = useState(false);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'live' | 'bin'>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 50; // Limit to 50 drafts per page
   const params = useParams();
   const lang = params.lang as string;
 
@@ -40,10 +42,19 @@ export default function DraftsPage() {
         query = query.in('status', ['draft', 'live', 'bin']);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Add pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      setDrafts(data || []);
+      if (page === 1) {
+        setDrafts(data || []);
+      } else {
+        setDrafts(prev => [...prev, ...(data || [])]);
+      }
       setSelectedDrafts([]);
       setSelectAll(false);
     } catch (error) {
@@ -52,8 +63,12 @@ export default function DraftsPage() {
     } finally {
       setLoading(false);
     }
-  }, [lang, filterStatus]);
+  }, [lang, filterStatus, page]);
 
+  useEffect(() => {
+    setPage(1); // Reset to first page when filter changes
+  }, [filterStatus]);
+  
   useEffect(() => {
     fetchDrafts();
   }, [fetchDrafts]);

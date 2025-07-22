@@ -49,7 +49,7 @@ export default function SitemapCheckPage() {
             const res = await fetch(sitemapUrl.replace('https://infoneva.com', ''));
             if (!res.ok) continue;
             const xmlText = await res.text();
-            const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+        const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
             locs.push(...Array.from(xmlDoc.getElementsByTagName('loc')).map(el => el.textContent || ''));
           } catch {
             // skip on error
@@ -68,10 +68,13 @@ export default function SitemapCheckPage() {
             .filter((slug): slug is string => Boolean(slug))
         );
         // Fetch live slugs from API
-        const liveRes = await fetch('/api/internal/live-slugs');
+        const liveRes = await fetch('/api/internal/live-slugs?limit=1000'); // Limit to 1000 slugs for checking
         if (!liveRes.ok) throw new Error('Failed to fetch live slugs');
-        const { slugs } = (await liveRes.json()) as { slugs: string[] };
+        const { slugs, total, limit } = (await liveRes.json()) as { slugs: string[], total: number, limit: number };
         const liveSlugs = new Set(slugs);
+        
+        // Add a note about the sample size
+        console.log(`Checking sitemap against ${total} live slugs (sample of ${limit})`);
         // Compare
         const missingInSitemap = Array.from(liveSlugs).filter(slug => !sitemapSlugs.has(slug));
         const extraInSitemap = Array.from(sitemapSlugs).filter(slug => !liveSlugs.has(slug));

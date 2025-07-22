@@ -93,82 +93,87 @@ type FilterOptionsParams = {
 
 // Add helper to get filter options
 async function getFilterOptions({ lang, q, sector, manufacturer, complexity, partType, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag }: FilterOptionsParams) {
-  // Helper to build base query for each filter
-  async function getOptions(column: keyof Question) {
-    let query = supabase
-            .from('questions')
-      .select(`${column}`)
-            .eq('language_path', lang)
-      .eq('is_main', true);
-    if (q) query = query.ilike('header', `%${q}%`);
-    if (column !== 'sector' && sector) query = query.eq('sector', sector);
-    if (column !== 'manufacturer' && manufacturer) query = query.eq('manufacturer', manufacturer);
-    if (column !== 'complexity_level' && complexity) query = query.eq('complexity_level', complexity);
-    if (column !== 'part_type' && partType) query = query.eq('part_type', partType);
-    if (column !== 'voltage' && voltage) query = query.eq('voltage', voltage);
-    if (column !== 'current' && current) query = query.eq('current', current);
-    if (column !== 'power_rating' && power_rating) query = query.eq('power_rating', power_rating);
-    if (column !== 'machine_type' && machine_type) query = query.eq('machine_type', machine_type);
-    if (column !== 'application_area' && application_area) query = query.contains('application_area', [application_area]);
-    if (column !== 'product_category' && product_category) query = query.eq('product_category', product_category);
-    if (column !== 'control_type' && control_type) query = query.eq('control_type', control_type);
-    if (column !== 'industry_tag' && industry_tag) query = query.eq('industry_tag', industry_tag);
-    const { data, error } = await query;
-    if (error) return [];
-    // Special handling for array fields
-    if (column === 'application_area') {
-      const counts: Record<string, number> = {};
-      (data as Record<string, unknown>[] || []).forEach(opt => {
-        const arr = opt[column] as string[] | string | undefined;
-        if (Array.isArray(arr)) {
-          arr.forEach((val: string) => {
-            if (val) counts[val] = (counts[val] || 0) + 1;
+  // 🔥 OPTIMIZATION: Single query with all filter fields
+  let query = supabase
+    .from('questions')
+    .select('sector, manufacturer, complexity_level, part_type, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag')
+    .eq('language_path', lang)
+    .eq('is_main', true)
+    .eq('meta_generated', true);
+  
+  // Apply filters
+  if (q) query = query.ilike('header', `%${q}%`);
+  if (sector) query = query.eq('sector', sector);
+  if (manufacturer) query = query.eq('manufacturer', manufacturer);
+  if (complexity) query = query.eq('complexity_level', complexity);
+  if (partType) query = query.eq('part_type', partType);
+  if (voltage) query = query.eq('voltage', voltage);
+  if (current) query = query.eq('current', current);
+  if (power_rating) query = query.eq('power_rating', power_rating);
+  if (machine_type) query = query.eq('machine_type', machine_type);
+  if (application_area) query = query.contains('application_area', [application_area]);
+  if (product_category) query = query.eq('product_category', product_category);
+  if (control_type) query = query.eq('control_type', control_type);
+  if (industry_tag) query = query.eq('industry_tag', industry_tag);
+  
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error fetching filter options:', error);
+    return { sectors: [], manufacturers: [], complexities: [], partTypes: [], voltages: [], currents: [], power_ratings: [], machine_types: [], application_areas: [], product_categories: [], control_types: [], industry_tags: [] };
+  }
+  
+  // Process the data to extract unique values and counts
+  const counts: Record<string, Record<string, number>> = {
+    sector: {},
+    manufacturer: {},
+    complexity_level: {},
+    part_type: {},
+    voltage: {},
+    current: {},
+    power_rating: {},
+    machine_type: {},
+    application_area: {},
+    product_category: {},
+    control_type: {},
+    industry_tag: {}
+  };
+  
+  (data || []).forEach((row: Record<string, unknown>) => {
+    Object.keys(counts).forEach(field => {
+      const value = row[field];
+      if (value) {
+        if (field === 'application_area' && Array.isArray(value)) {
+          value.forEach((v: string) => {
+            if (v) counts[field][v] = (counts[field][v] || 0) + 1;
           });
-        } else if (typeof arr === 'string' && arr) {
-          counts[arr] = (counts[arr] || 0) + 1;
+        } else if (typeof value === 'string') {
+          counts[field][value] = (counts[field][value] || 0) + 1;
         }
-      });
-      return Object.entries(counts)
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .slice(0, 10)
-        .map(([value, count]) => ({ value, count }));
-        }
-    // Default for non-array fields
-    const counts: Record<string, number> = {};
-    (data as Record<string, unknown>[] || []).forEach(opt => {
-      const val = opt[column as string] as string | undefined;
-      if (val) counts[val] = (counts[val] || 0) + 1;
+      }
     });
-    return Object.entries(counts)
+  });
+  
+  // Convert to the expected format
+  const convertToOptions = (fieldCounts: Record<string, number>) => 
+    Object.entries(fieldCounts)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .slice(0, 10)
       .map(([value, count]) => ({ value, count }));
-  }
-  const [sectors, manufacturers, complexities, partTypes, voltages, currents, power_ratings, machine_types, application_areas, product_categories, control_types, industry_tags] = await Promise.all([
-    getOptions('sector'),
-    getOptions('manufacturer'),
-    getOptions('complexity_level'),
-    getOptions('part_type'),
-    getOptions('voltage'),
-    getOptions('current'),
-    getOptions('power_rating'),
-    getOptions('machine_type'),
-    getOptions('application_area'),
-    getOptions('product_category'),
-    getOptions('control_type'),
-    getOptions('industry_tag'),
-  ]);
+  
+  const sectors = convertToOptions(counts.sector);
+  const manufacturers = convertToOptions(counts.manufacturer);
+  const complexities = convertToOptions(counts.complexity_level);
+  const partTypes = convertToOptions(counts.part_type);
+  const voltages = convertToOptions(counts.voltage);
+  const currents = convertToOptions(counts.current);
+  const power_ratings = convertToOptions(counts.power_rating);
+  const machine_types = convertToOptions(counts.machine_type);
+  const application_areas = convertToOptions(counts.application_area);
+  const product_categories = convertToOptions(counts.product_category);
+  const control_types = convertToOptions(counts.control_type);
+  const industry_tags = convertToOptions(counts.industry_tag);
+  
   return { sectors, manufacturers, complexities, partTypes, voltages, currents, power_ratings, machine_types, application_areas, product_categories, control_types, industry_tags };
-      }
-
-function cosineSimilarity(a: number[], b: number[]) {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
       }
 
 export default async function KnowledgePage({ params, searchParams }: { params: Promise<{ lang: string }>, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -204,14 +209,7 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
   let total = 0;
   let referenceQuestion: Question | undefined = undefined;
   if (similarTo) {
-    // Fetch all questions and the reference question
-    const { data: allQuestions, error: allError } = await supabase
-      .from('questions')
-      .select('*')
-      .eq('language_path', lang)
-      .eq('is_main', true)
-      .eq('meta_generated', true);
-    if (allError) throw allError;
+    // Fetch the reference question first
     const { data: refQ, error: refError } = await supabase
       .from('questions')
       .select('*')
@@ -220,21 +218,40 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
       .maybeSingle();
     if (refError) throw refError;
     referenceQuestion = refQ;
+    
     if (refQ && refQ.embedding) {
-      // Compute similarity for each question
-      questions = allQuestions.map(q => ({ ...q, _similarity: q.embedding ? cosineSimilarity(refQ.embedding, q.embedding) : -1 }));
-      // Sort by similaritySort param
-      if (similaritySort === 'asc') {
-        questions.sort((a, b) => (a._similarity ?? -1) - (b._similarity ?? -1));
-      } else {
-        questions.sort((a, b) => (b._similarity ?? -1) - (a._similarity ?? -1));
-      }
+      // Use Supabase's built-in similarity search with pagination
+      const { data, count, error } = await supabase.rpc('match_questions', {
+        query_embedding: refQ.embedding,
+        match_count: safePageSize,
+        match_threshold: 0.1,
+        target_language: lang,
+      }).range((_page - 1) * safePageSize, (_page - 1) * safePageSize + safePageSize - 1);
+      
+      if (error) throw error;
+      questions = data || [];
+      total = count || 0;
     } else {
-      questions = allQuestions;
+      // Fallback to regular search if no embedding
+      let query = supabase
+        .from('questions')
+        .select('*', { count: 'exact' })
+        .eq('language_path', lang)
+        .eq('is_main', true)
+        .eq('meta_generated', true);
+      
+      if (sort === 'date-asc') query = query.order('created_at', { ascending: true });
+      else query = query.order('created_at', { ascending: false });
+      
+      const from = (_page - 1) * safePageSize;
+      const to = from + safePageSize - 1;
+      query = query.range(from, to);
+      
+      const { data, count, error } = await query;
+      if (error) throw error;
+      questions = data || [];
+      total = count || 0;
     }
-    total = questions.length;
-    // Pagination
-    questions = questions.slice((_page - 1) * safePageSize, (_page - 1) * safePageSize + safePageSize);
   } else {
   let query = supabase
     .from('questions')

@@ -109,8 +109,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   // Generate title
   const title = questionData?.header 
-    ? `${questionData.header} | Solution & Analysis | Infoneva`
-    : `${decodeURIComponent(slug)} | Infoneva`;
+    ? `${questionData.header} | Solution & Analysis`
+    : decodeURIComponent(slug);
 
   // Generate description
   let description = '';
@@ -218,7 +218,6 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
     removedResult,
     userResult,
     questionResult,
-    commentsResult
   ] = await Promise.allSettled([
     // Check removed_slugs first
     supabase
@@ -240,12 +239,6 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
       .in('status', ['draft', 'live'])
       .eq('is_main', true)
       .maybeSingle(),
-    
-    // Get comments (we'll filter by question_id later)
-    supabase
-      .from('comments')
-      .select('*')
-      .order('created_at', { ascending: true })
   ]);
 
   // Handle removed slug
@@ -265,6 +258,13 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
   }
 
   const question = questionResult.value.data as Question;
+  
+  // 🔥 OPTIMIZATION: Fetch comments only after we have the question ID
+  const commentsResult = await supabase
+    .from('comments')
+    .select('*')
+    .eq('question_id', question.id)
+    .order('created_at', { ascending: true });
   
   // 🔥 OPTIMIZATION: Fetch follow-up and related questions in parallel
   const [followUpResult, relatedResult] = await Promise.allSettled([
@@ -306,8 +306,8 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
 
   // Process comments (filter by question_id)
   let comments: Comment[] = [];
-  if (commentsResult.status === 'fulfilled' && commentsResult.value.data) {
-    comments = commentsResult.value.data.filter((comment: Comment) => comment.question_id === question.id);
+  if (commentsResult.data) {
+    comments = commentsResult.data;
   }
 
   // Pass all data to the client component

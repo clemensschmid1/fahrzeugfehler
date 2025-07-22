@@ -8,7 +8,7 @@
     "sitemap:generate": "next-sitemap",
     "sitemap:split": "tsx scripts/splitSitemapIndexes.ts",
     "sitemap:all": "npm run sitemap:generate && npm run sitemap:split",
-    "postbuild": "npm run sitemap:all",
+    "postbuild": "npm run sitemap:split",
     "start": "next start",
     "lint": "next lint",
     "bulk-indexnow": "npx tsx scripts/bulkSubmitToIndexNow.ts"
@@ -16,11 +16,13 @@
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.821.0",
     "@langchain/openai": "^0.5.10",
+    "@microsoft/clarity": "^1.0.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.0",
     "@upstash/ratelimit": "^2.0.5",
     "@upstash/redis": "^1.35.0",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "critters": "^0.0.23",
     "framer-motion": "^11.18.2",
     "geist": "^1.4.2",

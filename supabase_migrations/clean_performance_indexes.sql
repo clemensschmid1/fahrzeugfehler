@@ -1,5 +1,5 @@
 -- Add critical performance indexes for knowledge pages
--- These indexes will dramatically improve query performance
+-- These indexes will dramatically improve query performance and reduce compute usage
 
 -- Primary lookup index for knowledge pages (most important)
 CREATE INDEX IF NOT EXISTS idx_questions_slug_lang_status_main 
@@ -21,34 +21,29 @@ ON comments(question_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_questions_metadata_lookup 
 ON questions(status, is_main, language_path, meta_generated);
 
--- 🔥 CRITICAL: Index for filter options queries (prevents full table scans)
+-- CRITICAL: Index for filter options queries (prevents full table scans)
 CREATE INDEX IF NOT EXISTS idx_questions_filter_options 
 ON questions(language_path, is_main, meta_generated, sector, manufacturer, complexity_level, part_type, voltage, current, power_rating, machine_type, product_category, control_type, industry_tag);
 
--- 🔥 CRITICAL: Index for live-slugs API (prevents full table scans)
+-- CRITICAL: Index for live-slugs API (prevents full table scans)
 CREATE INDEX IF NOT EXISTS idx_questions_live_slugs 
 ON questions(status, is_main, slug) WHERE status = 'live' AND is_main = true;
 
--- 🔥 CRITICAL: Index for votes queries
+-- CRITICAL: Index for votes queries
 CREATE INDEX IF NOT EXISTS idx_votes_question_user 
 ON votes(question_id, user_id, vote_type);
 
--- 🔥 CRITICAL: Index for votes by IP
+-- CRITICAL: Index for votes by IP
 CREATE INDEX IF NOT EXISTS idx_votes_question_ip 
 ON votes(question_id, ip_address, vote_type);
 
--- 🔥 CRITICAL: Index for user comments
+-- CRITICAL: Index for user comments
 CREATE INDEX IF NOT EXISTS idx_comments_user_created 
 ON comments(user_id, created_at);
 
--- 🔥 CRITICAL: Index for profiles username lookup
+-- CRITICAL: Index for profiles username lookup
 CREATE INDEX IF NOT EXISTS idx_profiles_username 
 ON profiles(username);
-
--- Index for embedding similarity searches (if using pgvector)
--- CREATE INDEX IF NOT EXISTS idx_questions_embedding 
--- ON questions USING ivfflat (embedding vector_cosine_ops) 
--- WITH (lists = 100);
 
 -- Add comments for documentation
 COMMENT ON INDEX idx_questions_slug_lang_status_main IS 'Primary index for knowledge page lookups - critical for performance';

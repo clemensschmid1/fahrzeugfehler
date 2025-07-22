@@ -102,55 +102,78 @@ module.exports = {
   
   // Function to dynamically add paths from the database
   additionalPaths: async (config) => {
-    // Fetch all eligible questions in batches of 1000
-    async function fetchAllQuestions() {
+    // 🔥 OPTIMIZATION: Use pagination and limit to avoid timeouts
+    async function fetchQuestionsWithLimit(limit = 5000) {
       const all = [];
       let from = 0;
       const batchSize = 1000;
-      while (true) {
+      let totalFetched = 0;
+      
+      while (totalFetched < limit) {
         const { data, error } = await supabase
           .from('questions')
           .select('slug, updated_at, language_path')
           .eq('status', 'live')
           .eq('is_main', true)
           .range(from, from + batchSize - 1);
-        if (error) throw error;
+          
+        if (error) {
+          console.error('SITEMAP ERROR:', error);
+          break; // Stop on error instead of throwing
+        }
+        
         if (!data || data.length === 0) break;
+        
         all.push(...data);
+        totalFetched += data.length;
+        
         if (data.length < batchSize) break;
         from += batchSize;
+        
+        // Safety check to prevent infinite loops
+        if (totalFetched >= limit) break;
       }
+      
       return all;
     }
 
-    const questions = await fetchAllQuestions();
-    const results = [];
-    for (const question of questions) {
-      if (question.language_path === 'en') {
-        const enPath = `/en/knowledge/${question.slug}`;
-        results.push({
-          loc: enPath,
-          changefreq: 'weekly',
-          priority: 0.8,
-          lastmod: new Date(question.updated_at).toISOString(),
-          alternateRefs: [
-            { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
-          ],
-        });
-      } else if (question.language_path === 'de') {
-        const dePath = `/de/knowledge/${question.slug}`;
-        results.push({
-          loc: dePath,
-          changefreq: 'weekly',
-          priority: 0.8,
-          lastmod: new Date(question.updated_at).toISOString(),
-          alternateRefs: [
-            { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
-          ],
-        });
+    try {
+      // 🔥 OPTIMIZATION: Limit to 5000 questions to avoid timeout
+      const questions = await fetchQuestionsWithLimit(5000);
+      const results = [];
+      
+      for (const question of questions) {
+        if (question.language_path === 'en') {
+          const enPath = `/en/knowledge/${question.slug}`;
+          results.push({
+            loc: enPath,
+            changefreq: 'weekly',
+            priority: 0.8,
+            lastmod: new Date(question.updated_at).toISOString(),
+            alternateRefs: [
+              { href: `${config.siteUrl}${enPath}`, hreflang: 'en' },
+            ],
+          });
+        } else if (question.language_path === 'de') {
+          const dePath = `/de/knowledge/${question.slug}`;
+          results.push({
+            loc: dePath,
+            changefreq: 'weekly',
+            priority: 0.8,
+            lastmod: new Date(question.updated_at).toISOString(),
+            alternateRefs: [
+              { href: `${config.siteUrl}${dePath}`, hreflang: 'de' },
+            ],
+          });
+        }
       }
+      
+      console.log('SITEMAP DEBUG: additionalPaths results count:', results.length);
+      return results;
+    } catch (error) {
+      console.error('SITEMAP CRITICAL ERROR:', error);
+      // Return empty array instead of crashing the build
+      return [];
     }
-    console.log('SITEMAP DEBUG: additionalPaths results count:', results.length);
-    return results;
   },
 }; 
