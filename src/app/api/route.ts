@@ -1,13 +1,26 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error('Supabase environment variables are missing. Check .env.local.');
+}
+
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OpenAI API key is missing. Check .env.local.');
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function POST(req: Request) {
-  const { question } = await req.json();
+  try {
+    const { question } = await req.json();
+
+    if (!question || typeof question !== 'string') {
+      return NextResponse.json({ error: 'Question is required and must be a string' }, { status: 400 });
+    }
 
   const prompt = `
 You are an industrial support assistant. A user asks an industrial question.
@@ -46,27 +59,43 @@ Question: ${question}
     })
   });
 
-  const openaiData = await openaiRes.json();
-  const text = openaiData.choices?.[0]?.message?.content;
+    if (!openaiRes.ok) {
+      const errorText = await openaiRes.text();
+      return NextResponse.json({ error: `OpenAI API error: ${openaiRes.status}` }, { status: 500 });
+    }
 
-  if (!text) return NextResponse.json({ error: 'No response from GPT' }, { status: 500 });
+    const openaiData = await openaiRes.json();
+    const text = openaiData.choices?.[0]?.message?.content;
 
-  const parsed = JSON.parse(text);
+    if (!text) {
+      return NextResponse.json({ error: 'No response from GPT' }, { status: 500 });
+    }
 
-  const { error } = await supabase.from('questions').insert({
-    question,
-    answer: parsed.answer,
-    slug: parsed.seo_slug,
-    manufacturer: parsed.manufacturer,
-    part_type: parsed.part_type,
-    part_series: parsed.part_series,
-    sector: parsed.sector,
-    related_slugs: parsed.related_slugs
-  });
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (parseError) {
+      return NextResponse.json({ error: 'Failed to parse GPT response as JSON' }, { status: 500 });
+    }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { error } = await supabase.from('questions').insert({
+      question,
+      answer: parsed.answer,
+      slug: parsed.seo_slug,
+      manufacturer: parsed.manufacturer,
+      part_type: parsed.part_type,
+      part_series: parsed.part_series,
+      sector: parsed.sector,
+      related_slugs: parsed.related_slugs
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const error = err as Error;
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true });
 }

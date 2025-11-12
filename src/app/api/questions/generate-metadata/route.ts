@@ -44,12 +44,26 @@ export async function POST(req: Request) {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: 'Missing question id' }, { status: 400 });
 
+    // Add a small delay to ensure the insert transaction is committed
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     const { data: questionRow, error: fetchError } = await supabase
-      .from('questions')
+      .from('questions2')
       .select('id, question, answer')
       .eq('id', id)
       .single();
-    if (fetchError || !questionRow) {
+    
+    if (fetchError) {
+      console.error('[generate-metadata] Error fetching question:', fetchError);
+      return NextResponse.json({ 
+        error: 'Question not found', 
+        details: fetchError.message,
+        code: fetchError.code 
+      }, { status: 404 });
+    }
+    
+    if (!questionRow) {
+      console.error('[generate-metadata] Question not found for id:', id);
       return NextResponse.json({ error: 'Question not found' }, { status: 404 });
     }
 
@@ -224,7 +238,7 @@ Return **ONLY valid JSON** (no markdown, no code blocks, no explanations, no ext
     let counter = 1;
     while (counter <= 5) { // Limit retries
       const { data: existing } = await supabase
-        .from('questions')
+        .from('questions2')
         .select('id')
         .eq('slug', uniqueSlug)
         .neq('id', id)
@@ -237,13 +251,13 @@ Return **ONLY valid JSON** (no markdown, no code blocks, no explanations, no ext
 
     // Update the question with metadata and embedding
     const { error: updateError } = await supabase
-      .from('questions')
+      .from('questions2')
       .update({
         ...defaultMetadata,
         slug: defaultMetadata.seo_slug,
         embedding,
         meta_generated: true,
-        updated_at: new Date().toISOString()
+        last_updated: new Date().toISOString()
       })
       .eq('id', id);
 

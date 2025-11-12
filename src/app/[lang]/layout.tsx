@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { LanguageWrapper } from '@/components/LanguageWrapper';
+// ThemeProvider is applied at the root layout
 
 const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
 type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];

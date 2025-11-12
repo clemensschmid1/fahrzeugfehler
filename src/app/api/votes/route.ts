@@ -4,7 +4,14 @@ import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
-    const { questionId } = await req.json();
+    const { questionId, voteType } = await req.json();
+
+    if (!questionId) {
+      return NextResponse.json({ error: 'Question ID is required' }, { status: 400 });
+    }
+    if (voteType !== 'up' && voteType !== 'down') {
+      return NextResponse.json({ error: 'voteType must be "up" or "down"' }, { status: 400 });
+    }
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -51,34 +58,41 @@ export async function POST(req: Request) {
     }
     
     // Get IP address for unauthenticated users
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-               req.headers.get('cf-connecting-ip') || 
-               'unknown';
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      req.headers.get('x-real-ip') ||
+      req.headers.get('cf-connecting-ip') ||
+      req.headers.get('fly-client-ip') ||
+      req.headers.get('x-vercel-forwarded-for') ||
+      '127.0.0.1';
     
     const userId = user?.id || null;
     const identifier = userId || ip;
 
-    // Check if user/IP already has an upvote for this question
+    // Check if user/IP already has any vote for this question
     const { data: existingVote } = await supabase
       .from('votes')
       .select('*')
       .eq('question_id', questionId)
-      .eq('vote_type', true) // Only check for upvotes (true)
       .eq(userId ? 'user_id' : 'ip_address', identifier)
-      .single();
+      .maybeSingle();
 
-    if (existingVote) {
-      // User/IP has already upvoted - remove the vote (toggle off)
+    // If same vote clicked again => remove (toggle off)
+    if (existingVote && ((voteType === 'up' && existingVote.vote_type === true) || (voteType === 'down' && existingVote.vote_type === false))) {
       const { error: deleteError } = await supabase
         .from('votes')
         .delete()
-        .eq('question_id', questionId)
-        .eq('vote_type', true)
-        .eq(userId ? 'user_id' : 'ip_address', identifier);
-
+        .eq('id', existingVote.id);
       if (deleteError) throw deleteError;
     } else {
-      // User/IP hasn't upvoted - add an upvote
+      // Remove opposite vote if exists, then insert new vote
+      if (existingVote) {
+        const { error: removeOppError } = await supabase
+          .from('votes')
+          .delete()
+          .eq('id', existingVote.id);
+        if (removeOppError) throw removeOppError;
+      }
       const voteData: {
         question_id: string,
         vote_type: boolean,
@@ -86,19 +100,10 @@ export async function POST(req: Request) {
         ip_address?: string
       } = {
         question_id: questionId,
-        vote_type: true // true = upvote
+        vote_type: voteType === 'up'
       };
-      
-      if (userId) {
-        voteData.user_id = userId;
-      } else {
-        voteData.ip_address = ip;
-      }
-
-      const { error: insertError } = await supabase
-        .from('votes')
-        .insert(voteData);
-
+      if (userId) voteData.user_id = userId; else voteData.ip_address = ip;
+      const { error: insertError } = await supabase.from('votes').insert(voteData);
       if (insertError) throw insertError;
     }
 
@@ -107,17 +112,24 @@ export async function POST(req: Request) {
       .from('votes')
       .select('vote_type')
       .eq('question_id', questionId)
-      .eq('vote_type', true); // Only count upvotes
+    
 
     if (votesError) throw votesError;
 
-    const upvotes = votes.length;
-    const hasUserUpvoted = existingVote ? false : true; // If we deleted, user no longer has upvoted; if we inserted, user now has upvoted
+    const upvotes = votes.filter(v => v.vote_type === true).length;
+    const downvotes = votes.filter(v => v.vote_type === false).length;
 
-    return NextResponse.json({
-      upvotes,
-      hasUserUpvoted
-    });
+    // Compute current user's vote
+    let userVote: 'up' | 'down' | null = null;
+    const { data: currentVote } = await supabase
+      .from('votes')
+      .select('vote_type')
+      .eq('question_id', questionId)
+      .eq(userId ? 'user_id' : 'ip_address', identifier)
+      .maybeSingle();
+    if (currentVote) userVote = currentVote.vote_type ? 'up' : 'down';
+
+    return NextResponse.json({ upvotes, downvotes, userVote });
 
   } catch (error) {
     const err = error as Error;
@@ -159,19 +171,19 @@ export async function GET(req: Request) {
       }
     );
 
-    // Get total upvotes for this question
+    // Get votes for this question
     const { data: votes, error: votesError } = await supabase
       .from('votes')
       .select('vote_type')
-      .eq('question_id', questionId)
-      .eq('vote_type', true); // Only count upvotes
+      .eq('question_id', questionId);
 
     if (votesError) throw votesError;
 
-    const upvotes = votes.length;
+    const upvotes = votes.filter(v => v.vote_type === true).length;
+    const downvotes = votes.filter(v => v.vote_type === false).length;
 
     // Check if current user/IP has upvoted
-    let hasUserUpvoted = false;
+    let userVote: 'up' | 'down' | null = null;
     let user = null;
 
     try {
@@ -183,16 +195,14 @@ export async function GET(req: Request) {
         }
       } else {
         user = userData;
-    if (user) {
-      const { data: userVoteData } = await supabase
-        .from('votes')
-        .select('vote_type')
-        .eq('question_id', questionId)
-        .eq('user_id', user.id)
-            .eq('vote_type', true) // Only check for upvotes
-        .single();
-
-          hasUserUpvoted = !!userVoteData;
+        if (user) {
+          const { data: userVoteData } = await supabase
+            .from('votes')
+            .select('vote_type')
+            .eq('question_id', questionId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (userVoteData) userVote = userVoteData.vote_type ? 'up' : 'down';
         }
       }
     } catch (error) {
@@ -215,16 +225,12 @@ export async function GET(req: Request) {
         .select('vote_type')
         .eq('question_id', questionId)
         .eq('ip_address', ip)
-        .eq('vote_type', true) // Only check for upvotes
-        .single();
+        .maybeSingle();
 
-      hasUserUpvoted = !!ipVoteData;
+      if (ipVoteData) userVote = ipVoteData.vote_type ? 'up' : 'down';
     }
 
-    return NextResponse.json({
-      upvotes,
-      hasUserUpvoted
-    });
+    return NextResponse.json({ upvotes, downvotes, userVote });
 
   } catch (error) {
     const err = error as Error;

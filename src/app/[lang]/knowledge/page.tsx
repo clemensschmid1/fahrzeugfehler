@@ -14,6 +14,7 @@ interface Question {
   status: 'draft' | 'live' | 'bin';
   header?: string;
   manufacturer?: string;
+  manufacturer_mentions?: string[];
   part_type?: string;
   part_series?: string;
   embedding?: number[];
@@ -95,16 +96,19 @@ type FilterOptionsParams = {
 async function getFilterOptions({ lang, q, sector, manufacturer, complexity, partType, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag }: FilterOptionsParams) {
   // 🔥 OPTIMIZATION: Single query with all filter fields
   let query = supabase
-    .from('questions')
-    .select('sector, manufacturer, complexity_level, part_type, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag')
+    .from('questions2')
+    .select('sector, manufacturer, manufacturer_mentions, complexity_level, part_type, voltage, current, power_rating, machine_type, application_area, product_category, control_type, industry_tag')
     .eq('language_path', lang)
     .eq('is_main', true)
-    .eq('meta_generated', true);
+    .eq('status', 'live');
   
   // Apply filters
   if (q) query = query.ilike('header', `%${q}%`);
   if (sector) query = query.eq('sector', sector);
-  if (manufacturer) query = query.eq('manufacturer', manufacturer);
+  // Manufacturer filter: check both manufacturer field and manufacturer_mentions array
+  if (manufacturer) {
+    query = query.or(`manufacturer.eq.${manufacturer},manufacturer_mentions.cs.{${manufacturer}}`);
+  }
   if (complexity) query = query.eq('complexity_level', complexity);
   if (partType) query = query.eq('part_type', partType);
   if (voltage) query = query.eq('voltage', voltage);
@@ -151,6 +155,37 @@ async function getFilterOptions({ lang, q, sector, manufacturer, complexity, par
         }
       }
     });
+    
+    // Also process manufacturer_mentions array
+    const manufacturerMentions = row.manufacturer_mentions;
+    if (Array.isArray(manufacturerMentions)) {
+      manufacturerMentions.forEach((mfg: string) => {
+        if (mfg && typeof mfg === 'string') {
+          counts.manufacturer[mfg] = (counts.manufacturer[mfg] || 0) + 1;
+        }
+      });
+    }
+    
+    // Handle manufacturer field that might be a JSON array string
+    const manufacturerValue = row.manufacturer;
+    if (manufacturerValue) {
+      if (typeof manufacturerValue === 'string') {
+        try {
+          const parsed = JSON.parse(manufacturerValue);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((mfg: string) => {
+              if (mfg && typeof mfg === 'string') {
+                counts.manufacturer[mfg] = (counts.manufacturer[mfg] || 0) + 1;
+              }
+            });
+          } else {
+            counts.manufacturer[manufacturerValue] = (counts.manufacturer[manufacturerValue] || 0) + 1;
+          }
+        } catch {
+          counts.manufacturer[manufacturerValue] = (counts.manufacturer[manufacturerValue] || 0) + 1;
+        }
+      }
+    }
   });
   
   // Convert to the expected format
@@ -211,7 +246,7 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
   if (similarTo) {
     // Fetch the reference question first
     const { data: refQ, error: refError } = await supabase
-      .from('questions')
+      .from('questions2')
       .select('*')
       .eq('slug', similarTo)
       .eq('language_path', lang)
@@ -234,11 +269,28 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
     } else {
       // Fallback to regular search if no embedding
       let query = supabase
-        .from('questions')
+        .from('questions2')
         .select('*', { count: 'exact' })
         .eq('language_path', lang)
         .eq('is_main', true)
-        .eq('meta_generated', true);
+        .eq('status', 'live');
+      
+      // Apply filters in fallback too
+      if (q) query = query.ilike('header', `%${q}%`);
+      if (sector) query = query.eq('sector', sector);
+      if (manufacturer) {
+        query = query.or(`manufacturer.eq.${manufacturer},manufacturer_mentions.cs.{${manufacturer}}`);
+      }
+      if (complexity) query = query.eq('complexity_level', complexity);
+      if (partType) query = query.eq('part_type', partType);
+      if (voltage) query = query.eq('voltage', voltage);
+      if (current) query = query.eq('current', current);
+      if (power_rating) query = query.eq('power_rating', power_rating);
+      if (machine_type) query = query.eq('machine_type', machine_type);
+      if (application_area) query = query.contains('application_area', [application_area]);
+      if (product_category) query = query.eq('product_category', product_category);
+      if (control_type) query = query.eq('control_type', control_type);
+      if (industry_tag) query = query.eq('industry_tag', industry_tag);
       
       if (sort === 'date-asc') query = query.order('created_at', { ascending: true });
       else query = query.order('created_at', { ascending: false });
@@ -254,14 +306,17 @@ export default async function KnowledgePage({ params, searchParams }: { params: 
     }
   } else {
   let query = supabase
-    .from('questions')
+    .from('questions2')
     .select('*', { count: 'exact' })
     .eq('language_path', lang)
     .eq('is_main', true)
-    .eq('meta_generated', true);
+    .eq('status', 'live');
     if (q) query = query.ilike('header', `%${q}%`);
   if (sector) query = query.eq('sector', sector);
-  if (manufacturer) query = query.eq('manufacturer', manufacturer);
+  // Manufacturer filter: check both manufacturer field and manufacturer_mentions array
+  if (manufacturer) {
+    query = query.or(`manufacturer.eq.${manufacturer},manufacturer_mentions.cs.{${manufacturer}}`);
+  }
   if (complexity) query = query.eq('complexity_level', complexity);
   if (partType) query = query.eq('part_type', partType);
   if (voltage) query = query.eq('voltage', voltage);
