@@ -5,8 +5,6 @@ import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { getSupabaseClient } from '@/lib/supabase';
-import HeaderSearch from './HeaderSearch';
-import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
   const params = useParams();
@@ -83,12 +81,8 @@ export default function Header() {
           <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
           <span className="font-mono tracking-wider">FAULTBASE</span>
         </Link>
-        {/* Search Bar - only show on relevant pages, hide on knowledge and CAS pages */}
-        {!isKnowledgePage && !isCASPage && (
-          <div className="flex-1 max-w-2xl hidden md:block">
-            <HeaderSearch lang={lang} />
-          </div>
-        )}
+        {/* Spacer for layout */}
+        <div className="flex-1"></div>
         <nav className="flex items-center gap-4 flex-shrink-0">
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
@@ -163,10 +157,6 @@ export default function Header() {
             </svg>
           </Link>
 
-          {/* Theme Toggle - Desktop */}
-          <div className="hidden md:block">
-            <ThemeToggle />
-          </div>
           
           {/* Mobile Menu Button */}
           <button
