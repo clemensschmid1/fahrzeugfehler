@@ -1,16 +1,8 @@
 import { NextResponse } from 'next/server';
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OpenAI API key is missing. Check .env.local.');
-}
-
 export async function POST(req: Request) {
   try {
     const { question } = await req.json();
-
-    if (!question || typeof question !== 'string') {
-      return NextResponse.json({ error: 'Question is required and must be a string' }, { status: 400 });
-    }
 
     const prompt = `
 You are an industrial assistant. For the following question, provide:
@@ -40,11 +32,6 @@ Question: ${question}
       }),
     });
 
-    if (!gptRes.ok) {
-      const errorText = await gptRes.text();
-      return NextResponse.json({ error: `OpenAI API error: ${gptRes.status}` }, { status: 500 });
-    }
-
     const gptData = await gptRes.json();
     const content = gptData.choices?.[0]?.message?.content;
 
@@ -52,12 +39,7 @@ Question: ${question}
       return NextResponse.json({ error: 'Failed to get content from OpenAI' }, { status: 500 });
     }
 
-    let parsed;
-    try {
-      parsed = JSON.parse(content);
-    } catch (parseError) {
-      return NextResponse.json({ error: 'Failed to parse OpenAI response as JSON' }, { status: 500 });
-    }
+    const parsed = JSON.parse(content);
 
     return NextResponse.json(parsed);
   } catch (err) {

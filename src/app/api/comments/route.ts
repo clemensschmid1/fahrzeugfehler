@@ -171,7 +171,6 @@ export async function GET(req: Request) {
     console.log('GET /api/comments Supabase client created');
 
     // Fetch comments and join with profiles to get the username
-    // Use LEFT JOIN so comments without profiles still show
     console.log('GET /api/comments attempting fetch from DB...');
     let query = supabaseAuth
       .from('comments')
@@ -182,19 +181,13 @@ export async function GET(req: Request) {
         question_id,
         user_id,
         status,
-        profiles!left(username)
+        profiles!inner(username)
       `)
       .eq('question_id', questionId);
 
     if (status) {
       query = query.eq('status', status);
-    } else {
-      // Default: fetch all comments, filter out 'binned' in application code
-      // This ensures old comments without status are included
-      // Don't filter at query level to avoid excluding NULL status comments
     }
-    
-    // Note: We'll filter out 'binned' comments in the response mapping below
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -203,14 +196,11 @@ export async function GET(req: Request) {
         throw error;
     }
 
-    // Map user_name for each comment and filter out 'binned' comments
-    // This includes: 'live', NULL (old comments), and any other status except 'binned'
-    const commentsWithUserName = ((data as unknown as CommentWithProfile[]) || [])
-      .filter((comment) => comment.status !== 'binned') // Filter out binned comments
-      .map((comment) => ({
-        ...comment,
-        user_name: comment.profiles?.username || null,
-      }));
+    // Map user_name for each comment, casting through 'unknown' to assert the correct type
+    const commentsWithUserName = ((data as unknown as CommentWithProfile[]) || []).map((comment) => ({
+      ...comment,
+      user_name: comment.profiles?.username || null,
+    }));
 
     console.log(`Fetched ${commentsWithUserName?.length} comments for question ${questionId} with status ${status || 'any'}`);
     return NextResponse.json(commentsWithUserName);

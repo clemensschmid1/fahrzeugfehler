@@ -1,34 +1,22 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
-/* Tailwind v4 - Configure dark mode variant */
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* CSS Variables - Light mode is default */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-/* Dark mode - when dark class is on html */
-html.dark {
-  color-scheme: dark;
-  --background: #0a0a0a;
-  --foreground: #ededed;
-}
-
-/* Light mode - explicit */
-html:not(.dark) {
-  color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
 }
 
 body {
-  background-color: var(--background);
+  background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.2s, color 0.2s;
 }
 
 .app-body {
@@ -91,70 +79,98 @@ body {
 .markdown-table th {
   color: #111;
   font-weight: 600;
-  padding: 0.75rem 1.25rem;
-  text-align: left;
   background: transparent;
-  border-right: 1px solid #bfdbfe;
+  border-bottom: 2px solid #a3bffa;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
 }
 
-.markdown-table th:last-child {
-  border-right: none;
+/* Code block styling */
+.markdown-code-block {
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  color: #111827;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  font-family: 'GeistMono', 'Fira Mono', 'Consolas', monospace;
+  font-size: 0.97rem;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  box-shadow: 0 2px 8px 0 rgba(59,130,246,0.1);
+  border: 1px solid #bfdbfe;
 }
 
-/* Dark mode table styles */
-html.dark .markdown-table-container {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #1e3a8a 100%);
-  border-color: #3b82f6;
+.markdown-inline-code {
+  background: #dbeafe;
+  color: #111827;
+  border-radius: 0.4em;
+  padding: 0.15em 0.4em;
+  font-family: 'GeistMono', 'Fira Mono', 'Consolas', monospace;
+  font-size: 0.97em;
+  border: 1px solid #a3bffa;
 }
 
-html.dark .markdown-table td,
-html.dark .markdown-table th {
-  color: #e2e8f0;
-  border-color: #3b82f6;
+/* LaTeX Math Formula Styling */
+.latex-math-formula {
+  display: inline-block;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
 }
 
-html.dark .markdown-table tr:nth-child(even) {
-  background: rgba(59,130,246,0.1);
+.latex-math-formula .katex {
+  font-size: 1.1em;
+  color: #1e293b;
 }
 
-html.dark .markdown-table tr:hover {
-  background: linear-gradient(90deg, #1e40af 0%, #2563eb 100%);
+.latex-math-formula .katex-display {
+  margin: 0;
+  text-align: center;
 }
 
-/* Gradient animation for hero text */
-@keyframes gradient {
-  0%, 100% {
-    background-position: 0% 50%;
+/* LaTeX Function Styling (fallback) */
+.latex-function {
+  display: inline-block;
+  padding: 0.25em 0.8em;
+  margin: 0.2em 0.2em;
+  background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
+  border: 1px solid #a3bffa;
+  border-radius: 0.7em;
+  font-family: 'GeistMono', 'Fira Mono', 'Consolas', monospace;
+  font-size: 1em;
+  color: #3730a3;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+  transition: all 0.2s ease;
+}
+
+.latex-function:hover {
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  color: #1e40af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.15);
+}
+
+@media (max-width: 768px) {
+  .markdown-table-container {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
-  50% {
-    background-position: 100% 50%;
+  .markdown-table td {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.95rem;
   }
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient 3s ease infinite;
-}
-
-/* Professional smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Enhanced focus styles for accessibility */
-*:focus-visible {
-  outline: 2px solid rgb(239, 68, 68);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* Professional selection styles */
-::selection {
-  background-color: rgba(239, 68, 68, 0.2);
-  color: inherit;
-}
-
-::-moz-selection {
-  background-color: rgba(239, 68, 68, 0.2);
-  color: inherit;
+  .markdown-code-block {
+    padding: 0.7rem 0.7rem;
+    font-size: 0.93rem;
+  }
+  .latex-math-formula {
+    padding: 0.3rem;
+    margin: 0.3rem 0;
+  }
+  .latex-math-formula .katex {
+    font-size: 1em;
+  }
 }

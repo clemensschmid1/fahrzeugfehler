@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseClient } from '@/lib/supabase';
 import HeaderSearch from './HeaderSearch';
 import ThemeToggle from './ThemeToggle';
 
@@ -21,14 +21,12 @@ export default function Header() {
   const isPrivacyPage = pathname?.startsWith(`/${lang}/privacy`);
   const isImpressumPage = pathname?.startsWith(`/${lang}/impressum`);
   const isProfilePage = pathname?.startsWith(`/${lang}/profile`);
+  const isCASPage = pathname?.startsWith(`/${lang}/cas`);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -62,7 +60,7 @@ export default function Header() {
   const isReviewsPage = pathname?.startsWith(`/${lang}/reviews`);
   
   // Show header on all main pages
-  if (!(isKnowledgePage || isChatPage || isNewsPage || isContactPage || isPrivacyPage || isImpressumPage || isProfilePage || isReviewsPage)) return null;
+  if (!(isKnowledgePage || isChatPage || isNewsPage || isContactPage || isPrivacyPage || isImpressumPage || isProfilePage || isReviewsPage || isCASPage)) return null;
   
   // Fix missing dependency
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,8 +83,8 @@ export default function Header() {
           <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
           <span className="font-mono tracking-wider">FAULTBASE</span>
         </Link>
-        {/* Search Bar - only show on relevant pages, hide on knowledge page */}
-        {!isKnowledgePage && (
+        {/* Search Bar - only show on relevant pages, hide on knowledge and CAS pages */}
+        {!isKnowledgePage && !isCASPage && (
           <div className="flex-1 max-w-2xl hidden md:block">
             <HeaderSearch lang={lang} />
           </div>
@@ -121,6 +119,22 @@ export default function Header() {
               tabIndex={0}
             >
               {t('KNOWLEDGE BASE', 'WISSENSBASIS')}
+            </Link>
+            <Link
+              href={`/${lang}/cas`}
+              className={`group relative px-4 py-2 rounded-lg text-sm font-bold text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 transition-all ${
+                isCASPage ? 'text-red-600 dark:text-red-400' : ''
+              }`}
+              tabIndex={0}
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                {t('CAS', 'CAS')}
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity"></span>
+              </span>
+              <span className="absolute inset-0 bg-red-50 dark:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></span>
             </Link>
           </div>
 
@@ -209,6 +223,25 @@ export default function Header() {
                 onClick={() => setMenuOpen(false)}
               >
                 {t('KNOWLEDGE BASE', 'WISSENSBASIS')}
+              </Link>
+              <Link
+                href={`/${lang}/cas`}
+                className={`group relative block px-4 py-3 text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 rounded-lg text-base font-bold transition-colors ${
+                  isCASPage ? 'text-red-600 dark:text-red-400' : ''
+                }`}
+                tabIndex={0}
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  {t('CAS', 'CAS')}
+                  <span className="ml-auto text-xs font-mono text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    →
+                  </span>
+                </span>
+                <span className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity"></span>
               </Link>
               {user && (
                 <>

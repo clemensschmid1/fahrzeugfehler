@@ -7,7 +7,18 @@ import MainPageSearch from '@/components/MainPageSearch';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Reviews Carousel Component
-function ReviewsCarousel({ reviews, lang }: { reviews: any[]; lang: string }) {
+interface ReviewItem {
+  id?: string;
+  rating: number;
+  review_text?: string;
+  text: string;
+  author: string;
+  title: string;
+  company?: string;
+  created_at?: string;
+}
+
+function ReviewsCarousel({ reviews, lang }: { reviews: ReviewItem[]; lang: string }) {
   const t = (en: string, de: string) => lang === 'de' ? de : en;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -178,8 +189,8 @@ function ReviewsCarousel({ reviews, lang }: { reviews: any[]; lang: string }) {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[radial-gradient(circle,rgba(239,68,68,0.02),transparent_70%)]"></div>
 
             {/* Decorative Quote - Enhanced */}
-            <div className="absolute top-6 left-6 text-red-200/20 dark:text-red-900/15 text-8xl sm:text-9xl font-serif leading-none opacity-40">"</div>
-            <div className="absolute bottom-6 right-6 text-red-200/20 dark:text-red-900/15 text-8xl sm:text-9xl font-serif leading-none opacity-40 transform rotate-180">"</div>
+            <div className="absolute top-6 left-6 text-red-200/20 dark:text-red-900/15 text-8xl sm:text-9xl font-serif leading-none opacity-40">&quot;</div>
+            <div className="absolute bottom-6 right-6 text-red-200/20 dark:text-red-900/15 text-8xl sm:text-9xl font-serif leading-none opacity-40 transform rotate-180">&quot;</div>
             
             <div className="relative">
               {/* Rating Stars - Enhanced */}
@@ -475,6 +486,30 @@ export default function MainPageClient({ lang }: { lang: string }) {
             </div>
             
             <div className="flex items-center gap-2.5 flex-shrink-0">
+              {/* CAS Link - Desktop */}
+              <Link
+                href={`/${lang}/cas`}
+                className="hidden sm:flex group relative items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 transition-all duration-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <span>{lang === 'de' ? 'CAS' : 'CAS'}</span>
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                <span className="absolute inset-0 bg-red-50 dark:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity -z-10"></span>
+              </Link>
+              
+              {/* CAS Link - Mobile */}
+              <Link
+                href={`/${lang}/cas`}
+                className="sm:hidden p-2 rounded-lg text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                aria-label={lang === 'de' ? 'CAS' : 'CAS'}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </Link>
+              
               {/* News Link - Desktop */}
               <Link
                 href={`/${lang}/news`}
@@ -659,6 +694,15 @@ export default function MainPageClient({ lang }: { lang: string }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
                   {knowledge}
+                </Link>
+                <Link
+                  href={`/${lang}/cas`}
+                  className="group inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 dark:from-orange-500 dark:via-red-500 dark:to-orange-500 text-white text-lg font-bold rounded-2xl hover:from-orange-700 hover:via-red-700 hover:to-orange-700 dark:hover:from-orange-600 dark:hover:via-red-600 dark:hover:to-orange-600 transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95"
+                >
+                  <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  {lang === 'de' ? 'CAS - Auto-Assistenz' : 'CAS - Car Assistance'}
                 </Link>
               </motion.div>
               

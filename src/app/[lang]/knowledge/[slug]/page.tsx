@@ -38,8 +38,6 @@ type Comment = {
   question_id: string;
   content: string;
   created_at: string;
-  user_id?: string;
-  user_name?: string | null;
   // Add other fields as needed based on your DB schema
 };
 
@@ -85,8 +83,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   
   // Try Draft first
   const { data: draft } = await supabase
-    .from('questions2')
-    .select('header, question, answer, meta_description, created_at, last_updated')
+    .from('questions')
+    .select('header, question, answer, meta_description, created_at')
     .eq('slug', slug)
     .eq('language_path', lang)
     .eq('status', 'draft')
@@ -97,8 +95,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   } else {
     // Try published
     const { data: published } = await supabase
-      .from('questions2')
-      .select('header, question, answer, meta_description, created_at, last_updated')
+      .from('questions')
+      .select('header, question, answer, meta_description, created_at')
       .eq('slug', slug)
       .eq('language_path', lang)
       .eq('status', 'live')
@@ -147,7 +145,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const keywords = extractKeywords(questionData?.question || questionData?.header || '');
 
-  // Generate JSON-LD structured data with author information
+  // Generate JSON-LD structured data
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "QAPage",
@@ -156,33 +154,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       "name": questionData?.question,
       "text": questionData?.question,
       "dateCreated": questionData?.created_at || new Date().toISOString(),
-      "author": {
-        "@type": "Organization",
-        "name": "FAULTBASE",
-        "url": "https://faultbase.com"
-      },
       "acceptedAnswer": {
         "@type": "Answer",
         "text": questionData?.answer,
-        "dateCreated": questionData?.created_at || new Date().toISOString(),
-        "author": {
-          "@type": "Organization",
-          "name": "FAULTBASE Editorial Team",
-          "url": "https://faultbase.com"
-        }
+        "dateCreated": questionData?.created_at || new Date().toISOString()
       }
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "FAULTBASE",
-      "url": "https://faultbase.com",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://faultbase.com/logo.png"
-      }
-    },
-    "datePublished": questionData?.created_at || new Date().toISOString(),
-    "dateModified": (questionData as any)?.last_updated || questionData?.created_at || new Date().toISOString()
+    }
   };
 
   return {
@@ -202,9 +179,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       'og:url': canonicalUrl,
       'og:site_name': 'Infoneva',
       'article:published_time': questionData?.created_at || new Date().toISOString(),
-      'article:modified_time': questionData?.last_updated || questionData?.created_at || new Date().toISOString(),
-      'article:author': 'FAULTBASE Editorial Team',
-      'article:publisher': 'FAULTBASE',
+      'article:author': 'Infoneva',
       'keywords': keywords,
       'json-ld': JSON.stringify(jsonLd),
     },
@@ -257,7 +232,7 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
     
     // Get the question (draft or published)
     supabase
-      .from('questions2')
+      .from('questions')
       .select('*')
       .eq('slug', slug)
       .eq('language_path', lang)
@@ -285,51 +260,23 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
   const question = questionResult.value.data as Question;
   
   // 🔥 OPTIMIZATION: Fetch comments only after we have the question ID
-  // Fetch ALL comments for this question (matching profile page query style)
-  // Then fetch usernames separately to avoid JOIN issues
   const commentsResult = await supabase
     .from('comments')
     .select('*')
     .eq('question_id', question.id)
-    .order('created_at', { ascending: false }); // Newest first
-  
-  // Log if there's an error or if comments exist
-  if (commentsResult.error) {
-    console.error('Error fetching comments:', commentsResult.error);
-  } else {
-    console.log(`Found ${commentsResult.data?.length || 0} comments for question ${question.id}`);
-  }
-  
-  // Fetch usernames for all comment user_ids
-  const userIds = commentsResult.data?.map(c => c.user_id).filter(Boolean) || [];
-  let usernamesMap: Record<string, string | null> = {};
-  
-  if (userIds.length > 0) {
-    const uniqueUserIds = [...new Set(userIds)];
-    const profilesResult = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', uniqueUserIds);
-    
-    if (profilesResult.data) {
-      profilesResult.data.forEach(profile => {
-        usernamesMap[profile.id] = profile.username || null;
-      });
-    }
-  }
+    .order('created_at', { ascending: true });
   
   // 🔥 OPTIMIZATION: Fetch follow-up and related questions in parallel
   const [followUpResult, relatedResult] = await Promise.allSettled([
-    // Follow-up questions - ONLY show if they have the same conversation_id AND are not main questions
+    // Follow-up questions
     question.conversation_id ? 
       supabase
-        .from('questions2')
-        .select('id, question, answer, created_at, conversation_id, is_main')
+        .from('questions')
+        .select('id, question, answer, created_at')
         .eq('conversation_id', question.conversation_id)
         .eq('language_path', lang)
         .eq('status', 'live')
         .neq('id', question.id)
-        .eq('is_main', false) // Only show actual follow-ups, not main questions
         .order('created_at', { ascending: true }) : 
       Promise.resolve({ data: [], error: null }),
     
@@ -343,25 +290,10 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
       Promise.resolve({ data: [], error: null })
   ]);
 
-  // Process follow-up questions - ensure they're in the same conversation and properly ordered
+  // Process follow-up questions
   let followUpQuestions: FollowUpQuestion[] = [];
-  if (followUpResult.status === 'fulfilled' && followUpResult.value.data && question.conversation_id) {
-    // Double-check that all follow-ups have the same conversation_id and filter out any that don't
-    const validFollowUps = (followUpResult.value.data as any[])
-      .filter((q: any) => q.conversation_id === question.conversation_id && q.is_main === false)
-      .sort((a: any, b: any) => {
-        // Sort by created_at ascending to show in chronological order
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return dateA - dateB;
-      })
-      .map((q: any) => ({
-        id: q.id,
-        question: q.question,
-        answer: q.answer,
-        created_at: q.created_at,
-      }));
-    followUpQuestions = validFollowUps;
+  if (followUpResult.status === 'fulfilled' && followUpResult.value.data) {
+    followUpQuestions = followUpResult.value.data as FollowUpQuestion[];
   }
 
   // Process related questions
@@ -372,22 +304,11 @@ export default async function KnowledgeSlugPage({ params }: { params: Promise<{ 
       .slice(0, 6);
   }
 
-  // Process comments - exclude only 'binned' status
-  // This includes: 'live', NULL (old comments), and any other status except 'binned'
+  // Process comments (filter by question_id)
   let comments: Comment[] = [];
   if (commentsResult.data) {
-    comments = (commentsResult.data as any[])
-      .filter(c => c.status !== 'binned') // Filter out only binned comments
-      .map(c => ({
-        id: c.id,
-        content: c.content,
-        created_at: c.created_at,
-        user_id: c.user_id,
-        user_name: usernamesMap[c.user_id] || null,
-      }));
+    comments = commentsResult.data;
   }
-  
-  console.log(`Processed ${comments.length} comments (filtered from ${commentsResult.data?.length || 0} total)`);
 
   // Pass all data to the client component
   return (

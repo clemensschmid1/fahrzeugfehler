@@ -161,6 +161,93 @@ export type Database = {
             company?: string;
           };
         };
+        car_brands: {
+          Row: {
+            id: string;
+            name: string;
+            slug: string;
+            logo_url?: string;
+            description?: string;
+            country?: string;
+            founded_year?: number;
+            is_featured: boolean;
+            display_order: number;
+            created_at: string;
+            updated_at: string;
+          };
+        };
+        car_models: {
+          Row: {
+            id: string;
+            brand_id: string;
+            name: string;
+            slug: string;
+            year_start?: number;
+            year_end?: number;
+            description?: string;
+            image_url?: string;
+            sprite_3d_url?: string;
+            is_featured: boolean;
+            display_order: number;
+            created_at: string;
+            updated_at: string;
+          };
+        };
+        car_faults: {
+          Row: {
+            id: string;
+            car_model_id: string;
+            slug: string;
+            title: string;
+            description: string;
+            solution: string;
+            language_path: string;
+            status: 'draft' | 'live' | 'bin';
+            error_code?: string;
+            affected_component?: string;
+            severity?: 'low' | 'medium' | 'high' | 'critical';
+            frequency?: string;
+            symptoms?: string[];
+            diagnostic_steps?: string[];
+            tools_required?: string[];
+            estimated_repair_time?: string;
+            difficulty_level?: 'easy' | 'medium' | 'hard' | 'expert';
+            meta_description?: string;
+            seo_score?: number;
+            content_score?: number;
+            created_at: string;
+            updated_at: string;
+            last_updated?: string;
+            update_count?: number;
+            reviewed_by?: string;
+            reviewed_at?: string;
+          };
+        };
+        car_manuals: {
+          Row: {
+            id: string;
+            car_model_id: string;
+            title: string;
+            slug: string;
+            content: string;
+            language_path: string;
+            status: 'draft' | 'live' | 'bin';
+            manual_type?: 'maintenance' | 'repair' | 'diagnostic' | 'parts' | 'specifications' | 'other';
+            section?: string;
+            page_number?: number;
+            difficulty_level?: 'easy' | 'medium' | 'hard' | 'expert';
+            estimated_time?: string;
+            tools_required?: string[];
+            parts_required?: string[];
+            meta_description?: string;
+            created_at: string;
+            updated_at: string;
+            last_updated?: string;
+            update_count?: number;
+            reviewed_by?: string;
+            reviewed_at?: string;
+          };
+        };
       };
     };
   };

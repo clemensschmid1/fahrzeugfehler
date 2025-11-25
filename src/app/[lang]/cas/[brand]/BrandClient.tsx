@@ -1,0 +1,326 @@
+'use client';
+
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { useState } from 'react';
+
+type CarBrand = {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url?: string;
+  description?: string;
+  country?: string;
+  founded_year?: number;
+  is_featured: boolean;
+  display_order: number;
+};
+
+type CarModel = {
+  id: string;
+  brand_id: string;
+  name: string;
+  slug: string;
+  year_start?: number;
+  year_end?: number;
+  description?: string;
+  image_url?: string;
+  sprite_3d_url?: string;
+  is_featured: boolean;
+  display_order: number;
+};
+
+type BrandClientProps = {
+  brand: CarBrand;
+  models: CarModel[];
+  lang: string;
+};
+
+export default function BrandClient({ brand, models, lang }: BrandClientProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const t = (en: string, de: string) => lang === 'de' ? de : en;
+
+  // Filter models based on search
+  const filteredModels = models.filter(model =>
+    model.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Separate featured and regular models
+  const featuredModels = filteredModels.filter(m => m.is_featured);
+  const regularModels = filteredModels.filter(m => !m.is_featured);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-700 to-red-800 dark:from-red-950 dark:via-red-900 dark:to-red-950">
+        <div className="absolute inset-0 bg-gradient-to-br from-black/20 via-transparent to-black/10 dark:from-black/40 dark:via-transparent dark:to-black/20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_70%)] dark:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.05),transparent_70%)]"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center"
+          >
+            {brand.logo_url && (
+              <div className="mb-6 flex justify-center">
+                <img
+                  src={brand.logo_url}
+                  alt={brand.name}
+                  className="h-24 object-contain"
+                />
+              </div>
+            )}
+            <h1 className="text-5xl sm:text-6xl font-black text-white mb-4 tracking-tight drop-shadow-lg dark:drop-shadow-2xl">
+              <span className="bg-gradient-to-r from-white via-red-50 to-white dark:from-white dark:via-red-100 dark:to-white bg-clip-text text-transparent">
+                {brand.name}
+              </span>
+            </h1>
+            {brand.description && (
+              <p className="text-xl text-red-50 dark:text-red-100 mb-4 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+                {brand.description}
+              </p>
+            )}
+            {brand.country && (
+              <p className="text-lg text-red-50 dark:text-red-100/90">
+                {brand.country}
+                {brand.founded_year && ` • ${brand.founded_year}`}
+              </p>
+            )}
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Breadcrumb */}
+        <nav className="mb-8 flex items-center space-x-2 text-sm">
+          <Link
+            href={`/${lang}`}
+            className="text-slate-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          >
+            {t('Home', 'Startseite')}
+          </Link>
+          <span className="text-slate-400 dark:text-zinc-600">/</span>
+          <Link
+            href={`/${lang}/cas`}
+            className="text-slate-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          >
+            {t('CAS', 'CAS')}
+          </Link>
+          <span className="text-slate-400 dark:text-zinc-600">/</span>
+            <span className="text-slate-900 dark:text-zinc-100 font-semibold">{brand.name}</span>
+        </nav>
+        
+        {/* Quick Navigation */}
+        <div className="mb-8 flex flex-wrap gap-4 justify-center">
+          <Link
+            href={`/${lang}/cas`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            {t('All Brands', 'Alle Marken')}
+          </Link>
+          <Link
+            href={`/${lang}/chat`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            {t('Ask Question', 'Frage stellen')}
+          </Link>
+          <Link
+            href={`/${lang}/knowledge`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            {t('Knowledge Base', 'Wissensbasis')}
+          </Link>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-12">
+          <div className="relative max-w-2xl mx-auto">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-red-500/5 dark:from-red-500/10 dark:via-transparent dark:to-red-500/10 rounded-xl blur-xl"></div>
+            <input
+              type="text"
+              placeholder={t('Search car models...', 'Automodelle suchen...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="relative w-full px-6 py-4 text-lg border-2 border-slate-300 dark:border-zinc-700/50 rounded-xl bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 focus:border-transparent transition-all shadow-sm dark:shadow-xl"
+            />
+            <svg
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-slate-400 dark:text-zinc-500 z-10"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Featured Models */}
+        {featuredModels.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 mb-8">
+              {t('Featured Models', 'Empfohlene Modelle')}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredModels.map((model, index) => (
+                <motion.div
+                  key={model.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  <Link
+                    href={`/${lang}/cas/${brand.slug}/${model.slug}`}
+                    className="group block h-full"
+                  >
+                    <div className="group relative bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl hover:shadow-2xl dark:hover:shadow-red-900/20 transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-red-500 dark:hover:border-red-500/50 h-full flex flex-col">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-500/10 to-transparent rounded-full blur-2xl group-hover:from-red-500/20 dark:group-hover:from-red-500/30 transition-opacity z-0"></div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-50/50 dark:to-zinc-900/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      {model.image_url ? (
+                        <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-zinc-800 dark:to-zinc-700 overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/5 to-transparent dark:from-black/40 dark:via-black/10 dark:to-transparent z-10"></div>
+                          <img
+                            src={model.image_url}
+                            alt={model.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-48 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950/40 dark:to-red-900/30 flex items-center justify-center relative overflow-hidden border-b border-red-200/50 dark:border-red-900/30">
+                          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent dark:from-red-500/20 dark:to-transparent"></div>
+                          <span className="text-6xl font-black text-red-600 dark:text-red-400/90 relative z-10 group-hover:scale-110 transition-transform duration-300 drop-shadow-lg">
+                            {model.name.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="p-6 flex-grow flex flex-col relative z-10">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-zinc-100 group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors">
+                            {model.name}
+                          </h3>
+                          {model.is_featured && (
+                            <span className="ml-2 px-2 py-1 bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400/90 text-xs font-bold rounded-lg border border-red-200/50 dark:border-red-900/30">
+                              {t('Featured', 'Empfohlen')}
+                            </span>
+                          )}
+                        </div>
+                        {(model.year_start || model.year_end) && (
+                          <div className="flex items-center gap-1.5 mb-3">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium">
+                              {model.year_start && model.year_end
+                                ? `${model.year_start} - ${model.year_end}`
+                                : model.year_start
+                                ? `${t('From', 'Ab')} ${model.year_start}`
+                                : model.year_end
+                                ? `${t('Until', 'Bis')} ${model.year_end}`
+                                : ''}
+                            </p>
+                          </div>
+                        )}
+                        {model.description && (
+                          <p className="text-sm text-slate-600 dark:text-zinc-300 line-clamp-3 flex-grow mb-4 leading-relaxed">
+                            {model.description}
+                          </p>
+                        )}
+                        <div className="mt-auto flex items-center text-red-600 dark:text-red-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                          {t('View Details', 'Details ansehen')}
+                          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All Models */}
+        <div>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 mb-8">
+              {t('All Models', 'Alle Modelle')}
+            </h2>
+          {regularModels.length === 0 && filteredModels.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-lg text-slate-500 dark:text-zinc-400">
+                {t('No models found.', 'Keine Modelle gefunden.')}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {regularModels.map((model, index) => (
+                <motion.div
+                  key={model.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: (featuredModels.length + index) * 0.05 }}
+                >
+                  <Link
+                    href={`/${lang}/cas/${brand.slug}/${model.slug}`}
+                    className="group block h-full"
+                  >
+                    <div className="bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl overflow-hidden shadow-md dark:shadow-xl hover:shadow-xl dark:hover:shadow-red-900/10 transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-red-500 dark:hover:border-red-500/50 h-full flex flex-col">
+                      {model.image_url ? (
+                        <div className="relative h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-zinc-800 dark:to-zinc-700 overflow-hidden">
+                          <img
+                            src={model.image_url}
+                            alt={model.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-zinc-800 dark:to-zinc-700 flex items-center justify-center border-b border-slate-200/50 dark:border-zinc-700/50">
+                          <span className="text-4xl font-black text-slate-600 dark:text-zinc-300">
+                            {model.name.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="p-5 flex-grow flex flex-col">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100 mb-2 group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors">
+                          {model.name}
+                        </h3>
+                        {(model.year_start || model.year_end) && (
+                          <p className="text-xs text-slate-500 dark:text-zinc-400 mb-3">
+                            {model.year_start && model.year_end
+                              ? `${model.year_start} - ${model.year_end}`
+                              : model.year_start
+                              ? `${t('From', 'Ab')} ${model.year_start}`
+                              : model.year_end
+                              ? `${t('Until', 'Bis')} ${model.year_end}`
+                              : ''}
+                          </p>
+                        )}
+                        <div className="mt-auto flex items-center text-red-600 dark:text-red-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                          {t('View Details', 'Details ansehen')}
+                          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
