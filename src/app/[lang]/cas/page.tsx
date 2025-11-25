@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies as getCookies } from 'next/headers';
 import { Metadata } from 'next';
 import Header from '@/components/Header';
-import Link from 'next/link';
 import { Suspense } from 'react';
 import CASClient from './CASClient';
 

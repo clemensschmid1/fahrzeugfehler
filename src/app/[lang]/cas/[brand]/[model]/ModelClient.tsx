@@ -395,7 +395,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
                 </label>
                 <select
                   value={faultFilter}
-                  onChange={(e) => setFaultFilter(e.target.value as any)}
+                  onChange={(e) => setFaultFilter(e.target.value as typeof faultFilter)}
                   className="px-4 py-2 border border-slate-300 dark:border-zinc-700/50 rounded-lg bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 shadow-sm dark:shadow-lg"
                 >
                   <option value="all">{t('All Severities', 'Alle Schweregrade')}</option>
@@ -414,7 +414,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
                 </label>
                 <select
                   value={manualFilter}
-                  onChange={(e) => setManualFilter(e.target.value as any)}
+                  onChange={(e) => setManualFilter(e.target.value as typeof manualFilter)}
                   className="px-4 py-2 border border-slate-300 dark:border-zinc-700/50 rounded-lg bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm dark:shadow-lg"
                 >
                   <option value="all">{t('All Types', 'Alle Typen')}</option>
@@ -433,7 +433,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
               </label>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="px-4 py-2 border border-slate-300 dark:border-zinc-700/50 rounded-lg bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 shadow-sm dark:shadow-lg"
               >
                 <option value="newest">{t('Newest First', 'Neueste zuerst')}</option>
