@@ -49,7 +49,8 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     };
   }
 
-  const brandName = (modelData.car_brands as { name: string })?.name || brand;
+  const carBrands = modelData.car_brands as unknown as { name: string } | { name: string }[];
+  const brandName = (Array.isArray(carBrands) ? carBrands[0]?.name : carBrands?.name) || brand;
 
   return {
     title: `${modelData.name} - ${brandName} | ${t('Faults & Manuals', 'Fehler & Anleitungen')} | CAS`,
