@@ -2,8 +2,6 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import ThemeToggle from '@/components/ThemeToggle';
-import MainPageSearch from '@/components/MainPageSearch';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Reviews Carousel Component
@@ -480,10 +478,8 @@ export default function MainPageClient({ lang }: { lang: string }) {
               <span className="text-slate-900 dark:text-white font-mono text-sm tracking-[0.15em] font-bold group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">FAULTBASE</span>
             </Link>
             
-            {/* Search Bar - Center */}
-            <div className="flex-1 max-w-2xl hidden lg:block mx-8">
-              <MainPageSearch lang={lang} />
-            </div>
+            {/* Spacer for layout */}
+            <div className="flex-1"></div>
             
             <div className="flex items-center gap-2.5 flex-shrink-0">
               {/* CAS Link - Desktop */}
@@ -543,7 +539,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
                 </svg>
                 <span className="hidden sm:inline">{lang === 'en' ? 'Deutsch' : 'English'}</span>
               </Link>
-              <ThemeToggle />
             </div>
           </div>
         </div>
