@@ -2,7 +2,6 @@
 import fs from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import { newsArticles } from '../src/content/news';
 
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const SITEMAP_SIZE = 1000; // 1000 URLs per sitemap file
@@ -100,21 +99,6 @@ async function generateSitemaps() {
     allUrls.push({ url: `${baseUrl}/de/chat`, priority: 0.8, changefreq: 'daily' });
     allUrls.push({ url: `${baseUrl}/en/cas`, priority: 0.9, changefreq: 'daily' });
     allUrls.push({ url: `${baseUrl}/de/cas`, priority: 0.9, changefreq: 'daily' });
-    
-    // Add news article URLs with lastmod dates
-    for (const article of newsArticles) {
-      const url = `${baseUrl}/${article.lang}/news/${article.slug}`;
-      if (!seenUrls.has(url)) {
-        seenUrls.add(url);
-        const lastmod = new Date(article.publishedAt).toISOString().split('T')[0];
-        allUrls.push({
-          url,
-          lastmod,
-          priority: 0.8,
-          changefreq: 'monthly'
-        });
-      }
-    }
     
     // Add knowledge article URLs with lastmod dates
     for (const question of allQuestions) {
