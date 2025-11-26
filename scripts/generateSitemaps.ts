@@ -183,7 +183,8 @@ async function generateSitemaps() {
         
         if (models && models.length > 0) {
           for (const model of models) {
-            const brandSlug = (model.car_brands as { slug: string })?.slug;
+            const carBrands = model.car_brands as unknown as { slug: string } | { slug: string }[];
+            const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
             if (!brandSlug) continue;
             
             const enUrl = `${baseUrl}/en/cas/${brandSlug}/${model.slug}`;
