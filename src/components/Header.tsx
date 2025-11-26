@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { getSupabaseClient } from '@/lib/supabase';
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function Header() {
   const params = useParams();
@@ -24,7 +24,10 @@ export default function Header() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const supabase = useMemo(() => getSupabaseClient(), []);
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -53,7 +56,7 @@ export default function Header() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   const isReviewsPage = pathname?.startsWith(`/${lang}/reviews`);
   
