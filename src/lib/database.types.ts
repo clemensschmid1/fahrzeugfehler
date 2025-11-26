@@ -193,10 +193,31 @@ export type Database = {
             updated_at: string;
           };
         };
+        model_generations: {
+          Row: {
+            id: string;
+            car_model_id: string;
+            name: string;
+            slug: string;
+            year_start?: number;
+            year_end?: number;
+            description?: string;
+            generation_code?: string;
+            image_url?: string;
+            sprite_3d_url?: string;
+            meta_title?: string;
+            meta_description?: string;
+            is_featured: boolean;
+            display_order: number;
+            created_at: string;
+            updated_at: string;
+          };
+        };
         car_faults: {
           Row: {
             id: string;
             car_model_id: string;
+            model_generation_id?: string;
             slug: string;
             title: string;
             description: string;
@@ -227,6 +248,7 @@ export type Database = {
           Row: {
             id: string;
             car_model_id: string;
+            model_generation_id?: string;
             title: string;
             slug: string;
             content: string;

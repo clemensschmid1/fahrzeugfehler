@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { useState, useMemo } from 'react';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -13,10 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const params = useParams();
   const lang = params.lang as string;
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   // Translation helper function
   const t = (en: string, de: string) => lang === 'de' ? de : en;

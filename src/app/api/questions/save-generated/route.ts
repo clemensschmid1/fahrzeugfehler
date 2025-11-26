@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'edge';
+// Removed edge runtime to avoid build-time evaluation issues
+// This route will use Node.js runtime instead
 
-// Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Helper function to get Supabase client at runtime (prevents build-time errors)
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
 // Function to create a hash for fast duplicate checking using Web Crypto API
 async function createQuestionHash(question: string): Promise<string> {
@@ -44,6 +51,9 @@ export async function POST(req: Request) {
       prompt_used: prompt,
       ai_model_used: ai_model,
     })));
+
+    // Get Supabase client at runtime
+    const supabase = getSupabaseClient();
 
     // Insert questions into database
     const { data, error } = await supabase

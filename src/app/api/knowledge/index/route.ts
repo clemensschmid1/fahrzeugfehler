@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 
+// Helper function for runtime check
+function getOpenAIApiKey() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is missing. Check .env.local.');
+  }
+  return process.env.OPENAI_API_KEY;
+}
+
 export async function POST(req: Request) {
   try {
     const { question } = await req.json();
+
+    if (!question || typeof question !== 'string') {
+      return NextResponse.json({ error: 'Question is required and must be a string' }, { status: 400 });
+    }
 
     const prompt = `
 You are an industrial assistant. For the following question, provide:
@@ -22,7 +34,7 @@ Question: ${question}
     const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${getOpenAIApiKey()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -32,6 +44,11 @@ Question: ${question}
       }),
     });
 
+    if (!gptRes.ok) {
+      await gptRes.text(); // Consume error response
+      return NextResponse.json({ error: `OpenAI API error: ${gptRes.status}` }, { status: 500 });
+    }
+
     const gptData = await gptRes.json();
     const content = gptData.choices?.[0]?.message?.content;
 
@@ -39,7 +56,12 @@ Question: ${question}
       return NextResponse.json({ error: 'Failed to get content from OpenAI' }, { status: 500 });
     }
 
-    const parsed = JSON.parse(content);
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      return NextResponse.json({ error: 'Failed to parse OpenAI response as JSON' }, { status: 500 });
+    }
 
     return NextResponse.json(parsed);
   } catch (err) {

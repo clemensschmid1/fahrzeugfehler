@@ -1,14 +1,15 @@
-import { ReactNode } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ReactNode } from "react";
+import Script from "next/script";
+import { headers } from "next/headers";
+import { ThemeProvider } from "@/lib/contexts/ThemeContext";
+import UserSessionProvider from "@/components/UserSessionProvider";
+import Footer from "@/components/Footer";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import ClientClarityInit from "@/components/ClientClarityInit";
 import "./globals.css";
-import Footer from '@/components/Footer';
-import Script from 'next/script';
-import UserSessionProvider from '@/components/UserSessionProvider';
-import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
-import { headers } from 'next/headers';
-import ClientClarityInit from '@/components/ClientClarityInit';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,30 +22,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: 'Infoneva: Industrial AI for Manufacturing | Instant Technical Solutions',
-    template: '%s | Infoneva',
+  metadataBase: new URL("https://faultbase.com"),
+    title: {
+      default: "FAULTBASE: Industrial Knowledge Hub",
+      template: "%s | FAULTBASE",
   },
-  description: 'Infoneva provides instant, precise answers for industrial automation. Access a knowledge base trained on thousands of OEM manuals, error codes, and PLC logic.',
+  description:
+    "Transform fault codes into instant solutions. Precision diagnosis for industrial automation.",
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
-  },
-  openGraph: {
-    title: 'Infoneva: Industrial AI for Manufacturing',
-    description: 'Instant, precise answers for industrial automation.',
-    url: 'https://infoneva.com',
-    siteName: 'Infoneva',
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Infoneva: Industrial AI for Manufacturing',
-    description: 'Instant, precise answers for industrial automation.',
-  },
-  verification: {
-    google: 'your-google-verification-code',
+    icon: '/icon.svg',
+    apple: '/apple-icon.svg',
   },
 };
 
@@ -73,7 +60,7 @@ export default async function RootLayout({
     else if (pathname.startsWith('/en')) lang = 'en';
   }
   return (
-    <html lang={lang} className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang={lang} className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         {/* Google tag (gtag.js) */}
         <Script
@@ -112,17 +99,78 @@ export default async function RootLayout({
           strategy="lazyOnload"
         />
         <meta name="msvalidate.01" content="04FC17AA84330E866FDBF4F1C78EFD59" />
+        {/* Matomo */}
+        <Script id="matomo-tracking" strategy="afterInteractive">
+          {`
+            var _paq = window._paq = window._paq || [];
+            /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+            _paq.push(['trackPageView']);
+            _paq.push(['enableLinkTracking']);
+            (function() {
+              var u="https://faultbase.matomo.cloud/";
+              _paq.push(['setTrackerUrl', u+'matomo.php']);
+              _paq.push(['setSiteId', '1']);
+              var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+              g.async=true; g.src='https://cdn.matomo.cloud/faultbase.matomo.cloud/matomo.js'; s.parentNode.insertBefore(g,s);
+            })();
+          `}
+        </Script>
+        {/* End Matomo Code */}
+        {/* ContentSquare */}
+        <Script
+          src="https://t.contentsquare.net/uxa/469e33c68e5d9.js"
+          strategy="afterInteractive"
+        />
+        {/* End ContentSquare */}
+        <style dangerouslySetInnerHTML={{__html: `
+          /* Force theme styles */
+          html:not(.dark) {
+            color-scheme: light;
+          }
+          html.dark {
+            color-scheme: dark;
+          }
+        `}} />
       </head>
       <body className="antialiased">
-        <UserSessionProvider>
-          <div className="flex-1">
-            {children}
-          </div>
-          <Footer />
-        </UserSessionProvider>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`
+            (function() {
+              try {
+                const stored = localStorage.getItem('fault-base-theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
+                const root = document.documentElement;
+                root.classList.remove('dark');
+                if (theme === 'dark') {
+                  root.classList.add('dark');
+                  root.style.setProperty('--background', '#0a0a0a');
+                  root.style.setProperty('--foreground', '#ededed');
+                } else {
+                  root.style.setProperty('--background', '#ffffff');
+                  root.style.setProperty('--foreground', '#171717');
+                }
+              } catch (e) {}
+            })();
+          `}
+        </Script>
+        <ThemeProvider>
+          <UserSessionProvider>
+            <div className="flex-1">
+              {children}
+            </div>
+            <Footer />
+          </UserSessionProvider>
+        </ThemeProvider>
         <Analytics />
         <SpeedInsights />
         <ClientClarityInit />
+        {/* SimpleAnalytics - 100% privacy-first analytics */}
+        <Script
+          async
+          src="https://scripts.simpleanalyticscdn.com/latest.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_API_URL = 'https://api.openai.com/v1';
 
-if (!OPENAI_API_KEY) throw new Error('Missing OpenAI API key');
+// Helper function for runtime check
+function getOpenAIApiKey() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('Missing OpenAI API key');
+  }
+  return process.env.OPENAI_API_KEY;
+}
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +20,7 @@ export async function POST(req: Request) {
       const res = await fetch(`${OPENAI_API_URL}/batches/${batchId}/cancel`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${getOpenAIApiKey()}`,
           'Content-Type': 'application/json'
         }
       });

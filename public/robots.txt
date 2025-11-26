@@ -14,7 +14,7 @@ Disallow: /profile
 Disallow: /api/
 
 # Host
-Host: https://infoneva.com
+Host: https://faultbase.com
 
 # Sitemaps
-Sitemap: https://infoneva.com/sitemap.xml
+Sitemap: https://faultbase.com/sitemap.xml

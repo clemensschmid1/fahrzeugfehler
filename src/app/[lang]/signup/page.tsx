@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { useState, useMemo } from 'react';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import Header from '@/components/Header';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -14,10 +15,7 @@ export default function SignupPage() {
   const router = useRouter();
   const params = useParams();
   const lang = params.lang as string;
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   // Translation helper function
   const t = (en: string, de: string) => lang === 'de' ? de : en;
@@ -78,34 +76,27 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100 flex flex-col items-center justify-center py-12 px-4">
-      {/* Language Toggle Button - Top Right */}
-      <div className="absolute top-4 right-4">
-        <Link
-          href={`/${lang === 'en' ? 'de' : 'en'}/signup`}
-          className="inline-flex items-center px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-          </svg>
-          {lang === 'en' ? 'English' : 'Deutsch'}
-        </Link>
-      </div>
+    <>
+      <Header />
+      <main className="min-h-screen bg-white dark:bg-slate-950 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md mx-auto">
+          {/* Top Bar with Theme Toggle and Language Switcher */}
+          <div className="flex items-center justify-end gap-3 mb-8">
+            <Link
+              href={`/${lang === 'en' ? 'de' : 'en'}/signup`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+              </svg>
+              {lang === 'en' ? 'Deutsch' : 'English'}
+            </Link>
+          </div>
 
-      {/* Navigation Header */}
-      <header className="w-full max-w-md mx-auto mb-8 flex justify-center space-x-6">
-        <Link 
-          href={`/${lang}`}
-          className="text-slate-600 hover:text-slate-800 font-medium transition-colors"
-        >
-          {t("Home", "Startseite")}
-        </Link>
-      </header>
-
-      {/* Main Signup Card */}
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        {/* Header Section */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6 text-white">
+          {/* Main Signup Card */}
+          <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-lg overflow-hidden">
+            {/* Header Section */}
+            <div className="bg-red-600 px-8 py-6 text-white">
           <div className="flex items-center justify-center mb-4">
             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,7 +204,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={true}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
                 <div className="flex items-center justify-center">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,8 +218,8 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* Email Notification Form */}
-      <div className="max-w-md w-full mt-6 bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          {/* Email Notification Form */}
+          <div className="w-full mt-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-lg p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4 text-center">
           {t("Get Notified When Signups Are Available", "Benachrichtigung erhalten, wenn Registrierungen verfügbar sind")}
         </h3>
@@ -250,7 +241,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isSubmittingNotification}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {isSubmittingNotification ? (
               <div className="flex items-center justify-center">
@@ -281,61 +272,63 @@ export default function SignupPage() {
         </form>
       </div>
 
-      {/* Benefits Section */}
-      <div className="max-w-md w-full mt-6 bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4 text-center">
-          {t("Why join Infoneva?", "Warum Infoneva beitreten?")}
-        </h3>
-        <div className="space-y-3">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-sm text-slate-600">
-              {t("Unlimited AI-powered technical support", "Unbegrenzter KI-gestützter technischer Support")}
-            </span>
+          {/* Benefits Section */}
+          <div className="w-full mt-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 text-center">
+              {t("Why join FAULTBASE?", "Warum FAULTBASE beitreten?")}
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  {t("Unlimited AI-powered technical support", "Unbegrenzter KI-gestützter technischer Support")}
+                </span>
+              </div>
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  {t("Access to comprehensive knowledge base", "Zugang zur umfassenden Wissensdatenbank")}
+                </span>
+              </div>
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  {t("Vote and comment on solutions", "Lösungen bewerten und kommentieren")}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-sm text-slate-600">
-              {t("Access to comprehensive knowledge base", "Zugang zur umfassenden Wissensdatenbank")}
-            </span>
+
+          {/* Sign In Link */}
+          <div className="mt-6 text-center">
+            <p className="text-slate-600 dark:text-slate-400 text-sm">
+              {t("Already have an account?", "Bereits ein Konto?")}{' '}
+              <Link 
+                href={`/${lang}/login`} 
+                className="font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+              >
+                {t("Sign in here", "Hier anmelden")}
+              </Link>
+            </p>
           </div>
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-sm text-slate-600">
-              {t("Vote and comment on solutions", "Lösungen bewerten und kommentieren")}
-            </span>
-          </div>
+
+          {/* Footer */}
+          <footer className="mt-8 text-center">
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              {t("By creating an account, you agree to our", "Durch die Kontoerstellung stimmen Sie unseren")}{' '}
+              <Link href={`/${lang}/privacy`} className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                {t("Privacy Policy", "Datenschutzerklärung")}
+              </Link>
+            </p>
+          </footer>
         </div>
-      </div>
-
-      {/* Sign In Link */}
-      <div className="mt-6 text-center">
-        <p className="text-slate-600 text-sm">
-          {t("Already have an account?", "Bereits ein Konto?")}{' '}
-          <Link 
-            href={`/${lang}/login`} 
-            className="font-semibold text-green-600 hover:text-green-800 transition-colors"
-          >
-            {t("Sign in here", "Hier anmelden")}
-          </Link>
-        </p>
-      </div>
-
-      {/* Footer */}
-      <footer className="mt-8 text-center">
-        <p className="text-slate-500 text-sm">
-          {t("By creating an account, you agree to our", "Durch die Kontoerstellung stimmen Sie unseren")}{' '}
-          <Link href={`/${lang}/privacy`} className="text-green-600 hover:text-green-800">
-            {t("Privacy Policy", "Datenschutzerklärung")}
-          </Link>
-        </p>
-      </footer>
-    </div>
+      </main>
+    </>
   );
 } 

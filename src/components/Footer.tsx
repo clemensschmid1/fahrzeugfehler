@@ -10,40 +10,40 @@ export default function Footer() {
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
   return (
-    <footer className="bg-gray-900 text-white py-12 mt-auto">
+    <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/10 py-8 sm:py-12 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Mission Section */}
-        <div className="mb-8 pb-8 border-b border-gray-700">
-          <div className="max-w-4xl mx-auto text-center">
-            <h3 className="text-xl font-semibold text-white mb-4">
-              {t('Our Mission', 'Unsere Mission')}
-            </h3>
-            <div className="space-y-3 text-gray-300 leading-relaxed">
-              <p className="text-lg">
-                {t(
-                  'Our Mission: Infoneva collects and restructures information into one structured, accessible platform. We deliver real insights - practical, precise, and field-proven. Built for people who do not want to waste their time.',
-                  'Unsere Mission: Infoneva sammelt und restrukturiert Informationen in einer strukturierten, zugänglichen Plattform. Wir liefern echte Erkenntnisse – praktisch, präzise und erprobt. Für Menschen, die ihre Zeit nicht verschwenden wollen.'
-                )}
-              </p>
+        {/* Tech-focused Footer */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-col items-center md:items-start gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              <div className="text-sm font-mono font-bold text-slate-900 dark:text-white tracking-wider">
+                © 2025 FAULTBASE
+              </div>
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+              {t('All rights reserved.', 'Alle Rechte vorbehalten.')}
+            </div>
+            <div className="text-xs text-slate-400 dark:text-slate-500 font-mono mt-1">
+              {t('v2.0.0', 'v2.0.0')} • {t('Production', 'Produktion')}
             </div>
           </div>
-        </div>
-
-        {/* Copyright and Links */}
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="text-sm text-gray-400 mb-4 md:mb-0">
-            © 2024 Infoneva. {t('All rights reserved.', 'Alle Rechte vorbehalten.')}
-          </div>
-          <div className="flex space-x-6">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            <Link
+              href={`/${lang}/contact`}
+              className="text-sm text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors font-medium font-mono"
+            >
+              {t('Contact', 'Kontakt')}
+            </Link>
             <Link
               href={`/${lang}/privacy`}
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors font-medium font-mono"
             >
-              {t('Privacy Policy', 'Datenschutz')}
+              {t('Privacy', 'Datenschutz')}
             </Link>
             <Link
               href={`/${lang}/impressum`}
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors font-medium font-mono"
             >
               {t('Impressum', 'Impressum')}
             </Link>
@@ -52,4 +52,4 @@ export default function Footer() {
       </div>
     </footer>
   );
-} 
+}

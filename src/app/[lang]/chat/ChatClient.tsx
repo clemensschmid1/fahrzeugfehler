@@ -2,11 +2,12 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense, useCallback, memo, useMemo } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import ReactMarkdown from 'react-markdown';
+import { motion } from 'framer-motion';
 import 'katex/dist/katex.min.css';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -27,9 +28,8 @@ interface ConversationMessage {
   created_at: string;
 }
 
-// 🔥 OPTIMIZATION: Memoized MarkdownRenderer for better performance
+// Memoized MarkdownRenderer
 const MarkdownRenderer = memo(({ content }: { content: string }) => {
-  // 🔥 OPTIMIZATION: Memoize the processed content
   const processedContent = useMemo(() => processMarkdownForLatex(content), [content]);
   
   return (
@@ -37,46 +37,32 @@ const MarkdownRenderer = memo(({ content }: { content: string }) => {
       remarkPlugins={[remarkMath]}
       rehypePlugins={[[rehypeKatex, { strict: false }]]}
       components={{
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        h1: ({children, ...props}: any) => <h1 className="font-geist font-bold text-2xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h1>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        h2: ({children, ...props}: any) => <h2 className="font-geist font-semibold text-xl mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h2>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        h3: ({children, ...props}: any) => <h3 className="font-geist font-medium text-lg mt-4 mb-2" style={{fontFamily: 'Geist, Inter, Arial, sans-serif'}} {...props}>{children}</h3>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        strong: ({children, ...props}: any) => <strong className="font-bold text-blue-800" {...props}>{children}</strong>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        em: ({children, ...props}: any) => <em className="italic text-blue-700" {...props}>{children}</em>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        p: ({children, ...props}: any) => <p className="my-3 leading-relaxed text-base" {...props}>{children}</p>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        li: ({children, ...props}: any) => <li className="sm:ml-4 ml-2 my-1 sm:pl-1 pl-0 list-inside" {...props}>{children}</li>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ol: ({children, ...props}: any) => <ol className="list-decimal sm:ml-6 ml-2 my-2" {...props}>{children}</ol>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ul: ({children, ...props}: any) => <ul className="list-disc sm:ml-6 ml-2 my-2" {...props}>{children}</ul>,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        h1: ({children, ...props}: any) => <h1 className="font-bold text-xl mt-4 mb-2 text-black dark:text-white" {...props}>{children}</h1>,
+        h2: ({children, ...props}: any) => <h2 className="font-semibold text-lg mt-4 mb-2 text-black dark:text-white" {...props}>{children}</h2>,
+        h3: ({children, ...props}: any) => <h3 className="font-medium text-base mt-3 mb-2 text-black dark:text-white" {...props}>{children}</h3>,
+        strong: ({children, ...props}: any) => <strong className="font-bold text-red-600 dark:text-red-400" {...props}>{children}</strong>,
+        em: ({children, ...props}: any) => <em className="italic text-slate-600 dark:text-slate-400" {...props}>{children}</em>,
+        p: ({children, ...props}: any) => <p className="my-2 leading-relaxed text-sm text-black dark:text-white" {...props}>{children}</p>,
+        li: ({children, ...props}: any) => <li className="ml-4 my-1 list-inside text-black dark:text-white" {...props}>{children}</li>,
+        ol: ({children, ...props}: any) => <ol className="list-decimal ml-6 my-2 text-black dark:text-white" {...props}>{children}</ol>,
+        ul: ({children, ...props}: any) => <ul className="list-disc ml-6 my-2 text-black dark:text-white" {...props}>{children}</ul>,
         code({inline, children, ...props}: any) {
           const code = String(children).replace(/\n$/, '');
           if (inline) {
-            return <code className="markdown-inline-code" {...props}>{children}</code>;
+            return <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-900 text-red-600 dark:text-red-400 rounded text-xs font-mono" {...props}>{children}</code>;
           }
-          const lines = code.split('\n');
           return (
-            <pre className="markdown-code-block" style={{borderTop: lines.length > 8 ? '3px solid #c7d6f9' : undefined}}>
-              <code>{code}</code>
+            <pre className="bg-slate-100 dark:bg-slate-900 border border-black/10 dark:border-white/20 rounded-lg p-3 overflow-x-auto my-3">
+              <code className="text-xs font-mono text-black dark:text-white">{code}</code>
             </pre>
           );
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         table: ({children, ...props}: any) => (
-          <div className="markdown-table-container">
+          <div className="markdown-table-container my-4">
             <table className="markdown-table" {...props}>{children}</table>
           </div>
         ),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tr: ({children, ...props}: any) => <tr {...props}>{children}</tr>, 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         td: ({children, ...props}: any) => <td {...props}>{children}</td>, 
       } as any}
     >
@@ -87,7 +73,6 @@ const MarkdownRenderer = memo(({ content }: { content: string }) => {
 
 MarkdownRenderer.displayName = 'MarkdownRenderer';
 
-// 🔥 OPTIMIZATION: Memoized message component for better rendering performance
 const MessageComponent = memo(({ 
   message, 
   index, 
@@ -103,42 +88,41 @@ const MessageComponent = memo(({
   metaWaitSeconds: number;
   lang: string;
 }) => {
-  const isLastMessage = index === 0; // Assuming messages are rendered in reverse order
+  const isLastMessage = index === 0;
   
   return (
     <div
-      className={`flex ${
-        message.role === 'user' ? 'justify-end' : 'justify-start'
-      } animate-in fade-in duration-300`}
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
-      <div
-        className={`max-w-[85%] rounded-2xl p-5 shadow-lg ${
-          message.role === 'user'
-            ? 'bg-blue-600 text-white shadow-blue-200'
-            : 'bg-slate-100 text-slate-900 shadow-slate-200'
-        }`}
+        className={`flex ${
+          message.role === 'user' ? 'justify-end' : 'justify-start'
+        } mb-4`}
+      >
+        <div
+          className={`max-w-[85%] rounded-lg p-4 ${
+            message.role === 'user'
+              ? 'bg-red-600 text-white'
+              : 'bg-white dark:bg-black border border-black/10 dark:border-white/20 text-black dark:text-white'
+          }`}
       >
         {message.role === 'assistant' ? (
           <>
-            <div className="prose prose-blue max-w-none">
+            <div className="prose prose-slate dark:prose-invert max-w-none">
               <MarkdownRenderer content={message.content} />
             </div>
             {showMetaDisclaimer && isLastMessage && (
               <div
-                className={`mt-3 flex flex-col items-start gap-2 transition-all duration-500 ${metaFadeOut ? 'opacity-0 translate-y-2' : 'opacity-100'} bg-blue-50 border border-blue-200 rounded-lg shadow-md p-4 w-full`}
+                className={`mt-4 flex flex-col items-start gap-2 transition-all duration-500 ${metaFadeOut ? 'opacity-0 translate-y-2' : 'opacity-100'} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 w-full`}
               >
                 <div className="flex items-center gap-2">
-                  <FaSpinner className="animate-spin text-blue-500 text-lg" />
-                  <span className="text-blue-900 font-medium">
+                  <FaSpinner className="animate-spin text-blue-600 dark:text-blue-400 text-lg" />
+                  <span className="text-blue-900 dark:text-blue-100 font-medium text-sm">
                     {lang === 'de'
                       ? `Die Frage wird intern ausgewertet. Bitte warten Sie, bevor Sie diese Seite verlassen. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`
                       : `The question is being processed internally. Please wait before leaving this page. (${Math.min(metaWaitSeconds, 5).toFixed(1)}s / 5s)`}
                   </span>
                 </div>
-                <div className="w-full bg-blue-100 rounded h-2 mt-1">
+                <div className="w-full bg-blue-100 dark:bg-blue-900/40 rounded h-2 mt-1">
                   <div
-                    className="bg-blue-500 h-2 rounded transition-all duration-200"
+                    className="bg-blue-600 dark:bg-blue-400 h-2 rounded transition-all duration-200"
                     style={{ width: `${Math.min((metaWaitSeconds / 5) * 100, 100)}%` }}
                   ></div>
                 </div>
@@ -146,10 +130,10 @@ const MessageComponent = memo(({
             )}
           </>
         ) : (
-          <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
         )}
-        <div className={`text-xs mt-3 opacity-70 ${
-          message.role === 'user' ? 'text-blue-100' : 'text-slate-500'
+        <div className={`text-xs mt-3 opacity-50 ${
+          message.role === 'user' ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'
         }`}>
           {new Date(message.created_at).toLocaleTimeString([], {
             hour: '2-digit',
@@ -182,23 +166,25 @@ function ChatPageContent() {
   const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | undefined>(undefined);
   const [metaWaitSeconds, setMetaWaitSeconds] = useState(0);
   const [metaFadeOut, setMetaFadeOut] = useState(false);
-  // 🔥 OPTIMIZATION: Memoize expensive operations
-  const supabase = useMemo(() => createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ), []);
+  
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   const formMountTime = useRef<number>(Date.now());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const autoSubmitRef = useRef<boolean>(false);
 
   useEffect(() => {
     formMountTime.current = Date.now();
   }, []);
 
-  // Translation helper function
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
-  // Generate UUID for conversation_id
   const generateConversationId = (): string => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = Math.random() * 16 | 0;
@@ -207,7 +193,6 @@ function ChatPageContent() {
     });
   };
 
-  // 🔥 OPTIMIZATION: Memoize conversation history loading
   const loadConversationHistory = useCallback(async (convId: string) => {
     try {
       const { data: conversationMessages, error } = await supabase
@@ -245,12 +230,10 @@ function ChatPageContent() {
     }
   }, [supabase]);
 
-  // 🔥 OPTIMIZATION: Memoize user fetching
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('Chat page - Session:', session);
         setUser(session?.user || null);
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -261,7 +244,6 @@ function ChatPageContent() {
     fetchUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Chat page - Auth state change:', event, session);
       setUser(session?.user || null);
     });
 
@@ -270,18 +252,16 @@ function ChatPageContent() {
     };
   }, [supabase]);
 
-  // Handle prefill parameters and conversation_id from URL
   useEffect(() => {
     const prefillQuestion = searchParams.get('prefill_question');
     const prefillAnswer = searchParams.get('prefill_answer');
     const urlConversationId = searchParams.get('conversation_id');
+    const queryParam = searchParams.get('q');
     
     if (urlConversationId) {
-      // Load conversation history if conversation_id is provided
       setConversationId(urlConversationId);
       loadConversationHistory(urlConversationId);
     } else if (prefillQuestion && prefillAnswer) {
-      // Handle prefill parameters for new conversations
       const newConversationId = generateConversationId();
       setConversationId(newConversationId);
       
@@ -301,7 +281,6 @@ function ChatPageContent() {
       
       setMessages([questionMessage, answerMessage]);
       
-      // Update URL with new conversation_id
       try {
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.set('conversation_id', newConversationId);
@@ -313,16 +292,22 @@ function ChatPageContent() {
         setError('An internal error occurred while starting a new chat. Please refresh the page.');
       }
     } else {
-      // New chat without any context
       const newConversationId = generateConversationId();
       setConversationId(newConversationId);
       setMessages([]);
       
-      // Update URL with new conversation_id
       try {
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.set('conversation_id', newConversationId);
-        router.replace(newUrl.pathname + newUrl.search);
+        if (queryParam) {
+          // Set the query in the input immediately
+          setInput(queryParam);
+          // Remove q parameter from URL
+          newUrl.searchParams.delete('q');
+          router.replace(newUrl.pathname + newUrl.search);
+        } else {
+          router.replace(newUrl.pathname + newUrl.search);
+        }
       } catch (err) {
         console.error('Failed to parse URL for new chat (no context):', err);
         setError('An internal error occurred while starting a new chat. Please refresh the page.');
@@ -330,7 +315,6 @@ function ChatPageContent() {
     }
   }, [searchParams, router, loadConversationHistory]);
 
-  // Check free question limit for unauthenticated users
   useEffect(() => {
     if (!user) {
       const count = parseInt(localStorage.getItem('free_questions_count_v2') || '0', 10);
@@ -341,13 +325,165 @@ function ChatPageContent() {
     }
   }, [user]);
 
-  // Auto-expand textarea as user types
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
   }, [input]);
+
+  // Auto-submit query from URL parameter - fixed and improved
+  useEffect(() => {
+    const queryParam = searchParams.get('q');
+    if (queryParam && queryParam.trim() && !autoSubmitRef.current && messages.length === 0 && !isLoading && conversationId) {
+      autoSubmitRef.current = true;
+      
+      // Set input immediately for visual feedback
+      setInput(queryParam);
+      
+      // Use requestAnimationFrame for better timing, then auto-submit
+      requestAnimationFrame(() => {
+        setTimeout(async () => {
+          // Set form mount time to allow immediate submission (bypass 3-second check)
+          formMountTime.current = Date.now() - 4000;
+          
+          // Use queryParam directly - more reliable than state
+          const questionText = queryParam.trim();
+          if (!questionText) {
+            autoSubmitRef.current = false;
+            return;
+          }
+        
+        if (questionText.length > 1000) {
+          setError(lang === 'de' ? 'Maximal 1000 Zeichen erlaubt.' : 'Maximum 1000 characters allowed.');
+          return;
+        }
+        
+        // Check free limit for non-users
+        if (!user) {
+          const count = parseInt(localStorage.getItem('free_questions_count_v2') || '0', 10);
+          if (count >= 3) {
+            setFreeLimitReached(true);
+            setError(lang === 'de' ? 'Sie haben Ihr Kontingent von 3 kostenlosen Fragen erreicht. Bitte registrieren Sie sich, um unbegrenzt weiterzufragen.' : 'You have used up your 3 free questions. Please sign up to continue asking unlimited questions.');
+            return;
+          } else {
+            const newCount = count + 1;
+            localStorage.setItem('free_questions_count_v2', newCount.toString());
+            setFreeQuestionsCount(newCount);
+            if (newCount >= 3) setFreeLimitReached(true);
+          }
+        }
+        
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          content: questionText,
+          role: 'user',
+          created_at: new Date().toISOString(),
+        };
+
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setIsLoading(true);
+        setError(null);
+
+        try {
+          const conversationContext = messages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          }));
+
+          const isFirstQuestion = messages.filter(m => m.role === 'user').length === 0;
+
+          const response = await fetch('/api/ask', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'text/event-stream',
+            },
+            body: JSON.stringify({
+              question: questionText,
+              language: lang,
+              conversation_id: conversationId,
+              conversation_context: conversationContext,
+              submitDeltaMs: 4000,
+              is_main: isFirstQuestion,
+            }),
+          });
+
+          if (!response.ok) {
+            let errorMsg = 'API request failed';
+            try {
+              const errorData = await response.json();
+              errorMsg = errorData.error || errorMsg;
+            } catch {}
+            setError(errorMsg);
+            setIsLoading(false);
+            return;
+          }
+
+          if (!response.body) {
+            setError('No response body from server.');
+            setIsLoading(false);
+            return;
+          }
+          
+          const reader = response.body.getReader();
+          let assistantContent = '';
+          const assistantId = Date.now().toString();
+          let done = false;
+          let buffer = '';
+          
+          while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            if (value) {
+              buffer += new TextDecoder().decode(value);
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const jsonStr = line.replace('data: ', '').trim();
+                  if (jsonStr === '[DONE]') continue;
+                  try {
+                    const data = JSON.parse(jsonStr);
+                    // Process streaming content
+                    if (data.content) {
+                      assistantContent += data.content;
+                      setMessages(prev => {
+                        const existing = prev.find(m => m.id === assistantId);
+                        if (existing) {
+                          return prev.map(m => 
+                            m.id === assistantId 
+                              ? { ...m, content: assistantContent }
+                              : m
+                          );
+                        }
+                        return [...prev, {
+                          id: assistantId,
+                          content: assistantContent,
+                          role: 'assistant' as const,
+                          created_at: new Date().toISOString(),
+                        }];
+                      });
+                    }
+                  } catch (err) {
+                    console.error('Error parsing SSE data:', err);
+                  }
+                }
+              }
+            }
+          }
+          
+          setIsLoading(false);
+        } catch (err: any) {
+          console.error('Auto-submit error:', err);
+          setError(err.message || (lang === 'de' ? 'Fehler beim automatischen Senden der Frage.' : 'Error auto-submitting question.'));
+          setIsLoading(false);
+        }
+        }, 100);
+      });
+    }
+  }, [searchParams, messages.length, isLoading, conversationId, user, lang, messages]);
 
   const handleNewChat = () => {
     const newConversationId = generateConversationId();
@@ -356,7 +492,6 @@ function ChatPageContent() {
     setInput('');
     setError(null);
     
-    // Update URL with new conversation_id
     try {
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('conversation_id', newConversationId);
@@ -369,8 +504,8 @@ function ChatPageContent() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!input.trim()) return;
     if (input.length > 1000) {
       setError(lang === 'de' ? 'Maximal 1000 Zeichen erlaubt.' : 'Maximum 1000 characters allowed.');
@@ -410,13 +545,11 @@ function ChatPageContent() {
     setError(null);
 
     try {
-      // Prepare conversation context for the API
       const conversationContext = messages.map(msg => ({
         role: msg.role,
         content: msg.content,
       }));
 
-      // In handleSubmit, determine if this is the first question in the conversation
       const isFirstQuestion = messages.filter(m => m.role === 'user').length === 0;
 
       const response = await fetch('/api/ask', {
@@ -452,7 +585,6 @@ function ChatPageContent() {
         return;
       }
 
-      // Streaming response handling
       if (!response.body) {
         setError('No response body from server.');
         setIsLoading(false);
@@ -469,7 +601,6 @@ function ChatPageContent() {
         done = doneReading;
         if (value) {
           buffer += new TextDecoder().decode(value);
-          // OpenAI streams as data: {"id":..., "choices":...}\n\n
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
           for (const line of lines) {
@@ -483,28 +614,26 @@ function ChatPageContent() {
                 if (delta) {
                   assistantContent += delta;
                   setMessages(prev => {
-                    // If last message is assistant and has this id, update it
                     if (prev.length > 0 && prev[prev.length - 1].role === 'assistant' && prev[prev.length - 1].id === assistantId) {
                       return [
                         ...prev.slice(0, -1),
                         { ...prev[prev.length - 1], content: assistantContent },
                       ];
                     } else {
-                      // Otherwise, add a new assistant message
                       return [
                         ...prev,
                         {
                           id: assistantId,
                           content: assistantContent,
-          role: 'assistant',
-          created_at: new Date().toISOString(),
+                          role: 'assistant',
+                          created_at: new Date().toISOString(),
                         },
                       ];
                     }
                   });
                 }
               } catch {
-                // Ignore JSON parse errors for incomplete chunks
+                // Ignore JSON parse errors
               }
             }
           }
@@ -518,28 +647,28 @@ function ChatPageContent() {
         let seconds = 0;
         setMetaWaitSeconds(0);
         setMetaFadeOut(false);
-      const interval = setInterval(async () => {
+        const interval = setInterval(async () => {
           seconds += 0.2;
           setMetaWaitSeconds(seconds);
-        const { data } = await supabase
-          .from('questions')
-          .select('meta_generated')
+          const { data } = await supabase
+            .from('questions')
+            .select('meta_generated')
             .eq('id', questionId)
-          .single();
-        if (data?.meta_generated) {
+            .single();
+          if (data?.meta_generated) {
             setMetaFadeOut(true);
-          clearInterval(interval);
-          if (metaPollTimeout) clearTimeout(metaPollTimeout);
-            setTimeout(() => setShowMetaDisclaimer(false), 500); // fade out after 0.5s
-        }
+            clearInterval(interval);
+            if (metaPollTimeout) clearTimeout(metaPollTimeout);
+            setTimeout(() => setShowMetaDisclaimer(false), 500);
+          }
         }, 200);
-      setMetaPollInterval(interval);
-      const timeout = setTimeout(() => {
+        setMetaPollInterval(interval);
+        const timeout = setTimeout(() => {
           setMetaFadeOut(true);
-        clearInterval(interval);
+          clearInterval(interval);
           setTimeout(() => setShowMetaDisclaimer(false), 500);
         }, 5000);
-      setMetaPollTimeout(timeout);
+        setMetaPollTimeout(timeout);
       }
     } catch (error) {
       const err = error as Error;
@@ -548,165 +677,173 @@ function ChatPageContent() {
   };
 
   return (
-    <article className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white dark:bg-black pt-20 pb-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        <nav className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-6" aria-label={t("Page navigation", "Seitennavigation")}>
-          <header className="text-center sm:text-left">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2 leading-tight tracking-tight">
-              Infoneva Chat
+        {/* Minimal Hero Section */}
+        {messages.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="text-center mb-12 pt-8"
+          >
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-black dark:text-white mb-4 tracking-tight">
+              {t("When machines fail,", "Wenn Maschinen versagen,")}
+              <br />
+              <span className="text-red-600 dark:text-red-400">
+                {t("we know why.", "wissen wir warum.")}
+              </span>
             </h1>
-            <p className="text-gray-600 text-lg font-medium">
-              {t("Professional answers for industrial automation. Ask your question and get expert-level help instantly.", "Professionelle Antworten für die Industrieautomatisierung. Stellen Sie Ihre Frage und erhalten Sie sofort Expertenhilfe.")}
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 mb-8 max-w-2xl mx-auto">
+              {t(
+                "Get instant, expert-level answers to your industrial automation questions.",
+                "Erhalten Sie sofortige, Experten-Level Antworten auf Ihre Fragen zur Industrieautomatisierung."
+              )}
             </p>
-          </header>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Language Toggle Button */}
-            <Link
-              href={`/${lang === 'en' ? 'de' : 'en'}/chat`}
-              className="inline-flex items-center justify-center px-6 py-3 bg-white text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl border border-slate-200 hover:border-slate-300"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-              </svg>
-              {lang === 'en' ? 'English' : 'Deutsch'}
-            </Link>
-          </div>
-        </nav>
+          </motion.div>
+        )}
 
-        <div className="bg-white rounded-3xl shadow-2xl border border-blue-100 overflow-hidden">
-          <div className="flex items-center gap-2 bg-blue-50 border-b border-blue-100 px-6 py-3">
-            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            <span className="text-blue-900 font-medium text-base">{t('Ask anything about industrial automation. Your chat is private and secure.', 'Stellen Sie jede Frage zur industriellen Automatisierung. Ihr Chat ist privat und sicher.')}</span>
-          </div>
-          <div className="p-6 pb-4">
-            <div className="space-y-6 mb-6 max-h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
-              {messages.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                    {t("Start a conversation", "Starten Sie ein Gespräch")}
-                  </h3>
-                </div>
-              )}
-              
-              {/* 🔥 OPTIMIZATION: Use memoized message components */}
-              {messages.map((message, index) => (
-                <MessageComponent
-                  key={message.id}
-                  message={message}
-                  index={index}
-                  showMetaDisclaimer={showMetaDisclaimer}
-                  metaFadeOut={metaFadeOut}
-                  metaWaitSeconds={metaWaitSeconds}
-                  lang={lang}
-                />
-              ))}
-              
-              {isLoading && (
-                <div className="flex justify-start animate-in fade-in duration-300">
-                  <div className="bg-slate-100 text-slate-900 rounded-2xl p-5 shadow-lg">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                      <span className="text-sm text-slate-600 ml-2">
-                        {t("AI is thinking...", "KI denkt nach...")}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+        {/* Chat Container - Minimal & Professional */}
+        <div className="bg-white dark:bg-black border border-black/10 dark:border-white/20 rounded-xl shadow-lg overflow-hidden">
+          {/* Top Bar - Minimal */}
+          {messages.length > 0 && (
+            <div className="flex items-center justify-between px-6 py-3 border-b border-black/10 dark:border-white/20">
+              <h2 className="text-sm font-bold text-black dark:text-white uppercase tracking-wider">
+                {t("Chat", "Chat")}
+              </h2>
+              <button
+                onClick={handleNewChat}
+                className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors uppercase tracking-wider"
+              >
+                {t('New', 'Neu')}
+              </button>
             </div>
+          )}
 
-            {freeLimitReached && !user && (
-              <div className="mb-6 p-4 bg-yellow-50 text-yellow-900 border border-yellow-200 rounded-xl shadow-sm">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          {/* Messages Area - Clean */}
+          <div className="p-6 min-h-[400px] max-h-[65vh] overflow-y-auto">
+            {messages.length === 0 && (
+              <div className="text-center py-20">
+                <div className="w-12 h-12 border-2 border-slate-200 dark:border-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
-                  <span className="font-medium">
-                    {lang === 'de'
-                      ? 'Sie haben Ihr Kontingent von 3 kostenlosen Fragen erreicht. Bitte registrieren Sie sich, um unbegrenzt weiterzufragen.'
-                      : 'You have used up your 3 free questions. Please sign up to continue asking unlimited questions.'}
-                  </span>
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t("Type your question below", "Geben Sie unten Ihre Frage ein")}
+                </p>
+              </div>
+            )}
+            
+            {messages.map((message, index) => (
+              <MessageComponent
+                key={message.id}
+                message={message}
+                index={index}
+                showMetaDisclaimer={showMetaDisclaimer}
+                metaFadeOut={metaFadeOut}
+                metaWaitSeconds={metaWaitSeconds}
+                lang={lang}
+              />
+            ))}
+            
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="flex items-center space-x-2 px-4 py-2">
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                 </div>
               </div>
             )}
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-800 border border-red-200 rounded-xl shadow-sm">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="font-medium">{error}</span>
-                </div>
-              </div>
-            )}
+            <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-slate-200 p-6 bg-slate-50">
-            <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={t("Type your question...", "Frage eingeben...")}
-                className="flex-1 w-full px-3 py-3 text-base border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 bg-white text-gray-900 resize-none min-h-[48px] max-h-40"
-                  disabled={isLoading || (freeLimitReached && !user)}
-                  maxLength={1000}
-                  rows={1}
-                  aria-label={t("Type your question...", "Frage eingeben...")}
-                />
+          {/* Error Messages */}
+          {freeLimitReached && !user && (
+            <div className="mx-6 mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 rounded-xl">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium text-sm">
+                  {t(
+                    'You have used up your 3 free questions. Please sign up to continue asking unlimited questions.',
+                    'Sie haben Ihr Kontingent von 3 kostenlosen Fragen erreicht. Bitte registrieren Sie sich, um unbegrenzt weiterzufragen.'
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mx-6 mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 border border-red-200 dark:border-red-800 rounded-xl">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium text-sm">{error}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Input Area - Minimal */}
+          <div className="border-t border-black/10 dark:border-white/20 p-4">
+            {!user && !freeLimitReached && (
+              <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {t(
+                      `${3 - freeQuestionsCount} free questions remaining`,
+                      `Noch ${3 - freeQuestionsCount} kostenlose Fragen`
+                    )}
+                  </span>
+                  <Link
+                    href={`/${lang}/signup`}
+                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium"
+                  >
+                    {t("Sign up", "Registrieren")}
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={t("Ask your question...", "Stellen Sie Ihre Frage...")}
+                className="flex-1 w-full px-4 py-3 text-sm border border-black/10 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-red-500/30 focus:border-red-500 dark:focus:border-red-500 bg-white dark:bg-black text-black dark:text-white resize-none min-h-[44px] max-h-32 transition-all placeholder-slate-400 dark:placeholder-slate-500"
+                disabled={isLoading || (freeLimitReached && !user)}
+                maxLength={1000}
+                rows={1}
+              />
               <button
                 type="submit"
                 disabled={isLoading || !input.trim() || (freeLimitReached && !user)}
-                className="ml-2 p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md flex items-center justify-center"
-                aria-label={t("Send", "Senden")}
+                className="px-4 py-3 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center min-w-[44px] h-[44px]"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+                {isLoading ? (
+                  <FaSpinner className="w-5 h-5 animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                )}
               </button>
             </form>
-            
-            {!user && !freeLimitReached && (
-              <div className="mt-4 p-3 bg-blue-50 text-blue-800 border border-blue-200 rounded-xl text-sm">
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>
-                    {t(
-                      `You have ${3 - freeQuestionsCount} free questions remaining. Sign up for unlimited access.`,
-                      `Sie haben noch ${3 - freeQuestionsCount} kostenlose Fragen übrig. Registrieren Sie sich für unbegrenzten Zugang.`
-                    )}
-                  </span>
-                </div>
-              </div>
-            )}
+
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 text-center">
+              {t(
+                'Answers combine our curated industrial knowledge base with advanced AI. Always verify critical steps with official documentation.',
+                'Antworten kombinieren unsere kuratierte industrielle Wissensbasis mit fortgeschrittener KI. Bitte verifizieren Sie kritische Schritte mit Herstellerdokumenten.'
+              )}
+            </p>
           </div>
         </div>
-
-        {/* New Chat link below chat area, only if there are messages */}
-        {messages.length > 0 && (
-          <div className="flex justify-end mt-2">
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="text-blue-600 underline font-medium text-sm hover:text-blue-800 transition-colors"
-            >
-              {t('Start a new Chat', 'Neue Konversation')}
-            </button>
-          </div>
-        )}
       </div>
-    </article>
+    </div>
   );
 }
 
@@ -719,4 +856,4 @@ export default function ChatClient() {
       <ChatPageContent />
     </Suspense>
   );
-} 
+}

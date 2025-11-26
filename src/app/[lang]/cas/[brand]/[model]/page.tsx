@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import Header from '@/components/Header';
 import { Suspense } from 'react';
-import ModelClient from './ModelClient';
+import GenerationListClient from './GenerationListClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 600;
@@ -37,26 +37,29 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     }
   );
 
+  const { data: brandData } = await supabase
+    .from('car_brands')
+    .select('name, slug')
+    .eq('slug', brand)
+    .single();
+
   const { data: modelData } = await supabase
     .from('car_models')
-    .select('name, description, car_brands(name)')
+    .select('name, description')
     .eq('slug', model)
     .single();
 
-  if (!modelData) {
+  if (!brandData || !modelData) {
     return {
       title: t('Model Not Found', 'Modell nicht gefunden'),
     };
   }
 
-  const carBrands = modelData.car_brands as unknown as { name: string } | { name: string }[];
-  const brandName = (Array.isArray(carBrands) ? carBrands[0]?.name : carBrands?.name) || brand;
-
   return {
-    title: `${modelData.name} - ${brandName} | ${t('Faults & Manuals', 'Fehler & Anleitungen')} | CAS`,
+    title: `${brandData.name} ${modelData.name} - ${t('All Generations', 'Alle Generationen')} | CAS`,
     description: modelData.description || t(
-      `Find fixing manuals and fault solutions for ${brandName} ${modelData.name}.`,
-      `Finden Sie Reparaturanleitungen und Fehlerlösungen für ${brandName} ${modelData.name}.`
+      `Browse all generations of ${brandData.name} ${modelData.name}. Find specific faults and manuals for your exact model year.`,
+      `Durchsuchen Sie alle Generationen des ${brandData.name} ${modelData.name}. Finden Sie spezifische Fehler und Anleitungen für Ihr genaues Modelljahr.`
     ),
     alternates: {
       canonical: `https://infoneva.com/${lang}/cas/${brand}/${model}`,
@@ -68,7 +71,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   };
 }
 
-export default async function ModelPage({ params }: { params: Promise<Params> }) {
+export default async function ModelGenerationsPage({ params }: { params: Promise<Params> }) {
   const { lang, brand, model } = await params;
   
   const cookieStore = await getCookies();
@@ -93,10 +96,10 @@ export default async function ModelPage({ params }: { params: Promise<Params> })
     }
   );
 
-  // Fetch brand first to get brand_id
+  // Fetch brand
   const brandResult = await supabase
     .from('car_brands')
-    .select('id, name, slug')
+    .select('*')
     .eq('slug', brand)
     .single();
 
@@ -119,57 +122,40 @@ export default async function ModelPage({ params }: { params: Promise<Params> })
   }
 
   const modelData = modelResult.data;
-  const modelId = modelData.id;
 
-  // Add brand data to model
-  const modelWithBrand = {
-    ...modelData,
-    car_brands: brandData
-  };
+  // Fetch all generations for this model
+  const generationsResult = await supabase
+    .from('model_generations')
+    .select('*')
+    .eq('car_model_id', modelData.id)
+    .order('year_start', { ascending: false });
 
-  // Fetch faults and manuals with correct model_id
-  const [faults, manuals] = await Promise.all([
-    supabase
-      .from('car_faults')
-      .select('*')
-      .eq('car_model_id', modelId)
-      .eq('language_path', lang)
-      .eq('status', 'live')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('car_manuals')
-      .select('*')
-      .eq('car_model_id', modelId)
-      .eq('language_path', lang)
-      .eq('status', 'live')
-      .order('display_order', { ascending: true })
-      .order('title', { ascending: true })
-  ]);
+  const generations = generationsResult.data || [];
 
   return (
     <>
       <Header />
       <Suspense fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
           <div className="max-w-7xl mx-auto px-4 py-16">
             <div className="animate-pulse">
               <div className="h-12 bg-gray-200 rounded w-1/3 mb-8"></div>
-              <div className="space-y-6">
-                <div className="h-64 bg-gray-200 rounded-lg"></div>
-                <div className="h-32 bg-gray-200 rounded-lg"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="h-48 bg-gray-200 rounded-lg"></div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       }>
-        <ModelClient
-          model={modelWithBrand}
-          faults={faults.data || []}
-          manuals={manuals.data || []}
-          lang={lang}
+        <GenerationListClient 
+          brand={brandData} 
+          model={modelData} 
+          generations={generations} 
+          lang={lang} 
         />
       </Suspense>
     </>
   );
 }
-
