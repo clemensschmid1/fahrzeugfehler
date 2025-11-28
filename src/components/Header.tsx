@@ -20,6 +20,8 @@ export default function Header() {
   const isImpressumPage = pathname?.startsWith(`/${lang}/impressum`);
   const isProfilePage = pathname?.startsWith(`/${lang}/profile`);
   const isCarsPage = pathname?.startsWith(`/${lang}/cars`);
+  const isSignupPage = pathname?.startsWith(`/${lang}/signup`);
+  const isLoginPage = pathname?.startsWith(`/${lang}/login`);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -61,7 +63,7 @@ export default function Header() {
   const isReviewsPage = pathname?.startsWith(`/${lang}/reviews`);
   
   // Show header on all main pages
-  if (!(isKnowledgePage || isChatPage || isNewsPage || isContactPage || isPrivacyPage || isImpressumPage || isProfilePage || isReviewsPage || isCarsPage)) return null;
+  if (!(isKnowledgePage || isChatPage || isNewsPage || isContactPage || isPrivacyPage || isImpressumPage || isProfilePage || isReviewsPage || isCarsPage || isSignupPage || isLoginPage)) return null;
   
   // Fix missing dependency
   // eslint-disable-next-line react-hooks/exhaustive-deps

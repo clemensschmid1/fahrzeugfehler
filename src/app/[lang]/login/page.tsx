@@ -52,30 +52,30 @@ export default function LoginPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-black dark:to-slate-950 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-black dark:to-slate-950 pt-20 sm:pt-24 pb-8 sm:pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto">
           {/* Main Login Card */}
           <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden">
             {/* Header Section */}
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 px-8 py-8 text-white">
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 px-4 sm:px-8 py-6 sm:py-8 text-white">
+              <div className="flex items-center justify-center mb-3 sm:mb-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
               </div>
-              <h1 className="text-3xl font-bold text-center mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2">
                 {t("Welcome Back", "Willkommen zurück")}
               </h1>
-              <p className="text-blue-100 text-center text-sm">
+              <p className="text-blue-100 text-center text-xs sm:text-sm">
                 {t("Sign in to your account to continue", "Melden Sie sich in Ihrem Konto an, um fortzufahren")}
               </p>
             </div>
 
             {/* Form Section */}
-            <div className="p-8">
-              <form onSubmit={handleLogin} className="space-y-5">
+            <div className="p-4 sm:p-6 lg:p-8">
+              <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
                 {/* Email Field */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">

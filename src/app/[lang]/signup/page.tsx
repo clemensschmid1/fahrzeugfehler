@@ -112,7 +112,7 @@ export default function SignupPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-black dark:to-slate-950 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-black dark:to-slate-950 pt-20 sm:pt-24 pb-8 sm:pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto">
           {/* Main Signup Card */}
           <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden">
@@ -134,8 +134,8 @@ export default function SignupPage() {
             </div>
 
             {/* Form Section */}
-            <div className="p-8">
-              <form onSubmit={handleSignup} className="space-y-5">
+            <div className="p-4 sm:p-6 lg:p-8">
+              <form onSubmit={handleSignup} className="space-y-4 sm:space-y-5">
                 {/* Username Field */}
                 <div>
                   <label htmlFor="username" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
