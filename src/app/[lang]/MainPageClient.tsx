@@ -482,24 +482,24 @@ export default function MainPageClient({ lang }: { lang: string }) {
             <div className="flex-1"></div>
             
             <div className="flex items-center gap-2.5 flex-shrink-0">
-              {/* CAS Link - Desktop */}
+              {/* Cars Link - Desktop */}
               <Link
-                href={`/${lang}/cas`}
+                href={`/${lang}/cars`}
                 className="hidden sm:flex group relative items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 transition-all duration-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
-                <span>{lang === 'de' ? 'CAS' : 'CAS'}</span>
+                <span>{lang === 'de' ? 'Autos' : 'Cars'}</span>
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity"></span>
                 <span className="absolute inset-0 bg-red-50 dark:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity -z-10"></span>
               </Link>
               
-              {/* CAS Link - Mobile */}
+              {/* Cars Link - Mobile */}
               <Link
-                href={`/${lang}/cas`}
+                href={`/${lang}/cars`}
                 className="sm:hidden p-2 rounded-lg text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
-                aria-label={lang === 'de' ? 'CAS' : 'CAS'}
+                aria-label={lang === 'de' ? 'Autos' : 'Cars'}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -691,13 +691,13 @@ export default function MainPageClient({ lang }: { lang: string }) {
                   {knowledge}
                 </Link>
                 <Link
-                  href={`/${lang}/cas`}
+                  href={`/${lang}/cars`}
                   className="group inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 dark:from-orange-500 dark:via-red-500 dark:to-orange-500 text-white text-lg font-bold rounded-2xl hover:from-orange-700 hover:via-red-700 hover:to-orange-700 dark:hover:from-orange-600 dark:hover:via-red-600 dark:hover:to-orange-600 transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95"
                 >
                   <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
-                  {lang === 'de' ? 'CAS - Auto-Assistenz' : 'CAS - Car Assistance'}
+                  {lang === 'de' ? 'Autos - Wartung & Reparatur' : 'Cars - Maintenance & Repair'}
                 </Link>
               </motion.div>
               

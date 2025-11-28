@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     const fileRes = await fetch(`${OPENAI_API_URL}/files`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Authorization': `Bearer ${getOpenAIApiKey()}`
       },
       body: createFormData(jsonlContent, 'questions.jsonl')
     });
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     const batchRes = await fetch(`${OPENAI_API_URL}/batches`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${getOpenAIApiKey()}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(batchBody)
@@ -125,7 +125,7 @@ export async function GET(req: Request) {
       let url = `${OPENAI_API_URL}/batches?limit=${limit}`;
       if (after) url += `&after=${after}`;
       const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+        headers: { 'Authorization': `Bearer ${getOpenAIApiKey()}` }
       });
       if (!res.ok) {
         const errText = await res.text();
@@ -142,7 +142,7 @@ export async function GET(req: Request) {
   if (batchId) {
     try {
       const res = await fetch(`${OPENAI_API_URL}/batches/${batchId}`, {
-        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+        headers: { 'Authorization': `Bearer ${getOpenAIApiKey()}` }
       });
       if (!res.ok) {
         const errText = await res.text();
@@ -168,7 +168,7 @@ export async function GET(req: Request) {
   if (fileId) {
     try {
       const res = await fetch(`${OPENAI_API_URL}/files/${fileId}/content`, {
-        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+        headers: { 'Authorization': `Bearer ${getOpenAIApiKey()}` }
       });
       if (!res.ok) {
         const errText = await res.text();

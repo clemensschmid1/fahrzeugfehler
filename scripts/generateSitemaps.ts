@@ -86,7 +86,7 @@ async function generateSitemaps() {
     const now = new Date().toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
     const seenUrls = new Set<string>(); // Track URLs to prevent duplicates
     
-    // Add main pages with high priority
+    // Add main pages with high priority (exclude internal pages)
     allUrls.push({ url: `${baseUrl}/en`, priority: 1.0, changefreq: 'daily' });
     allUrls.push({ url: `${baseUrl}/de`, priority: 1.0, changefreq: 'daily' });
     allUrls.push({ url: `${baseUrl}/en/knowledge`, priority: 0.9, changefreq: 'daily' });
@@ -97,12 +97,19 @@ async function generateSitemaps() {
     allUrls.push({ url: `${baseUrl}/de/reviews`, priority: 0.7, changefreq: 'weekly' });
     allUrls.push({ url: `${baseUrl}/en/chat`, priority: 0.8, changefreq: 'daily' });
     allUrls.push({ url: `${baseUrl}/de/chat`, priority: 0.8, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/en/cas`, priority: 0.9, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/de/cas`, priority: 0.9, changefreq: 'daily' });
+    allUrls.push({ url: `${baseUrl}/en/cars`, priority: 0.9, changefreq: 'daily' });
+    allUrls.push({ url: `${baseUrl}/de/cars`, priority: 0.9, changefreq: 'daily' });
     
-    // Add knowledge article URLs with lastmod dates
+    // Note: Internal pages (internal/*, carinternal) are intentionally excluded from sitemap
+    
+    // Add knowledge article URLs with lastmod dates (exclude internal pages)
     for (const question of allQuestions) {
       if (!question.slug) continue; // Skip if no slug
+      
+      // Skip internal pages
+      if (question.slug.includes('internal') || question.slug.includes('carinternal')) {
+        continue;
+      }
       
       let url: string;
       if (question.language_path === 'en') {
@@ -132,8 +139,8 @@ async function generateSitemaps() {
       }
     }
     
-    // Add CAS pages (brands, models, faults, manuals)
-    console.log('🔄 Fetching CAS data for sitemap...');
+    // Add Cars pages (brands, models, generations, faults, manuals)
+    console.log('🔄 Fetching Cars data for sitemap...');
     try {
       // Fetch all car brands
       const { data: brands } = await supabase
@@ -142,8 +149,8 @@ async function generateSitemaps() {
       
       if (brands && brands.length > 0) {
         for (const brand of brands) {
-          const enUrl = `${baseUrl}/en/cas/${brand.slug}`;
-          const deUrl = `${baseUrl}/de/cas/${brand.slug}`;
+          const enUrl = `${baseUrl}/en/cars/${brand.slug}`;
+          const deUrl = `${baseUrl}/de/cars/${brand.slug}`;
           
           if (!seenUrls.has(enUrl)) {
             seenUrls.add(enUrl);
@@ -187,8 +194,8 @@ async function generateSitemaps() {
             const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
             if (!brandSlug) continue;
             
-            const enUrl = `${baseUrl}/en/cas/${brandSlug}/${model.slug}`;
-            const deUrl = `${baseUrl}/de/cas/${brandSlug}/${model.slug}`;
+            const enUrl = `${baseUrl}/en/cars/${brandSlug}/${model.slug}`;
+            const deUrl = `${baseUrl}/de/cars/${brandSlug}/${model.slug}`;
             
             if (!seenUrls.has(enUrl)) {
               seenUrls.add(enUrl);
@@ -225,8 +232,8 @@ async function generateSitemaps() {
         console.log(`✅ Added ${brands.length} brands and ${models?.length || 0} models to sitemap`);
       }
     } catch (error) {
-      console.log('⚠️  CAS data fetch failed (this is normal if database is unavailable):', error);
-      // Continue without failing - CAS pages will be added in next build
+      console.log('⚠️  Cars data fetch failed (this is normal if database is unavailable):', error);
+      // Continue without failing - Cars pages will be added in next build
     }
     
     console.log(`🌐 Total URLs generated: ${allUrls.length}`);

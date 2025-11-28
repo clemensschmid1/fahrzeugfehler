@@ -19,7 +19,7 @@ export default function Header() {
   const isPrivacyPage = pathname?.startsWith(`/${lang}/privacy`);
   const isImpressumPage = pathname?.startsWith(`/${lang}/impressum`);
   const isProfilePage = pathname?.startsWith(`/${lang}/profile`);
-  const isCASPage = pathname?.startsWith(`/${lang}/cas`);
+  const isCarsPage = pathname?.startsWith(`/${lang}/cars`);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -61,7 +61,7 @@ export default function Header() {
   const isReviewsPage = pathname?.startsWith(`/${lang}/reviews`);
   
   // Show header on all main pages
-  if (!(isKnowledgePage || isChatPage || isNewsPage || isContactPage || isPrivacyPage || isImpressumPage || isProfilePage || isReviewsPage || isCASPage)) return null;
+  if (!(isKnowledgePage || isChatPage || isNewsPage || isContactPage || isPrivacyPage || isImpressumPage || isProfilePage || isReviewsPage || isCarsPage)) return null;
   
   // Fix missing dependency
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,9 +118,9 @@ export default function Header() {
               {t('KNOWLEDGE BASE', 'WISSENSBASIS')}
             </Link>
             <Link
-              href={`/${lang}/cas`}
+              href={`/${lang}/cars`}
               className={`group relative px-4 py-2 rounded-lg text-sm font-bold text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 transition-all ${
-                isCASPage ? 'text-red-600 dark:text-red-400' : ''
+                isCarsPage ? 'text-red-600 dark:text-red-400' : ''
               }`}
               tabIndex={0}
             >
@@ -128,7 +128,7 @@ export default function Header() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
-                {t('CAS', 'CAS')}
+                {t('Cars', 'Autos')}
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity"></span>
               </span>
               <span className="absolute inset-0 bg-red-50 dark:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></span>
@@ -218,9 +218,9 @@ export default function Header() {
                 {t('KNOWLEDGE BASE', 'WISSENSBASIS')}
               </Link>
               <Link
-                href={`/${lang}/cas`}
+                href={`/${lang}/cars`}
                 className={`group relative block px-4 py-3 text-slate-700 dark:text-white hover:text-red-600 dark:hover:text-red-300 rounded-lg text-base font-bold transition-colors ${
-                  isCASPage ? 'text-red-600 dark:text-red-400' : ''
+                  isCarsPage ? 'text-red-600 dark:text-red-400' : ''
                 }`}
                 tabIndex={0}
                 onClick={() => setMenuOpen(false)}
@@ -229,7 +229,7 @@ export default function Header() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
-                  {t('CAS', 'CAS')}
+                  {t('Cars', 'Autos')}
                   <span className="ml-auto text-xs font-mono text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                     →
                   </span>

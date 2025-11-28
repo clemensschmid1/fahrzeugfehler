@@ -51,180 +51,132 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/en/cas</loc>
+    <loc>https://infoneva.com/en/cars</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/de/cas</loc>
+    <loc>https://infoneva.com/de/cars</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/en/news/ethercat-vs-profinet-industrial-protocols</loc>
-    <lastmod>2025-11-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/de/news/ethercat-vs-profinet-industrieprotokolle</loc>
-    <lastmod>2025-11-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/en/news/opc-ua-over-tsn-future-deterministic-industrial-communication</loc>
-    <lastmod>2025-11-20</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/de/news/opc-ua-ueber-tsn-zukunft-deterministischer-industriekommunikation</loc>
-    <lastmod>2025-11-20</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/en/news/edge-computing-industrial-automation-revolution</loc>
-    <lastmod>2025-11-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/de/news/edge-computing-industrielle-automatisierung-revolution</loc>
-    <lastmod>2025-11-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/en/news/industrial-cybersecurity-best-practices-2025</loc>
-    <lastmod>2025-11-25</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/de/news/industrielle-cybersicherheit-best-practices-2025</loc>
-    <lastmod>2025-11-25</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/en/news/digital-twins-industrial-automation-transformation</loc>
-    <lastmod>2025-11-22</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/de/news/digitale-zwillinge-industrielle-automatisierung-transformation</loc>
-    <lastmod>2025-11-22</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/en/news/ai-machine-learning-predictive-maintenance-industrial</loc>
-    <lastmod>2025-11-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/de/news/ki-machine-learning-praediktive-wartung-industriell</loc>
-    <lastmod>2025-11-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://infoneva.com/en/knowledge/wich-inverters-are-used-for-the-new-h200-datacenters-how-much-percent-of-total-cost</loc>
-    <lastmod>2025-11-25</lastmod>
+    <lastmod>2025-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://infoneva.com/en/knowledge/wich-inverters-are-used-for-the-new-h200-datacenters-how-much-percent-of-total-cost-1</loc>
-    <lastmod>2025-11-25</lastmod>
+    <lastmod>2025-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://infoneva.com/en/knowledge/wich-inverters-are-used-for-the-new-h200-datacenters-how-much-percent-of-total-cost-2</loc>
-    <lastmod>2025-11-25</lastmod>
+    <lastmod>2025-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://infoneva.com/en/knowledge/inverters-used-new-h200-datacenters</loc>
-    <lastmod>2025-11-25</lastmod>
+    <lastmod>2025-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/en/cas/bmw</loc>
-    <lastmod>2025-11-24</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://infoneva.com/de/cas/bmw</loc>
+    <loc>https://infoneva.com/en/cars/bmw</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/en/cas/mercedes-benz</loc>
+    <loc>https://infoneva.com/de/cars/bmw</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/de/cas/mercedes-benz</loc>
+    <loc>https://infoneva.com/en/cars/mercedes-benz</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/en/cas/bmw/3-series</loc>
+    <loc>https://infoneva.com/de/cars/mercedes-benz</loc>
+    <lastmod>2025-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://infoneva.com/en/cars/toyota</loc>
+    <lastmod>2025-11-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://infoneva.com/de/cars/toyota</loc>
+    <lastmod>2025-11-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://infoneva.com/en/cars/bmw/3-series</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/de/cas/bmw/3-series</loc>
+    <loc>https://infoneva.com/de/cars/bmw/3-series</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/en/cas/bmw/5-series</loc>
+    <loc>https://infoneva.com/en/cars/bmw/5-series</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/de/cas/bmw/5-series</loc>
+    <loc>https://infoneva.com/de/cars/bmw/5-series</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/en/cas/mercedes-benz/c-class</loc>
+    <loc>https://infoneva.com/en/cars/mercedes-benz/c-class</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/de/cas/mercedes-benz/c-class</loc>
+    <loc>https://infoneva.com/de/cars/mercedes-benz/c-class</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/en/cas/mercedes-benz/e-class</loc>
+    <loc>https://infoneva.com/en/cars/mercedes-benz/e-class</loc>
     <lastmod>2025-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://infoneva.com/de/cas/mercedes-benz/e-class</loc>
+    <loc>https://infoneva.com/de/cars/mercedes-benz/e-class</loc>
     <lastmod>2025-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://infoneva.com/en/cars/toyota/corolla</loc>
+    <lastmod>2025-11-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://infoneva.com/de/cars/toyota/corolla</loc>
+    <lastmod>2025-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

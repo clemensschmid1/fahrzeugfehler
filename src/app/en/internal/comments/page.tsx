@@ -49,7 +49,7 @@ export default function CommentsPage() {
     setLoading(false);
 
     // Fetch usernames for unique user_ids
-    const uniqueUserIds = Array.from(new Set((data || []).map(comment => comment.user_id).filter(Boolean)));
+    const uniqueUserIds = Array.from(new Set((data || []).map((comment: any) => comment.user_id).filter(Boolean)));
     if (uniqueUserIds.length > 0) {
       try {
         const usernamesResponse = await fetch('/api/users/usernames', {
@@ -70,7 +70,7 @@ export default function CommentsPage() {
     }
 
     // Fetch slugs for unique question_ids
-    const uniqueQuestionIds = Array.from(new Set((data || []).map(comment => comment.question_id).filter(Boolean)));
+    const uniqueQuestionIds = Array.from(new Set((data || []).map((comment: any) => comment.question_id).filter(Boolean)));
     if (uniqueQuestionIds.length > 0) {
       try {
         const slugsResponse = await fetch('/api/questions/slugs', {

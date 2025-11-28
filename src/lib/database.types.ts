@@ -187,6 +187,7 @@ export type Database = {
             description?: string;
             image_url?: string;
             sprite_3d_url?: string;
+            production_numbers?: string;
             is_featured: boolean;
             display_order: number;
             created_at: string;
@@ -233,6 +234,7 @@ export type Database = {
             tools_required?: string[];
             estimated_repair_time?: string;
             difficulty_level?: 'easy' | 'medium' | 'hard' | 'expert';
+            meta_title?: string;
             meta_description?: string;
             seo_score?: number;
             content_score?: number;
@@ -261,6 +263,7 @@ export type Database = {
             estimated_time?: string;
             tools_required?: string[];
             parts_required?: string[];
+            meta_title?: string;
             meta_description?: string;
             created_at: string;
             updated_at: string;

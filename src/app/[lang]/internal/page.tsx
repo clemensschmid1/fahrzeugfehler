@@ -249,6 +249,18 @@ export default function InternalPage() {
                >
                  Email Management
                </Link>
+               <Link
+                 href={`/${lang}/carinternal`}
+                 className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+               >
+                 Car Content Generator
+               </Link>
+               <Link
+                 href={`/${lang}/internal/car-comments`}
+                 className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+               >
+                 Car Comments Generator
+               </Link>
           </div>
 
           {/* AI Prompt Management Section */}
