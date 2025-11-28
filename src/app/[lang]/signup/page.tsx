@@ -270,8 +270,8 @@ export default function SignupPage() {
           </div>
 
           {/* Benefits Section */}
-          <div className="w-full mt-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 text-center">
+          <div className="w-full mt-4 sm:mt-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-3 sm:mb-4 text-center">
               {t("Why join FAULTBASE?", "Warum FAULTBASE beitreten?")}
             </h3>
             <div className="space-y-3">
@@ -303,8 +303,8 @@ export default function SignupPage() {
           </div>
 
           {/* Sign In Link */}
-          <div className="mt-6 text-center">
-            <p className="text-slate-600 dark:text-slate-400 text-sm">
+          <div className="mt-4 sm:mt-6 text-center">
+            <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
               {t("Already have an account?", "Bereits ein Konto?")}{' '}
               <Link 
                 href={`/${lang}/login`} 
@@ -316,8 +316,8 @@ export default function SignupPage() {
           </div>
 
           {/* Footer */}
-          <footer className="mt-8 text-center">
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <footer className="mt-6 sm:mt-8 text-center px-2">
+            <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
               {t("By creating an account, you agree to our", "Durch die Kontoerstellung stimmen Sie unseren")}{' '}
               <Link href={`/${lang}/privacy`} className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                 {t("Privacy Policy", "Datenschutzerklärung")}

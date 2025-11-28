@@ -177,8 +177,8 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <footer className="mt-8 text-center">
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <footer className="mt-6 sm:mt-8 text-center px-2">
+            <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
               {t("By signing in, you agree to our", "Durch die Anmeldung stimmen Sie unseren")}{' '}
               <Link href={`/${lang}/privacy`} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
                 {t("Privacy Policy", "Datenschutzerklärung")}
