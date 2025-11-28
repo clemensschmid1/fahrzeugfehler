@@ -86,12 +86,24 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: `${title} | Cars`,
     description,
+    keywords: faultData.title ? `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car repair, automotive troubleshooting, fault diagnosis` : undefined,
     alternates: {
       canonical: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
       languages: {
         'en': `https://infoneva.com/en/cars/${brand}/${model}/${generation}/faults/${slug}`,
         'de': `https://infoneva.com/de/cars/${brand}/${model}/${generation}/faults/${slug}`,
       },
+    },
+    openGraph: {
+      title: `${title} | Cars`,
+      description,
+      type: 'article',
+      url: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | Cars`,
+      description,
     },
   };
 }

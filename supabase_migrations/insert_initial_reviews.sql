@@ -1,12 +1,13 @@
 -- Insert initial reviews for FAULTBASE
 -- These reviews will appear on both the main page carousel and the reviews page
+-- Note: Company names have been removed for privacy
 
 -- Note: These reviews are inserted with status 'approved' so they appear immediately
 -- The user_id is set to NULL as these are placeholder/demo reviews
 -- In production, you may want to create actual user accounts or use a system user
 
 -- English Reviews
-INSERT INTO reviews (username, rating, review_text, language_path, status, job_title, company, created_at, updated_at)
+INSERT INTO reviews (username, rating, review_text, language_path, status, job_title, created_at, updated_at)
 VALUES
   (
     'Mike Chen',
@@ -15,7 +16,6 @@ VALUES
     'en',
     'approved',
     'Senior Controls Engineer',
-    'Siemens AG',
     NOW() - INTERVAL '30 days',
     NOW() - INTERVAL '30 days'
   ),
@@ -26,7 +26,6 @@ VALUES
     'en',
     'approved',
     'Automation Engineer',
-    'ABB',
     NOW() - INTERVAL '25 days',
     NOW() - INTERVAL '25 days'
   ),
@@ -37,7 +36,6 @@ VALUES
     'en',
     'approved',
     'Maintenance Technician',
-    'Bosch Rexroth',
     NOW() - INTERVAL '20 days',
     NOW() - INTERVAL '20 days'
   ),
@@ -48,7 +46,6 @@ VALUES
     'en',
     'approved',
     'Automation Project Manager',
-    'Schneider Electric',
     NOW() - INTERVAL '15 days',
     NOW() - INTERVAL '15 days'
   ),
@@ -59,7 +56,6 @@ VALUES
     'en',
     'approved',
     'Systems Engineer',
-    'Rockwell Automation',
     NOW() - INTERVAL '10 days',
     NOW() - INTERVAL '10 days'
   ),
@@ -70,7 +66,6 @@ VALUES
     'en',
     'approved',
     'Maintenance Manager',
-    'General Electric',
     NOW() - INTERVAL '7 days',
     NOW() - INTERVAL '7 days'
   ),
@@ -81,13 +76,13 @@ VALUES
     'en',
     'approved',
     'Control Systems Developer',
-    'Beckhoff Automation',
     NOW() - INTERVAL '3 days',
     NOW() - INTERVAL '3 days'
-  );
+  )
+ON CONFLICT DO NOTHING;
 
 -- German Reviews
-INSERT INTO reviews (username, rating, review_text, language_path, status, job_title, company, created_at, updated_at)
+INSERT INTO reviews (username, rating, review_text, language_path, status, job_title, created_at, updated_at)
 VALUES
   (
     'Mike Chen',
@@ -96,7 +91,6 @@ VALUES
     'de',
     'approved',
     'Senior Steuerungstechniker',
-    'Siemens AG',
     NOW() - INTERVAL '30 days',
     NOW() - INTERVAL '30 days'
   ),
@@ -107,7 +101,6 @@ VALUES
     'de',
     'approved',
     'Automation Engineer',
-    'ABB',
     NOW() - INTERVAL '25 days',
     NOW() - INTERVAL '25 days'
   ),
@@ -118,7 +111,6 @@ VALUES
     'de',
     'approved',
     'Wartungstechniker',
-    'Bosch Rexroth',
     NOW() - INTERVAL '20 days',
     NOW() - INTERVAL '20 days'
   ),
@@ -129,7 +121,6 @@ VALUES
     'de',
     'approved',
     'Projektleiter Automatisierung',
-    'Schneider Electric',
     NOW() - INTERVAL '15 days',
     NOW() - INTERVAL '15 days'
   ),
@@ -140,7 +131,6 @@ VALUES
     'de',
     'approved',
     'Systemingenieurin',
-    'Rockwell Automation',
     NOW() - INTERVAL '10 days',
     NOW() - INTERVAL '10 days'
   ),
@@ -151,7 +141,6 @@ VALUES
     'de',
     'approved',
     'Leiter Instandhaltung',
-    'General Electric',
     NOW() - INTERVAL '7 days',
     NOW() - INTERVAL '7 days'
   ),
@@ -162,11 +151,7 @@ VALUES
     'de',
     'approved',
     'Entwicklerin Steuerungssysteme',
-    'Beckhoff Automation',
     NOW() - INTERVAL '3 days',
     NOW() - INTERVAL '3 days'
-  );
-
-
-
-
+  )
+ON CONFLICT DO NOTHING;

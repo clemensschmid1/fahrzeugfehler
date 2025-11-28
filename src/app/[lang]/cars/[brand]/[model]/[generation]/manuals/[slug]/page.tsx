@@ -86,12 +86,24 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: `${title} | Cars`,
     description,
+    keywords: manualData.title ? `${manualData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car manual, automotive guide, maintenance instructions` : undefined,
     alternates: {
       canonical: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/manuals/${slug}`,
       languages: {
         'en': `https://infoneva.com/en/cars/${brand}/${model}/${generation}/manuals/${slug}`,
         'de': `https://infoneva.com/de/cars/${brand}/${model}/${generation}/manuals/${slug}`,
       },
+    },
+    openGraph: {
+      title: `${title} | Cars`,
+      description,
+      type: 'article',
+      url: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/manuals/${slug}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | Cars`,
+      description,
     },
   };
 }

@@ -12,7 +12,6 @@ interface ReviewItem {
   text: string;
   author: string;
   title: string;
-  company?: string;
   created_at?: string;
 }
 
@@ -226,16 +225,6 @@ function ReviewsCarousel({ reviews, lang }: { reviews: ReviewItem[]; lang: strin
                   <div className="text-slate-700 dark:text-slate-300 text-sm sm:text-base font-medium mb-2">
                     {reviews[currentIndex].title}
                   </div>
-                  {reviews[currentIndex].company && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <svg className="w-3.5 h-3.5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <span className="text-xs font-mono font-bold text-red-700 dark:text-red-400">
-                        {reviews[currentIndex].company}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -398,7 +387,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
         : '"Finally, a tool that speaks the language of industrial automation. Faultbase has saved me hours."',
       author: 'Mike Chen',
       title: lang === 'de' ? 'Senior Steuerungstechniker' : 'Senior Controls Engineer',
-      company: 'Siemens AG',
       rating: 5
     },
     {
@@ -407,7 +395,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
         : '"The precision of the solutions is impressive. No more generic answers - only real, field-tested fixes."',
       author: 'Sarah Johnson',
       title: lang === 'de' ? 'Automation Engineer' : 'Automation Engineer',
-      company: 'ABB',
       rating: 5
     },
     {
@@ -416,7 +403,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
         : '"As a maintenance technician, I appreciate the instant availability of solutions. Faultbase is a game-changer."',
       author: 'Thomas Müller',
       title: lang === 'de' ? 'Wartungstechniker' : 'Maintenance Technician',
-      company: 'Bosch Rexroth',
       rating: 5
     },
     {
@@ -425,7 +411,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
         : '"The AI analysis is amazingly fast and precise. I use Faultbase daily in my work."',
       author: 'David Park',
       title: lang === 'de' ? 'Projektleiter Automatisierung' : 'Automation Project Manager',
-      company: 'Schneider Electric',
       rating: 5
     },
     {
@@ -434,7 +419,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
         : '"Of all the tools I\'ve tried, Faultbase is the only one that truly understands what I need."',
       author: 'Emma Rodriguez',
       title: lang === 'de' ? 'Systemingenieurin' : 'Systems Engineer',
-      company: 'Rockwell Automation',
       rating: 5
     },
     {
@@ -443,7 +427,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
         : '"Integrating Faultbase into our maintenance process has reduced our downtime by over 40%. Indispensable."',
       author: 'James Wilson',
       title: lang === 'de' ? 'Leiter Instandhaltung' : 'Maintenance Manager',
-      company: 'General Electric',
       rating: 5
     },
     {
@@ -452,7 +435,6 @@ export default function MainPageClient({ lang }: { lang: string }) {
         : '"As a control systems developer, I appreciate the technical depth of the solutions. Faultbase understands the complexity of our work."',
       author: 'Lisa Anderson',
       title: lang === 'de' ? 'Entwicklerin Steuerungssysteme' : 'Control Systems Developer',
-      company: 'Beckhoff Automation',
       rating: 5
     }
   ];

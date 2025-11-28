@@ -14,7 +14,6 @@ interface Review {
   review_text: string;
   created_at: string;
   job_title?: string;
-  company?: string;
 }
 
 interface ReviewsClientProps {
@@ -33,7 +32,6 @@ export default function ReviewsClient({ lang, initialReviews, user }: ReviewsCli
     rating: 5,
     review_text: '',
     job_title: '',
-    company: '',
   });
 
   const reviewsPerPage = 8;
@@ -87,7 +85,6 @@ export default function ReviewsClient({ lang, initialReviews, user }: ReviewsCli
           rating: formData.rating,
           review_text: formData.review_text.trim(),
           job_title: formData.job_title.trim() || null,
-          company: formData.company.trim() || null,
           language_path: lang,
           status: 'pending',
         })
@@ -101,7 +98,6 @@ export default function ReviewsClient({ lang, initialReviews, user }: ReviewsCli
         rating: 5,
         review_text: '',
         job_title: '',
-        company: '',
       });
 
       // Refresh reviews after a delay
@@ -400,33 +396,18 @@ export default function ReviewsClient({ lang, initialReviews, user }: ReviewsCli
                   </div>
 
                   {/* Optional Fields */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="job_title" className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">
-                        {t('Job Title (Optional)', 'Berufsbezeichnung (Optional)')}
-                      </label>
-                      <input
-                        id="job_title"
-                        type="text"
-                        value={formData.job_title}
-                        onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-white/20 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
-                        placeholder={t('e.g. Controls Engineer', 'z.B. Steuerungstechniker')}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="company" className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">
-                        {t('Company (Optional)', 'Unternehmen (Optional)')}
-                      </label>
-                      <input
-                        id="company"
-                        type="text"
-                        value={formData.company}
-                        onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-white/20 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
-                        placeholder={t('e.g. Siemens AG', 'z.B. Siemens AG')}
-                      />
-                    </div>
+                  <div>
+                    <label htmlFor="job_title" className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">
+                      {t('Job Title (Optional)', 'Berufsbezeichnung (Optional)')}
+                    </label>
+                    <input
+                      id="job_title"
+                      type="text"
+                      value={formData.job_title}
+                      onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-white/20 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                      placeholder={t('e.g. Controls Engineer', 'z.B. Steuerungstechniker')}
+                    />
                   </div>
 
                   {/* Submit Button - Enhanced */}
@@ -531,24 +512,14 @@ export default function ReviewsClient({ lang, initialReviews, user }: ReviewsCli
                           <h3 className="font-black text-slate-900 dark:text-white text-lg sm:text-xl mb-1">
                             {review.username || t('Anonymous', 'Anonym')}
                           </h3>
-                          {(review.job_title || review.company) && (
+                          {review.job_title && (
                             <div className="flex flex-wrap items-center gap-2">
-                              {review.job_title && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                  </svg>
-                                  {review.job_title}
-                                </span>
-                              )}
-                              {review.company && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-xs font-mono font-semibold text-red-700 dark:text-red-400">
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                  </svg>
-                                  {review.company}
-                                </span>
-                              )}
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                {review.job_title}
+                              </span>
                             </div>
                           )}
                         </div>

@@ -256,11 +256,11 @@ export default function ManualClient({ brand, model, generation, manual, related
               <span className="text-white font-semibold">{manual.title}</span>
             </nav>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-4 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black text-white mb-2 sm:mb-3 md:mb-4 tracking-tight leading-tight">
               {manual.title}
             </h1>
             
-            <p className="text-xl text-slate-300 dark:text-slate-400 mb-4">
+            <p className="text-base sm:text-lg md:text-xl text-slate-300 dark:text-slate-400 mb-3 sm:mb-4">
               {brand.name} {model.name} {generation.name}
             </p>
 
@@ -303,28 +303,28 @@ export default function ManualClient({ brand, model, generation, manual, related
               </button>
               <button
                 onClick={handlePrint}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-2 backdrop-blur-sm"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                {t('Print', 'Drucken')}
+                <span className="hidden sm:inline">{t('Print', 'Drucken')}</span>
               </button>
               {tocItems.length > 0 && (
                 <button
                   onClick={() => setShowTOC(!showTOC)}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-2 backdrop-blur-sm"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  {t('Table of Contents', 'Inhaltsverzeichnis')}
+                  <span className="hidden sm:inline">{t('Table of Contents', 'Inhaltsverzeichnis')}</span>
                 </button>
               )}
             </div>
 
-            {/* Badges */}
-            <div className="flex flex-wrap gap-3">
+            {/* Badges - Mobile optimized */}
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {manual.manual_type && (
                 <span className="px-3 py-1 rounded-lg text-sm font-semibold bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30">
                   {manual.manual_type}
@@ -345,8 +345,8 @@ export default function ManualClient({ brand, model, generation, manual, related
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Main Content - Mobile optimized */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
         {/* Table of Contents */}
         {showTOC && tocItems.length > 0 && (
           <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -388,10 +388,10 @@ export default function ManualClient({ brand, model, generation, manual, related
             <span>{wordCount} {t('words', 'Wörter')}</span>
           </div>
         </div>
-        {/* Description */}
+        {/* Description - Mobile optimized */}
         {manual.description && (
-          <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
               {t('Overview', 'Übersicht')}
             </h2>
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
@@ -400,10 +400,10 @@ export default function ManualClient({ brand, model, generation, manual, related
           </div>
         )}
 
-        {/* Tools Required */}
+        {/* Tools Required - Mobile optimized */}
         {manual.tools_required && manual.tools_required.length > 0 && (
-          <div className="mb-8 p-6 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900/30">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-amber-50 dark:bg-amber-950/20 rounded-xl sm:rounded-2xl border border-amber-200 dark:border-amber-900/30">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
               <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -420,10 +420,10 @@ export default function ManualClient({ brand, model, generation, manual, related
           </div>
         )}
 
-        {/* Parts Required */}
+        {/* Parts Required - Mobile optimized */}
         {manual.parts_required && manual.parts_required.length > 0 && (
-          <div className="mb-8 p-6 bg-purple-50 dark:bg-purple-950/20 rounded-2xl border border-purple-200 dark:border-purple-900/30">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-purple-50 dark:bg-purple-950/20 rounded-xl sm:rounded-2xl border border-purple-200 dark:border-purple-900/30">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
               <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
@@ -440,14 +440,14 @@ export default function ManualClient({ brand, model, generation, manual, related
         )}
 
         {/* Manual Content */}
-        <div className="mb-8 p-6 bg-blue-50 dark:bg-blue-950/20 rounded-2xl border border-blue-200 dark:border-blue-900/30">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+        <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-blue-50 dark:bg-blue-950/20 rounded-xl sm:rounded-2xl border border-blue-200 dark:border-blue-900/30">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-6 flex items-center gap-2">
             <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             {t('Step-by-Step Guide', 'Schritt-für-Schritt-Anleitung')}
           </h2>
-          <div className="prose prose-slate dark:prose-invert max-w-none">
+            <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -468,8 +468,8 @@ export default function ManualClient({ brand, model, generation, manual, related
         </div>
 
         {/* Additional Info */}
-        <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+        <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
             {t('Additional Information', 'Zusätzliche Informationen')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -587,7 +587,7 @@ export default function ManualClient({ brand, model, generation, manual, related
               <p className="text-slate-700 dark:text-slate-300 text-base sm:text-lg mb-4 font-medium">{t("Sign in to share your thoughts", "Melden Sie sich an, um Ihre Gedanken zu teilen")}</p>
               <Link
                 href={`/${lang}/login`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
+                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-medium hover:bg-red-700 dark:hover:bg-red-600 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
               >
                 {t("Sign In", "Anmelden")}
               </Link>
@@ -696,10 +696,10 @@ export default function ManualClient({ brand, model, generation, manual, related
         </div>
 
         {/* Back Button */}
-        <div className="mt-12">
+        <div className="mt-8 sm:mt-12">
           <Link
             href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all text-sm sm:text-base"
+            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-semibold hover:bg-red-700 dark:hover:bg-red-600 transition-all text-sm sm:text-base shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

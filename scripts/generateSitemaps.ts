@@ -229,7 +229,139 @@ async function generateSitemaps() {
           }
         }
         
-        console.log(`✅ Added ${brands.length} brands and ${models?.length || 0} models to sitemap`);
+        // Fetch all model generations
+        const { data: generations } = await supabase
+          .from('model_generations')
+          .select('slug, updated_at, created_at, car_models(slug, car_brands(slug))');
+        
+        if (generations && generations.length > 0) {
+          for (const generation of generations) {
+            const carModels = generation.car_models as unknown as { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[];
+            const modelData = Array.isArray(carModels) ? carModels[0] : carModels;
+            if (!modelData) continue;
+            
+            const carBrands = modelData.car_brands as unknown as { slug: string } | { slug: string }[];
+            const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
+            if (!brandSlug) continue;
+            
+            const enUrl = `${baseUrl}/en/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
+            const deUrl = `${baseUrl}/de/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
+            
+            if (!seenUrls.has(enUrl)) {
+              seenUrls.add(enUrl);
+              const lastmod = generation.updated_at 
+                ? new Date(generation.updated_at).toISOString().split('T')[0]
+                : generation.created_at 
+                ? new Date(generation.created_at).toISOString().split('T')[0]
+                : now;
+              allUrls.push({
+                url: enUrl,
+                lastmod,
+                priority: 0.6,
+                changefreq: 'weekly'
+              });
+            }
+            
+            if (!seenUrls.has(deUrl)) {
+              seenUrls.add(deUrl);
+              const lastmod = generation.updated_at 
+                ? new Date(generation.updated_at).toISOString().split('T')[0]
+                : generation.created_at 
+                ? new Date(generation.created_at).toISOString().split('T')[0]
+                : now;
+              allUrls.push({
+                url: deUrl,
+                lastmod,
+                priority: 0.6,
+                changefreq: 'weekly'
+              });
+            }
+          }
+        }
+        
+        // Fetch all car faults
+        const { data: faults } = await supabase
+          .from('car_faults')
+          .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
+          .eq('status', 'live');
+        
+        if (faults && faults.length > 0) {
+          for (const fault of faults) {
+            if (!fault.slug || !fault.language_path || (fault.language_path !== 'en' && fault.language_path !== 'de')) continue;
+            
+            const generationData = fault.model_generations as unknown as { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] } | { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] }[];
+            const genData = Array.isArray(generationData) ? generationData[0] : generationData;
+            if (!genData) continue;
+            
+            const modelData = genData.car_models as unknown as { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[];
+            const model = Array.isArray(modelData) ? modelData[0] : modelData;
+            if (!model) continue;
+            
+            const carBrands = model.car_brands as unknown as { slug: string } | { slug: string }[];
+            const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
+            if (!brandSlug) continue;
+            
+            const url = `${baseUrl}/${fault.language_path}/cars/${brandSlug}/${model.slug}/${genData.slug}/faults/${fault.slug}`;
+            
+            if (!seenUrls.has(url)) {
+              seenUrls.add(url);
+              const lastmod = fault.updated_at 
+                ? new Date(fault.updated_at).toISOString().split('T')[0]
+                : fault.created_at 
+                ? new Date(fault.created_at).toISOString().split('T')[0]
+                : now;
+              allUrls.push({
+                url,
+                lastmod,
+                priority: 0.7,
+                changefreq: 'monthly'
+              });
+            }
+          }
+        }
+        
+        // Fetch all car manuals
+        const { data: manuals } = await supabase
+          .from('car_manuals')
+          .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
+          .eq('status', 'live');
+        
+        if (manuals && manuals.length > 0) {
+          for (const manual of manuals) {
+            if (!manual.slug || !manual.language_path || (manual.language_path !== 'en' && manual.language_path !== 'de')) continue;
+            
+            const generationData = manual.model_generations as unknown as { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] } | { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] }[];
+            const genData = Array.isArray(generationData) ? generationData[0] : generationData;
+            if (!genData) continue;
+            
+            const modelData = genData.car_models as unknown as { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[];
+            const model = Array.isArray(modelData) ? modelData[0] : modelData;
+            if (!model) continue;
+            
+            const carBrands = model.car_brands as unknown as { slug: string } | { slug: string }[];
+            const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
+            if (!brandSlug) continue;
+            
+            const url = `${baseUrl}/${manual.language_path}/cars/${brandSlug}/${model.slug}/${genData.slug}/manuals/${manual.slug}`;
+            
+            if (!seenUrls.has(url)) {
+              seenUrls.add(url);
+              const lastmod = manual.updated_at 
+                ? new Date(manual.updated_at).toISOString().split('T')[0]
+                : manual.created_at 
+                ? new Date(manual.created_at).toISOString().split('T')[0]
+                : now;
+              allUrls.push({
+                url,
+                lastmod,
+                priority: 0.7,
+                changefreq: 'monthly'
+              });
+            }
+          }
+        }
+        
+        console.log(`✅ Added ${brands.length} brands, ${models?.length || 0} models, ${generations?.length || 0} generations, ${faults?.length || 0} faults, and ${manuals?.length || 0} manuals to sitemap`);
       }
     } catch (error) {
       console.log('⚠️  Cars data fetch failed (this is normal if database is unavailable):', error);

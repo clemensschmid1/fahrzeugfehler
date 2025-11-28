@@ -264,45 +264,41 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            {/* Breadcrumb */}
-            <nav className="mb-6 flex items-center space-x-2 text-sm text-slate-400">
-              <Link href={`/${lang}`} className="hover:text-white transition-colors">
+            {/* Breadcrumb - Mobile optimized */}
+            <nav className="mb-4 sm:mb-6 flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-slate-400 overflow-x-auto pb-2 -mx-4 sm:mx-0 px-4 sm:px-0">
+              <Link href={`/${lang}`} className="hover:text-white transition-colors whitespace-nowrap">
                 {t('Home', 'Startseite')}
               </Link>
-              <span>/</span>
-              <Link href={`/${lang}/cars`} className="hover:text-white transition-colors">
+              <span className="flex-shrink-0">/</span>
+              <Link href={`/${lang}/cars`} className="hover:text-white transition-colors whitespace-nowrap">
                 {t('Cars', 'Autos')}
               </Link>
-              <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}`} className="hover:text-white transition-colors">
+              <span className="flex-shrink-0">/</span>
+              <Link href={`/${lang}/cars/${brand.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {brand.name}
               </Link>
-              <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors">
+              <span className="flex-shrink-0">/</span>
+              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {model.name}
               </Link>
-              <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors">
+              <span className="flex-shrink-0">/</span>
+              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {generation.name}
               </Link>
-              <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors">
-                {t('Faults', 'Fehler')}
-              </Link>
-              <span>/</span>
-              <span className="text-white font-semibold">{fault.title}</span>
+              <span className="flex-shrink-0">/</span>
+              <span className="text-white font-semibold truncate max-w-[120px] sm:max-w-none">{fault.title}</span>
             </nav>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white mb-3 sm:mb-4 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black text-white mb-2 sm:mb-3 md:mb-4 tracking-tight leading-tight">
               {fault.title}
             </h1>
             
-            <p className="text-lg sm:text-xl text-slate-300 dark:text-slate-400 mb-4 sm:mb-6">
+            <p className="text-base sm:text-lg md:text-xl text-slate-300 dark:text-slate-400 mb-3 sm:mb-4 md:mb-6">
               {brand.name} {model.name} {generation.name}
             </p>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
+            {/* Action Buttons - Mobile optimized */}
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 md:gap-3 mb-3 sm:mb-4 md:mb-6">
               {/* Language Switcher */}
               <Link
                 href={langSwitchUrl}
@@ -340,28 +336,28 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               </button>
               <button
                 onClick={handlePrint}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-2 backdrop-blur-sm"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                {t('Print', 'Drucken')}
+                <span className="hidden sm:inline">{t('Print', 'Drucken')}</span>
               </button>
               {tocItems.length > 0 && (
                 <button
                   onClick={() => setShowTOC(!showTOC)}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-2 backdrop-blur-sm"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  {t('Table of Contents', 'Inhaltsverzeichnis')}
+                  <span className="hidden sm:inline">{t('Table of Contents', 'Inhaltsverzeichnis')}</span>
                 </button>
               )}
             </div>
 
-            {/* Badges */}
-            <div className="flex flex-wrap gap-3">
+            {/* Badges - Mobile optimized */}
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {fault.severity && (
                 <span className={`px-3 py-1 rounded-lg text-sm font-bold border ${getSeverityColor(fault.severity)}`}>
                   {t('Severity', 'Schweregrad')}: {fault.severity}
@@ -387,8 +383,8 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Main Content - Mobile optimized */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
         {/* Table of Contents */}
         {showTOC && tocItems.length > 0 && (
           <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -430,8 +426,8 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             <span>{wordCount} {t('words', 'Wörter')}</span>
           </div>
         </div>
-        {/* Quick Overview Cards - Compact Summary */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Quick Overview Cards - Compact Summary - Mobile optimized */}
+        <div className="mb-6 sm:mb-8 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* Problem Description - Compact */}
           {fault.description && (
             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -466,9 +462,9 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           </div>
         </div>
 
-        {/* Symptoms & Diagnostic Steps - Side by Side */}
+        {/* Symptoms & Diagnostic Steps - Side by Side - Mobile optimized */}
         {(fault.symptoms && fault.symptoms.length > 0) || (fault.diagnostic_steps && fault.diagnostic_steps.length > 0) ? (
-          <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="mb-6 sm:mb-8 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Symptoms */}
             {fault.symptoms && fault.symptoms.length > 0 && (
               <div className="p-5 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-900/30">
@@ -513,16 +509,16 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           </div>
         ) : null}
 
-        {/* Solution - Cleaned (without redundant sections) */}
+        {/* Solution - Cleaned (without redundant sections) - Mobile optimized */}
         {cleanSolution && (
-          <div className="mb-8 p-6 bg-green-50 dark:bg-green-950/20 rounded-2xl border border-green-200 dark:border-green-900/30">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-green-50 dark:bg-green-950/20 rounded-xl sm:rounded-2xl border border-green-200 dark:border-green-900/30">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               {t('Solution', 'Lösung')}
             </h2>
-            <div className="prose prose-slate dark:prose-invert max-w-none">
+            <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -543,10 +539,10 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           </div>
         )}
 
-        {/* Tools Required */}
+        {/* Tools Required - Mobile optimized */}
         {fault.tools_required && fault.tools_required.length > 0 && (
-          <div className="mb-8 p-6 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900/30">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-amber-50 dark:bg-amber-950/20 rounded-xl sm:rounded-2xl border border-amber-200 dark:border-amber-900/30">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
               <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -563,12 +559,12 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           </div>
         )}
 
-        {/* Additional Info */}
-        <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+        {/* Additional Info - Mobile optimized */}
+        <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
             {t('Additional Information', 'Zusätzliche Informationen')}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {fault.affected_component && (
               <div>
                 <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
@@ -691,7 +687,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               <p className="text-slate-700 dark:text-slate-300 text-base sm:text-lg mb-4 font-medium">{t("Sign in to share your thoughts", "Melden Sie sich an, um Ihre Gedanken zu teilen")}</p>
               <Link
                 href={`/${lang}/login`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
+                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-medium hover:bg-red-700 dark:hover:bg-red-600 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
               >
                 {t("Sign In", "Anmelden")}
               </Link>
@@ -800,10 +796,10 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         </div>
 
         {/* Back Button */}
-        <div className="mt-12">
+        <div className="mt-8 sm:mt-12">
           <Link
             href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all text-sm sm:text-base"
+            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-semibold hover:bg-red-700 dark:hover:bg-red-600 transition-all text-sm sm:text-base shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
