@@ -12,11 +12,32 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// Load .env.local file if it exists
+try {
+  const envPath = join(process.cwd(), '.env.local');
+  const envFile = readFileSync(envPath, 'utf-8');
+  envFile.split('\n').forEach(line => {
+    const trimmedLine = line.trim();
+    if (trimmedLine && !trimmedLine.startsWith('#') && trimmedLine.includes('=')) {
+      const [key, ...valueParts] = trimmedLine.split('=');
+      const value = valueParts.join('=').replace(/^["']|["']$/g, ''); // Remove quotes
+      if (key && value) {
+        process.env[key.trim()] = value.trim();
+      }
+    }
+  });
+} catch (error) {
+  // .env.local doesn't exist or can't be read, that's okay
+  console.log('ℹ️  .env.local not found, using environment variables from system');
+}
 
 // Configuration
 const INDEXNOW_KEY = process.env.INDEXNOW_KEY || 'REPLACE_WITH_YOUR_INDEXNOW_KEY';
-const HOST = 'infoneva.com';
-const KEY_LOCATION = 'https://infoneva.com/indexnow.json';
+const HOST = 'faultbase.com';
+const KEY_LOCATION = 'https://faultbase.com/indexnow.json';
 const BATCH_SIZE = 100; // URLs per batch
 const BATCH_DELAY_MS = 1000; // 1 second delay between batches
 const MAX_RETRIES = 3;
@@ -34,10 +55,8 @@ const supabase = createClient(
 );
 
 interface QuestionRow {
-  id: string;
   slug: string;
-  language: string;
-  status: string;
+  language_path: string;
 }
 
 interface IndexNowPayload {
@@ -112,12 +131,14 @@ async function bulkSubmitToIndexNow() {
 
   try {
     // Fetch all live questions with their slugs and language
+    // Use questions2 table with is_main=true filter (same as sitemap generation)
     console.log('📊 Fetching live knowledge pages from Supabase...');
     
     const { data: questions, error } = await supabase
-      .from('questions')
-      .select('id, slug, language, status')
+      .from('questions2')
+      .select('slug, language_path')
       .eq('status', 'live')
+      .eq('is_main', true)
       .not('slug', 'is', null);
 
     if (error) {
@@ -132,18 +153,18 @@ async function bulkSubmitToIndexNow() {
 
     console.log(`📋 Found ${questions.length} live knowledge pages`);
 
-    // Filter out questions without valid slugs or language
+    // Filter out questions without valid slugs or language_path
     const validQuestions = questions.filter(q => 
       q.slug && 
-      q.language && 
-      ['en', 'de'].includes(q.language)
+      q.language_path && 
+      ['en', 'de'].includes(q.language_path)
     ) as QuestionRow[];
 
-    console.log(`✅ ${validQuestions.length} questions have valid slugs and language`);
+    console.log(`✅ ${validQuestions.length} questions have valid slugs and language_path`);
 
-    // Construct URLs
+    // Construct URLs (same format as sitemap generation)
     const urls = validQuestions.map(q => 
-      `https://${HOST}/${q.language}/knowledge/${q.slug}`
+      `https://${HOST}/${q.language_path}/knowledge/${q.slug}`
     );
 
     console.log(`🔗 Constructed ${urls.length} URLs for submission`);

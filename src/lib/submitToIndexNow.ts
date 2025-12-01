@@ -11,13 +11,13 @@ interface IndexNowPayload {
 }
 
 export async function submitToIndexNow(url: string): Promise<void> {
-  // Configuration - replace with your actual key
-  const INDEXNOW_KEY = process.env.INDEXNOW_KEY || 'REPLACE_WITH_YOUR_KEY';
-  const HOST = 'infoneva.com';
-  const KEY_LOCATION = 'https://infoneva.com/indexnow.json';
+  // Configuration - try environment variable first, then fallback to hardcoded key
+  const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
+  const HOST = 'faultbase.com';
+  const KEY_LOCATION = 'https://faultbase.com/indexnow.json';
 
   // Don't proceed if key is not configured
-  if (INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
+  if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
     console.log('[IndexNow] Key not configured, skipping submission for:', url);
     return;
   }
@@ -58,13 +58,13 @@ export async function submitToIndexNow(url: string): Promise<void> {
 export async function submitMultipleToIndexNow(urls: string[]): Promise<void> {
   if (urls.length === 0) return;
 
-  // Configuration - replace with your actual key
-  const INDEXNOW_KEY = process.env.INDEXNOW_KEY || 'REPLACE_WITH_YOUR_KEY';
-  const HOST = 'infoneva.com';
-  const KEY_LOCATION = 'https://infoneva.com/indexnow.json';
+  // Configuration - try environment variable first, then fallback to hardcoded key
+  const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
+  const HOST = 'faultbase.com';
+  const KEY_LOCATION = 'https://faultbase.com/indexnow.json';
 
   // Don't proceed if key is not configured
-  if (INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
+  if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
     console.log('[IndexNow] Key not configured, skipping batch submission for', urls.length, 'URLs');
     return;
   }

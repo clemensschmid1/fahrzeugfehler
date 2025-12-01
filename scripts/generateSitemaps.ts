@@ -82,7 +82,7 @@ async function generateSitemaps() {
     
     // Generate URLs with metadata for each question
     const allUrls: UrlWithDate[] = [];
-    const baseUrl = 'https://infoneva.com';
+    const baseUrl = 'https://faultbase.com';
     const now = new Date().toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
     const seenUrls = new Set<string>(); // Track URLs to prevent duplicates
     
