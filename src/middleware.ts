@@ -18,6 +18,12 @@ export function middleware(request: NextRequest) {
   // Get the pathname of the request (e.g. /, /knowledge, /chat)
   const pathname = request.nextUrl.pathname;
 
+  // CRITICAL: Check for .txt files FIRST - IndexNow key files must be accessible without redirect
+  // Any .txt file in public/ should be served directly
+  if (pathname.endsWith('.txt')) {
+    return NextResponse.next();
+  }
+
   // Check if this is a static file that should not be redirected
   // IndexNow key files are 32 hex characters followed by .txt (e.g., /19b8bc246b244733843ff32b3d426207.txt)
   const isIndexNowKeyFile = /^\/[a-f0-9]{32}\.txt$/i.test(pathname);
@@ -113,6 +119,7 @@ export const config = {
   matcher: [
     // Skip all internal paths (_next), API routes, static files, favicon, and .txt files
     // IndexNow key files are .txt files, so excluding all .txt prevents redirects
-    '/((?!_next|api|favicon\\.ico|sitemap.*\\.xml|robots\\.txt|BingSiteAuth\\.xml|indexnow\\.json|.*\\.txt$).*)',
+    // The middleware function itself checks for .txt files first, but we also exclude them from matcher
+    '/((?!_next|api|favicon\\.ico|sitemap.*\\.xml|.*\\.txt$).*)',
   ],
 }; 
