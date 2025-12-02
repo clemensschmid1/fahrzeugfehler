@@ -11,6 +11,7 @@ const staticFiles = [
   'BingSiteAuth.xml',
   'indexnow.json',
   'f1e87098a0d4d83cba61dfe7295ba303.txt',
+  '19b8bc246b244733843ff32b3d426207.txt', // IndexNow key file
 ];
 
 export function middleware(request: NextRequest) {
@@ -108,6 +109,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Skip all internal paths (_next), API routes, static files, and favicon
-    '/((?!_next|api|favicon.ico|sitemap.xml|sitemap-0.xml|sitemap-1.xml|sitemap-2.xml|sitemap-3.xml|sitemap-4.xml|sitemap-5.xml|sitemap-6.xml|sitemap-7.xml|sitemap-8.xml|sitemap-9.xml|sitemap-index-0.xml|sitemap-index-1.xml|sitemap-index-2.xml|sitemap-index-3.xml|sitemap-index-4.xml|sitemap-index-5.xml|sitemap-index-6.xml|sitemap-index-7.xml|sitemap-index-8.xml|sitemap-index-9.xml|robots.txt|BingSiteAuth.xml|indexnow.json|f1e87098a0d4d83cba61dfe7295ba303.txt).*)',
+    '/((?!_next|api|favicon.ico|sitemap.xml|sitemap-0.xml|sitemap-1.xml|sitemap-2.xml|sitemap-3.xml|sitemap-4.xml|sitemap-5.xml|sitemap-6.xml|sitemap-7.xml|sitemap-8.xml|sitemap-9.xml|sitemap-index-0.xml|sitemap-index-1.xml|sitemap-index-2.xml|sitemap-index-3.xml|sitemap-index-4.xml|sitemap-index-5.xml|sitemap-index-6.xml|sitemap-index-7.xml|sitemap-index-8.xml|sitemap-index-9.xml|robots.txt|BingSiteAuth.xml|indexnow.json|19b8bc246b244733843ff32b3d426207.txt|f1e87098a0d4d83cba61dfe7295ba303.txt).*)',
   ],
 }; 

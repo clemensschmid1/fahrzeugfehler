@@ -14,7 +14,7 @@ export async function submitToIndexNow(url: string): Promise<void> {
   // Configuration - try environment variable first, then fallback to hardcoded key
   const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
   const HOST = 'faultbase.com';
-  const KEY_LOCATION = 'https://faultbase.com/indexnow.json';
+  const KEY_LOCATION = `https://faultbase.com/${INDEXNOW_KEY}.txt`;
 
   // Don't proceed if key is not configured
   if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
@@ -61,7 +61,7 @@ export async function submitMultipleToIndexNow(urls: string[]): Promise<void> {
   // Configuration - try environment variable first, then fallback to hardcoded key
   const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
   const HOST = 'faultbase.com';
-  const KEY_LOCATION = 'https://faultbase.com/indexnow.json';
+  const KEY_LOCATION = `https://faultbase.com/${INDEXNOW_KEY}.txt`;
 
   // Don't proceed if key is not configured
   if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {

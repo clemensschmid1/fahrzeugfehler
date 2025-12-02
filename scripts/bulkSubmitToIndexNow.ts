@@ -37,7 +37,7 @@ try {
 // Configuration
 const INDEXNOW_KEY = process.env.INDEXNOW_KEY || 'REPLACE_WITH_YOUR_INDEXNOW_KEY';
 const HOST = 'faultbase.com';
-const KEY_LOCATION = 'https://faultbase.com/indexnow.json';
+const KEY_LOCATION = `https://faultbase.com/${INDEXNOW_KEY}.txt`;
 const BATCH_SIZE = 100; // URLs per batch
 const BATCH_DELAY_MS = 1000; // 1 second delay between batches
 const MAX_RETRIES = 3;

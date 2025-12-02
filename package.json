@@ -11,7 +11,11 @@
     "postbuild": "npm run sitemap:generate && npm run sitemap:split",
     "start": "next start",
     "lint": "next lint",
-    "bulk-indexnow": "npx tsx scripts/bulkSubmitToIndexNow.ts"
+    "bulk-indexnow": "npx tsx scripts/bulkSubmitToIndexNow.ts",
+    "verify-indexnow": "npx tsx scripts/verifyIndexNow.ts",
+    "bulk-generate": "npx tsx scripts/bulkPageGeneration.ts",
+    "bulk-generate:resume": "npx tsx scripts/bulkPageGeneration.ts --resume",
+    "bulk-generate:limit": "npx tsx scripts/bulkPageGeneration.ts --limit=50"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.821.0",
