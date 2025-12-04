@@ -138,8 +138,8 @@ export default async function RootLayout({
             (function() {
               try {
                 const stored = localStorage.getItem('fault-base-theme');
-                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
+                // Default to light mode (bright mode) - ignore system preference
+                const theme = stored === 'dark' || stored === 'light' ? stored : 'light';
                 const root = document.documentElement;
                 root.classList.remove('dark');
                 if (theme === 'dark') {

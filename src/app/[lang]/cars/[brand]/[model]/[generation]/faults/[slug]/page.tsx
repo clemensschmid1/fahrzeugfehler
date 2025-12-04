@@ -5,6 +5,7 @@ import { Metadata } from 'next';
 import Header from '@/components/Header';
 import { Suspense } from 'react';
 import FaultClient from './FaultClient';
+import CarPageTracker from '@/components/CarPageTracker';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 600;
@@ -238,6 +239,18 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
   return (
     <>
       <Header />
+      <CarPageTracker
+        slug={slug}
+        title={faultData.title}
+        type="fault"
+        brand={brandData.name}
+        brandSlug={brandData.slug}
+        model={modelData.name}
+        modelSlug={modelData.slug}
+        generation={generationData.name}
+        generationSlug={generationData.slug}
+        lang={lang as 'en' | 'de'}
+      />
       <Suspense fallback={
         <div className="min-h-screen bg-white dark:bg-black">
           <div className="max-w-4xl mx-auto px-4 py-16">

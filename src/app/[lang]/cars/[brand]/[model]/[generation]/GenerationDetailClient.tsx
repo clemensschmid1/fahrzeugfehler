@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { getBrandLogoUrl } from '@/lib/car-brand-logos';
 
 type CarBrand = {
   id: string;
@@ -196,7 +197,45 @@ export default function GenerationDetailClient({ brand, model, generation, fault
               <span className="text-white font-semibold">{generation.name}</span>
             </nav>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white mb-6 tracking-tight">
+            {/* Brand Logo */}
+            {(() => {
+              const logoUrl = getBrandLogoUrl(brand.slug, brand.name, brand.logo_url);
+              return logoUrl ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2, type: "spring", stiffness: 100 }}
+                  className="mb-10 flex justify-center"
+                >
+                  <div className="relative group">
+                    {/* Animated glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/30 via-white/20 to-white/30 rounded-3xl blur-3xl -z-10 animate-pulse"></div>
+                    <div className="absolute inset-0 bg-white/10 rounded-3xl blur-2xl -z-10 group-hover:bg-white/20 transition-all duration-500"></div>
+                    
+                    {/* Logo container with enhanced styling */}
+                    <div className="relative bg-gradient-to-br from-white/15 via-white/10 to-white/5 dark:from-white/10 dark:via-white/5 dark:to-white/0 backdrop-blur-xl rounded-3xl p-5 sm:p-7 md:p-9 border-2 border-white/30 dark:border-white/20 shadow-2xl group-hover:border-white/40 dark:group-hover:border-white/30 transition-all duration-500 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]">
+                      {/* Inner glow ring */}
+                      <div className="absolute inset-2 rounded-2xl border border-white/10 dark:border-white/5"></div>
+                      
+                      <img
+                        src={logoUrl}
+                        alt={`${brand.name} logo`}
+                        className="relative h-24 sm:h-28 md:h-32 object-contain filter drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500"
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="high"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              ) : null;
+            })()}
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-4 tracking-tight">
               {brand.name} {model.name}
             </h1>
             
@@ -220,39 +259,69 @@ export default function GenerationDetailClient({ brand, model, generation, fault
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/30 rounded-xl p-4 border border-red-200 dark:border-red-900/30">
-            <div className="text-3xl font-black text-red-600 dark:text-red-400 mb-1">{faults.length}</div>
-            <div className="text-xs font-semibold text-red-700 dark:text-red-300">{t('Faults', 'Fehler')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/30 rounded-xl p-4 border border-blue-200 dark:border-blue-900/30">
-            <div className="text-3xl font-black text-blue-600 dark:text-blue-400 mb-1">{manuals.length}</div>
-            <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">{t('Manuals', 'Anleitungen')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/40 dark:to-orange-900/30 rounded-xl p-4 border border-orange-200 dark:border-orange-900/30">
-            <div className="text-3xl font-black text-orange-600 dark:text-orange-400 mb-1">{faultStats.bySeverity.high + faultStats.bySeverity.critical}</div>
-            <div className="text-xs font-semibold text-orange-700 dark:text-orange-300">{t('High Priority', 'Hohe Priorität')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/40 dark:to-green-900/30 rounded-xl p-4 border border-green-200 dark:border-green-900/30">
-            <div className="text-3xl font-black text-green-600 dark:text-green-400 mb-1">{faultStats.byDifficulty.easy + faultStats.byDifficulty.medium}</div>
-            <div className="text-xs font-semibold text-green-700 dark:text-green-300">{t('Easy Fixes', 'Einfache Reparaturen')}</div>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        {/* Stats Bar - Enhanced */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-red-50 via-red-100 to-red-50 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-950/40 rounded-2xl p-5 sm:p-6 border-2 border-red-200 dark:border-red-900/30 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 mb-2">{faults.length}</div>
+            <div className="text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-wide">{t('Faults', 'Fehler')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-2xl p-5 sm:p-6 border-2 border-blue-200 dark:border-blue-900/30 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-blue-600 dark:text-blue-400 mb-2">{manuals.length}</div>
+            <div className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{t('Manuals', 'Anleitungen')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 dark:from-orange-950/40 dark:via-orange-900/30 dark:to-orange-950/40 rounded-2xl p-5 sm:p-6 border-2 border-orange-200 dark:border-orange-900/30 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-orange-600 dark:text-orange-400 mb-2">{faultStats.bySeverity.high + faultStats.bySeverity.critical}</div>
+            <div className="text-sm font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wide">{t('High Priority', 'Hohe Priorität')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-gradient-to-br from-green-50 via-green-100 to-green-50 dark:from-green-950/40 dark:via-green-900/30 dark:to-green-950/40 rounded-2xl p-5 sm:p-6 border-2 border-green-200 dark:border-green-900/30 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-green-600 dark:text-green-400 mb-2">{faultStats.byDifficulty.easy + faultStats.byDifficulty.medium}</div>
+            <div className="text-sm font-bold text-green-700 dark:text-green-300 uppercase tracking-wide">{t('Easy Fixes', 'Einfache Reparaturen')}</div>
+          </motion.div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="mb-8 space-y-4">
+        {/* Search and Filters - Enhanced */}
+        <div className="mb-10 space-y-6">
           {/* Search Bar */}
-          <div className="relative max-w-2xl mx-auto">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/10 rounded-xl blur-xl"></div>
+          <div className="relative max-w-3xl mx-auto">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/10 rounded-2xl blur-xl"></div>
             <input
               type="text"
               placeholder={t('Search faults and manuals...', 'Fehler und Anleitungen suchen...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="relative w-full px-6 py-4 text-lg border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 focus:border-transparent transition-all shadow-lg"
+              className="relative w-full px-6 py-4 sm:py-5 text-lg border-2 border-slate-300 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-lg"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-16 top-1/2 transform -translate-y-1/2 w-6 h-6 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 z-10"
+              >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
             <svg
               className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-slate-400 dark:text-slate-500 z-10"
               fill="none"
@@ -263,15 +332,15 @@ export default function GenerationDetailClient({ brand, model, generation, fault
             </svg>
           </div>
 
-          {/* Filters and Sort */}
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          {/* Filters and Sort - Enhanced */}
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
             {activeTab === 'faults' && (
               <>
                 {uniqueSeverities.length > 0 && (
                   <select
                     value={severityFilter}
                     onChange={(e) => setSeverityFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
                   >
                     <option value="all">{t('All Severities', 'Alle Schweregrade')}</option>
                     {uniqueSeverities.map(severity => (
@@ -283,7 +352,7 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                   <select
                     value={componentFilter}
                     onChange={(e) => setComponentFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
                   >
                     <option value="all">{t('All Components', 'Alle Komponenten')}</option>
                     {uniqueComponents.map(component => (
@@ -297,7 +366,7 @@ export default function GenerationDetailClient({ brand, model, generation, fault
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
               >
                 <option value="all">{t('All Difficulties', 'Alle Schwierigkeiten')}</option>
                 {uniqueDifficulties.map(difficulty => (
@@ -308,7 +377,7 @@ export default function GenerationDetailClient({ brand, model, generation, fault
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'recent' | 'title' | 'severity')}
-              className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
             >
               <option value="recent">{t('Most Recent', 'Neueste')}</option>
               <option value="title">{t('Alphabetical', 'Alphabetisch')}</option>
@@ -321,7 +390,7 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                   setDifficultyFilter('all');
                   setComponentFilter('all');
                 }}
-                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                className="px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               >
                 {t('Clear Filters', 'Filter zurücksetzen')}
               </button>
@@ -329,28 +398,28 @@ export default function GenerationDetailClient({ brand, model, generation, fault
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-8 flex justify-center">
-          <div className="inline-flex bg-slate-100 dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-800">
+        {/* Tabs - Enhanced */}
+        <div className="mb-10 flex justify-center">
+          <div className="inline-flex bg-slate-100 dark:bg-slate-900 rounded-2xl p-1.5 border-2 border-slate-200 dark:border-slate-800 shadow-lg">
             <button
               onClick={() => setActiveTab('faults')}
-              className={`px-6 py-3 rounded-lg font-bold transition-all ${
+              className={`px-8 py-3.5 rounded-xl font-black text-sm transition-all ${
                 activeTab === 'faults'
-                  ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-md'
+                  ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-lg border-2 border-red-200 dark:border-red-900/30'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              {t('Faults', 'Fehler')} ({faults.length})
+              {t('Faults', 'Fehler')} <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 rounded-full text-xs font-bold">{faults.length}</span>
             </button>
             <button
               onClick={() => setActiveTab('manuals')}
-              className={`px-6 py-3 rounded-lg font-bold transition-all ${
+              className={`px-8 py-3.5 rounded-xl font-black text-sm transition-all ${
                 activeTab === 'manuals'
-                  ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-md'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-lg border-2 border-blue-200 dark:border-blue-900/30'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              {t('Manuals', 'Anleitungen')} ({manuals.length})
+              {t('Manuals', 'Anleitungen')} <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">{manuals.length}</span>
             </button>
           </div>
         </div>
@@ -377,42 +446,79 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                       href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${fault.slug}`}
                       className="group block h-full"
                     >
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg dark:shadow-xl hover:shadow-2xl dark:hover:shadow-red-900/20 transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-500/50 h-full flex flex-col">
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors flex-1">
+                      <div className="group relative bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-7 shadow-lg dark:shadow-xl hover:shadow-2xl dark:hover:shadow-red-900/20 transition-all duration-300 border-2 border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-500/50 h-full flex flex-col overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/5 to-transparent rounded-full blur-2xl group-hover:from-red-500/10 dark:group-hover:from-red-500/20 transition-opacity z-0"></div>
+                        
+                        <div className="flex items-start justify-between mb-4 relative z-10">
+                          <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors flex-1 leading-tight pr-2">
                             {fault.title}
                           </h3>
                         </div>
 
                         {fault.description && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4 leading-relaxed">
+                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 mb-5 leading-relaxed relative z-10">
                             {fault.description}
                           </p>
                         )}
 
-                        <div className="flex flex-wrap gap-2 mb-4">
+                        <div className="flex flex-wrap gap-2 mb-5 relative z-10">
                           {fault.severity && (
-                            <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${getSeverityColor(fault.severity)}`}>
+                            <span className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 uppercase tracking-wide ${getSeverityColor(fault.severity)}`}>
                               {fault.severity}
                             </span>
                           )}
                           {fault.difficulty_level && (
-                            <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${getDifficultyColor(fault.difficulty_level)}`}>
+                            <span className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 uppercase tracking-wide ${getDifficultyColor(fault.difficulty_level)}`}>
                               {fault.difficulty_level}
                             </span>
                           )}
                           {fault.error_code && (
-                            <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            <span className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-700">
                               {fault.error_code}
+                            </span>
+                          )}
+                          {fault.affected_component && (
+                            <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-700">
+                              {fault.affected_component}
                             </span>
                           )}
                         </div>
 
-                        <div className="mt-auto flex items-center text-red-600 dark:text-red-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                          {t('View Solution', 'Lösung ansehen')}
-                          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
+                        {/* Additional Info */}
+                        <div className="mb-4 space-y-2 relative z-10">
+                          {fault.estimated_repair_time && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{fault.estimated_repair_time}</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">{t('estimated', 'geschätzt')}</span>
+                            </div>
+                          )}
+                          {fault.affected_component && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                              </svg>
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{fault.affected_component}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 relative z-10">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center text-red-600 dark:text-red-400/90 font-bold text-sm group-hover:translate-x-1 transition-transform">
+                              {t('View Solution', 'Lösung ansehen')}
+                              <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                            {fault.error_code && (
+                              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700">
+                                {fault.error_code}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </Link>
@@ -442,42 +548,64 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                       href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/manuals/${manual.slug}`}
                       className="group block h-full"
                     >
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg dark:shadow-xl hover:shadow-2xl dark:hover:shadow-blue-900/20 transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 h-full flex flex-col">
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400/90 transition-colors flex-1">
+                      <div className="group relative bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-7 shadow-lg dark:shadow-xl hover:shadow-2xl dark:hover:shadow-blue-900/20 transition-all duration-300 border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 h-full flex flex-col overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-transparent rounded-full blur-2xl group-hover:from-blue-500/10 dark:group-hover:from-blue-500/20 transition-opacity z-0"></div>
+                        
+                        <div className="flex items-start justify-between mb-4 relative z-10">
+                          <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400/90 transition-colors flex-1 leading-tight pr-2">
                             {manual.title}
                           </h3>
                         </div>
 
                         {manual.description && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4 leading-relaxed">
+                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 mb-5 leading-relaxed relative z-10">
                             {manual.description}
                           </p>
                         )}
 
-                        <div className="flex flex-wrap gap-2 mb-4">
+                        <div className="flex flex-wrap gap-2 mb-5 relative z-10">
                           {manual.manual_type && (
-                            <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30">
+                            <span className="px-3 py-1.5 rounded-xl text-xs font-black bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-2 border-blue-200 dark:border-blue-900/30 uppercase tracking-wide">
                               {manual.manual_type}
                             </span>
                           )}
                           {manual.difficulty_level && (
-                            <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${getDifficultyColor(manual.difficulty_level)}`}>
+                            <span className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 uppercase tracking-wide ${getDifficultyColor(manual.difficulty_level)}`}>
                               {manual.difficulty_level}
                             </span>
                           )}
                           {manual.estimated_time && (
-                            <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-700">
                               {manual.estimated_time}
                             </span>
                           )}
                         </div>
 
-                        <div className="mt-auto flex items-center text-blue-600 dark:text-blue-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                          {t('View Manual', 'Anleitung ansehen')}
-                          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
+                        {/* Additional Info */}
+                        {manual.estimated_time && (
+                          <div className="mb-4 flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 relative z-10">
+                            <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{manual.estimated_time}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{t('estimated', 'geschätzt')}</span>
+                          </div>
+                        )}
+
+                        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 relative z-10">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center text-blue-600 dark:text-blue-400/90 font-bold text-sm group-hover:translate-x-1 transition-transform">
+                              {t('View Manual', 'Anleitung ansehen')}
+                              <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                            {manual.manual_type && (
+                              <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-lg border border-blue-200 dark:border-blue-900/30">
+                                {manual.manual_type}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </Link>

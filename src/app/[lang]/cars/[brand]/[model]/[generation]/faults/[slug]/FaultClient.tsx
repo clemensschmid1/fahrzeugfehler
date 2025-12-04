@@ -426,40 +426,84 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             <span>{wordCount} {t('words', 'Wörter')}</span>
           </div>
         </div>
-        {/* Quick Overview Cards - Compact Summary - Mobile optimized */}
-        <div className="mb-6 sm:mb-8 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-          {/* Problem Description - Compact */}
-          {fault.description && (
-            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                {t('Overview', 'Übersicht')}
-              </h3>
-              <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
-                {fault.description}
-              </p>
-            </div>
-          )}
-
-          {/* Quick Stats */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
-              {t('Quick Info', 'Schnellinfo')}
-            </h3>
-            <div className="space-y-2 text-sm">
-              {fault.affected_component && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">{t('Component', 'Komponente')}:</span>
-                  <span className="text-slate-900 dark:text-white font-medium">{fault.affected_component}</span>
-                </div>
-              )}
-              {fault.estimated_repair_time && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">{t('Time', 'Zeit')}:</span>
-                  <span className="text-slate-900 dark:text-white font-medium">{fault.estimated_repair_time}</span>
-                </div>
-              )}
+        {/* Critical Safety Warning */}
+        {(fault.severity === 'critical' || fault.severity === 'high') && (
+          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-red-50 dark:bg-red-950/30 border-2 border-red-500 dark:border-red-600 rounded-xl sm:rounded-2xl">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h3 className="text-lg font-bold text-red-900 dark:text-red-300 mb-2">
+                  {t('⚠️ Safety Warning', '⚠️ Sicherheitshinweis')}
+                </h3>
+                <p className="text-red-800 dark:text-red-200 leading-relaxed">
+                  {t(
+                    'This issue requires immediate attention. If you are not experienced with automotive repairs, consult a professional mechanic. Working on critical systems can be dangerous.',
+                    'Dieses Problem erfordert sofortige Aufmerksamkeit. Wenn Sie nicht erfahren in der Autoreparatur sind, konsultieren Sie einen professionellen Mechaniker. Arbeiten an kritischen Systemen kann gefährlich sein.'
+                  )}
+                </p>
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Problem Statement - Enhanced */}
+        {fault.description && (
+          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2 bg-red-100 dark:bg-red-950/50 rounded-lg">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                  {t('Problem Statement', 'Problembeschreibung')}
+                </h2>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-base sm:text-lg">
+                  {fault.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Reference Card - Enhanced */}
+        <div className="mb-6 sm:mb-8 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          {fault.error_code && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900/30">
+              <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">
+                {t('Error Code', 'Fehlercode')}
+              </div>
+              <code className="text-lg font-mono font-bold text-blue-900 dark:text-blue-200 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
+                {fault.error_code}
+              </code>
+            </div>
+          )}
+          {fault.affected_component && (
+            <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-900/30">
+              <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2">
+                {t('Component', 'Komponente')}
+              </div>
+              <div className="text-base font-semibold text-purple-900 dark:text-purple-200">
+                {fault.affected_component}
+              </div>
+            </div>
+          )}
+          {fault.estimated_repair_time && (
+            <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-900/30">
+              <div className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">
+                {t('Repair Time', 'Reparaturzeit')}
+              </div>
+              <div className="text-base font-semibold text-green-900 dark:text-green-200 flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {fault.estimated_repair_time}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Symptoms & Diagnostic Steps - Side by Side - Mobile optimized */}
@@ -522,15 +566,47 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  h1: ({children}) => <h1 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-2xl font-bold mt-6 mb-4 text-slate-900 dark:text-white scroll-mt-20">{children}</h1>,
-                  h2: ({children}) => <h2 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-xl font-bold mt-5 mb-3 text-slate-900 dark:text-white scroll-mt-20">{children}</h2>,
-                  h3: ({children}) => <h3 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-lg font-semibold mt-4 mb-2 text-slate-800 dark:text-slate-200 scroll-mt-20">{children}</h3>,
+                  h1: ({children}) => <h1 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-2xl font-bold mt-6 mb-4 text-slate-900 dark:text-white scroll-mt-20 border-b border-slate-200 dark:border-slate-700 pb-2">{children}</h1>,
+                  h2: ({children}) => <h2 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-xl font-bold mt-6 mb-3 text-slate-900 dark:text-white scroll-mt-20 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-green-600 dark:bg-green-500 rounded-full"></span>
+                    {children}
+                  </h2>,
+                  h3: ({children}) => <h3 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-lg font-semibold mt-5 mb-2 text-slate-800 dark:text-slate-200 scroll-mt-20">{children}</h3>,
                   p: ({children}) => <p className="mb-4 text-slate-700 dark:text-slate-300 leading-relaxed">{children}</p>,
-                  ul: ({children}) => <ul className="list-disc list-inside mb-4 space-y-2 text-slate-700 dark:text-slate-300">{children}</ul>,
-                  ol: ({children}) => <ol className="list-decimal list-inside mb-4 space-y-2 text-slate-700 dark:text-slate-300">{children}</ol>,
-                  li: ({children}) => <li className="ml-4">{children}</li>,
+                  ul: ({children}) => <ul className="list-disc list-outside mb-4 space-y-2 text-slate-700 dark:text-slate-300 ml-6">{children}</ul>,
+                  ol: ({children}) => <ol className="list-decimal list-outside mb-4 space-y-3 text-slate-700 dark:text-slate-300 ml-6">{children}</ol>,
+                  li: ({children}) => <li className="leading-relaxed">{children}</li>,
                   strong: ({children}) => <strong className="font-bold text-slate-900 dark:text-white">{children}</strong>,
-                  code: ({children}) => <code className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>,
+                  code: ({node, inline, ...props}: any) => {
+                    const isInline = inline !== false;
+                    return isInline ? (
+                      <code className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono text-red-600 dark:text-red-400" {...props} />
+                    ) : (
+                      <code className="block bg-slate-900 dark:bg-slate-950 text-slate-100 p-4 rounded-lg overflow-x-auto text-sm font-mono my-4 border border-slate-700" {...props} />
+                    );
+                  },
+                  blockquote: ({children}) => (
+                    <blockquote className="border-l-4 border-blue-500 dark:border-blue-400 pl-4 py-2 my-4 bg-blue-50 dark:bg-blue-950/20 italic text-slate-700 dark:text-slate-300">
+                      {children}
+                    </blockquote>
+                  ),
+                  table: ({children}) => (
+                    <div className="overflow-x-auto my-4">
+                      <table className="min-w-full border-collapse border border-slate-300 dark:border-slate-700">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  th: ({children}) => (
+                    <th className="border border-slate-300 dark:border-slate-700 px-4 py-2 bg-slate-100 dark:bg-slate-800 font-semibold text-left">
+                      {children}
+                    </th>
+                  ),
+                  td: ({children}) => (
+                    <td className="border border-slate-300 dark:border-slate-700 px-4 py-2">
+                      {children}
+                    </td>
+                  ),
                 }}
               >
                 {cleanSolution}
@@ -539,21 +615,96 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           </div>
         )}
 
-        {/* Tools Required - Mobile optimized */}
+        {/* Verification Steps - New Section */}
+        {cleanSolution && (
+          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl sm:rounded-2xl border border-emerald-200 dark:border-emerald-900/30">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <svg className="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {t('Verification', 'Überprüfung')}
+            </h2>
+            <p className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
+              {t(
+                'After completing the repair, verify that the issue has been resolved:',
+                'Nach Abschluss der Reparatur überprüfen Sie, ob das Problem behoben wurde:'
+              )}
+            </p>
+            <ul className="space-y-3 text-slate-700 dark:text-slate-300">
+              <li className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{t('Test the affected component to ensure it functions correctly', 'Testen Sie die betroffene Komponente, um sicherzustellen, dass sie ordnungsgemäß funktioniert')}</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{t('Check for any error codes or warning lights', 'Überprüfen Sie auf Fehlercodes oder Warnleuchten')}</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{t('Monitor the vehicle for a few days to ensure the issue does not recur', 'Überwachen Sie das Fahrzeug einige Tage lang, um sicherzustellen, dass das Problem nicht erneut auftritt')}</span>
+              </li>
+            </ul>
+          </div>
+        )}
+
+        {/* Prevention Tips - New Section */}
+        <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-indigo-50 dark:bg-indigo-950/20 rounded-xl sm:rounded-2xl border border-indigo-200 dark:border-indigo-900/30">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            {t('Prevention Tips', 'Vorbeugung')}
+          </h2>
+          <p className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
+            {t(
+              'To prevent this issue from occurring again:',
+              'Um zu verhindern, dass dieses Problem erneut auftritt:'
+            )}
+          </p>
+          <ul className="space-y-3 text-slate-700 dark:text-slate-300">
+            <li className="flex items-start gap-3">
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
+              <span>{t('Follow the manufacturer\'s recommended maintenance schedule', 'Befolgen Sie den empfohlenen Wartungsplan des Herstellers')}</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
+              <span>{t('Address warning signs early before they develop into major issues', 'Beheben Sie Warnzeichen frühzeitig, bevor sie zu größeren Problemen werden')}</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
+              <span>{t('Use quality parts and fluids recommended for your vehicle', 'Verwenden Sie qualitativ hochwertige Teile und Flüssigkeiten, die für Ihr Fahrzeug empfohlen werden')}</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
+              <span>{t('Keep detailed records of all repairs and maintenance', 'Führen Sie detaillierte Aufzeichnungen über alle Reparaturen und Wartungen')}</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Tools Required - Enhanced */}
         {fault.tools_required && fault.tools_required.length > 0 && (
-          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-amber-50 dark:bg-amber-950/20 rounded-xl sm:rounded-2xl border border-amber-200 dark:border-amber-900/30">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
+          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-amber-50 dark:bg-amber-950/20 rounded-xl sm:rounded-2xl border border-amber-200 dark:border-amber-900/30">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {t('Tools Required', 'Benötigte Werkzeuge')}
+              {t('Tools & Equipment Required', 'Benötigte Werkzeuge & Ausrüstung')}
             </h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {fault.tools_required.map((tool, index) => (
-                <span key={index} className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium">
-                  {tool}
-                </span>
+                <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">{tool}</span>
+                </div>
               ))}
             </div>
           </div>

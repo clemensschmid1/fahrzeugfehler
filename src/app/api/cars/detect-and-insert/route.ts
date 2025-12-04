@@ -93,40 +93,46 @@ Only return is_car_related: true if you're confident (confidence > 70) this is a
     const supabase = getSupabaseClient();
     
     let brandId: string | null = null;
+    let brandSlug: string | null = null;
     let modelId: string | null = null;
+    let modelSlug: string | null = null;
     let generationId: string | null = null;
+    let generationSlug: string | null = null;
 
     if (detection.detected_brand) {
       const { data: brand } = await supabase
         .from('car_brands')
-        .select('id')
+        .select('id, slug')
         .ilike('name', `%${detection.detected_brand}%`)
         .maybeSingle();
       
       if (brand) {
         brandId = brand.id;
+        brandSlug = brand.slug;
 
         if (detection.detected_model && brandId) {
           const { data: model } = await supabase
             .from('car_models')
-            .select('id')
+            .select('id, slug')
             .eq('brand_id', brandId)
             .ilike('name', `%${detection.detected_model}%`)
             .maybeSingle();
           
           if (model) {
             modelId = model.id;
+            modelSlug = model.slug;
 
             if (detection.detected_generation && modelId) {
               const { data: generation } = await supabase
                 .from('model_generations')
-                .select('id')
+                .select('id, slug')
                 .eq('car_model_id', modelId)
                 .or(`name.ilike.%${detection.detected_generation}%,generation_code.ilike.%${detection.detected_generation}%`)
                 .maybeSingle();
               
               if (generation) {
                 generationId = generation.id;
+                generationSlug = generation.slug;
               }
             }
           }
@@ -240,6 +246,20 @@ Only return is_car_related: true if you're confident (confidence > 70) this is a
         return NextResponse.json({ error: `Insert failed: ${error.message}` }, { status: 500 });
       }
 
+      // Submit to IndexNow for immediate indexing (non-blocking)
+      if (data && data.slug && brandSlug && modelSlug && generationSlug) {
+        try {
+          const { submitToIndexNow } = await import('@/lib/submitToIndexNow');
+          const url = `https://faultbase.com/${language}/cars/${brandSlug}/${modelSlug}/${generationSlug}/faults/${data.slug}`;
+          submitToIndexNow(url).catch(err => {
+            console.warn('[IndexNow] Failed to submit car fault URL:', err);
+          });
+        } catch (err) {
+          // Fail silently - don't let IndexNow errors affect the response
+          console.warn('[IndexNow] Error importing submitToIndexNow:', err);
+        }
+      }
+
       return NextResponse.json({ 
         inserted: true, 
         type: 'fault',
@@ -265,6 +285,20 @@ Only return is_car_related: true if you're confident (confidence > 70) this is a
 
       if (error) {
         return NextResponse.json({ error: `Insert failed: ${error.message}` }, { status: 500 });
+      }
+
+      // Submit to IndexNow for immediate indexing (non-blocking)
+      if (data && data.slug && brandSlug && modelSlug && generationSlug) {
+        try {
+          const { submitToIndexNow } = await import('@/lib/submitToIndexNow');
+          const url = `https://faultbase.com/${language}/cars/${brandSlug}/${modelSlug}/${generationSlug}/manuals/${data.slug}`;
+          submitToIndexNow(url).catch(err => {
+            console.warn('[IndexNow] Failed to submit car manual URL:', err);
+          });
+        } catch (err) {
+          // Fail silently - don't let IndexNow errors affect the response
+          console.warn('[IndexNow] Error importing submitToIndexNow:', err);
+        }
       }
 
       return NextResponse.json({ 

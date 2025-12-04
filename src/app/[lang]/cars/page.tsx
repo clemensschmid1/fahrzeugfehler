@@ -21,11 +21,29 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       'Finden Sie Reparaturanleitungen und Fehlerlösungen für alle Automarken und Modelle. Umfassende Auto-Wartungs- und Reparaturanleitungen mit Schritt-für-Schritt-Anweisungen.'
     ),
     alternates: {
-      canonical: `https://infoneva.com/${lang}/cars`,
+      canonical: `https://faultbase.com/${lang}/cars`,
       languages: {
-        'en': 'https://infoneva.com/en/cars',
-        'de': 'https://infoneva.com/de/cars',
+        'en': 'https://faultbase.com/en/cars',
+        'de': 'https://faultbase.com/de/cars',
       },
+    },
+    openGraph: {
+      type: 'website',
+      title: t('Cars - Car Maintenance & Repair Guides | All Brands', 'Autos - Wartungs- & Reparaturanleitungen | Alle Marken'),
+      description: t(
+        'Find fixing manuals and fault solutions for all car brands and models. Comprehensive car maintenance and repair guides with step-by-step instructions.',
+        'Finden Sie Reparaturanleitungen und Fehlerlösungen für alle Automarken und Modelle. Umfassende Auto-Wartungs- und Reparaturanleitungen mit Schritt-für-Schritt-Anweisungen.'
+      ),
+      url: `https://faultbase.com/${lang}/cars`,
+      siteName: 'FAULTBASE',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t('Cars - Car Maintenance & Repair Guides | All Brands', 'Autos - Wartungs- & Reparaturanleitungen | Alle Marken'),
+      description: t(
+        'Find fixing manuals and fault solutions for all car brands and models.',
+        'Finden Sie Reparaturanleitungen und Fehlerlösungen für alle Automarken und Modelle.'
+      ),
     },
   };
 }
@@ -66,6 +84,27 @@ export default async function CarsPage({ params }: { params: Promise<Params> }) 
     console.error('Error fetching car brands:', error);
   }
 
+  // Fetch statistics in parallel for better performance
+  const [modelsResult, faultsResult, manualsResult] = await Promise.allSettled([
+    supabase
+      .from('car_models')
+      .select('id', { count: 'exact', head: true }),
+    supabase
+      .from('car_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'live'),
+    supabase
+      .from('car_manuals')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'live'),
+  ]);
+
+  const stats = {
+    totalModels: modelsResult.status === 'fulfilled' ? (modelsResult.value.count || 0) : 0,
+    totalFaults: faultsResult.status === 'fulfilled' ? (faultsResult.value.count || 0) : 0,
+    totalManuals: manualsResult.status === 'fulfilled' ? (manualsResult.value.count || 0) : 0,
+  };
+
   return (
     <>
       <Header />
@@ -83,7 +122,7 @@ export default async function CarsPage({ params }: { params: Promise<Params> }) 
           </div>
         </div>
       }>
-        <CarsClient brands={brands || []} lang={lang} />
+        <CarsClient brands={brands || []} lang={lang} stats={stats} />
       </Suspense>
     </>
   );

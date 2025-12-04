@@ -102,6 +102,11 @@ export default function CarInternalPage() {
   const [shouldStopMetadataGeneration, setShouldStopMetadataGeneration] = useState(false);
   const [enableMetadataGeneration, setEnableMetadataGeneration] = useState(true);
   
+  // Batch generation mode
+  const [useBatchGeneration, setUseBatchGeneration] = useState(false); // Use OpenAI batch API
+  const [batchJobs, setBatchJobs] = useState<Array<{ id: string; type: 'answers' | 'metadata'; status: string; createdAt: string; questionsCount: number }>>([]);
+  const [monitoringBatchId, setMonitoringBatchId] = useState<string | null>(null);
+  
   // Batch file generation states
   const [batchFiles, setBatchFiles] = useState<Array<{ type: 'questions' | 'answers' | 'metadata'; content: string; filename: string }>>([]);
 
@@ -354,15 +359,312 @@ export default function CarInternalPage() {
     setAnswerGenerationStatus(`Loaded ${generatedQuestions.length} generated questions. Ready to generate answers and create pages.`);
   }
 
-  async function handleGenerateAnswers() {
+  // OpenAI Batch Generation for Answers
+  async function handleBatchGenerateAnswers() {
     if (questionsForAnswers.length === 0) {
-      alert('No questions loaded. Please paste questions first.');
+      alert(t('No questions loaded. Please paste questions first.', 'Keine Fragen geladen. Bitte fügen Sie zuerst Fragen ein.'));
+      return;
+    }
+
+    const pendingQuestions = questionsForAnswers.filter(q => q.status === 'pending' || q.status === 'generating');
+    if (pendingQuestions.length === 0) {
+      alert(t('No pending questions to generate.', 'Keine ausstehenden Fragen zum Generieren.'));
       return;
     }
 
     setIsGeneratingAnswers(true);
+    setAnswerGenerationStatus(t('Creating OpenAI batch job...', 'Erstelle OpenAI Batch-Job...'));
+
+    try {
+      const selectedBrand = brands.find(b => b.id === selectedBrandId);
+      const selectedModel = models.find(m => m.id === selectedModelId);
+      const selectedGeneration = generations.find(g => g.id === selectedGenerationId);
+
+      // Build context prompt
+      let context = '';
+      if (selectedBrand && selectedModel) {
+        context = `This is about ${selectedBrand.name} ${selectedModel.name}${selectedGeneration ? ` ${selectedGeneration.name}` : ''}. `;
+      }
+
+      const systemPrompt = 'You are an expert automotive technician and repair specialist. Provide detailed, step-by-step solutions for car problems and maintenance procedures.';
+      
+      // Prepare questions for batch
+      const questions = pendingQuestions.map(q => context + q.question);
+
+      // Create batch via API
+      const response = await fetch('/api/batch/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questions,
+          prompt: systemPrompt,
+          model: 'gpt-4o',
+          metadata: {
+            type: 'car_answers',
+            brand: selectedBrand?.name,
+            model: selectedModel?.name,
+            generation: selectedGeneration?.name,
+            lang,
+            questionType
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Batch creation failed');
+      }
+
+      const batchData = await response.json();
+      
+      // Add to batch jobs list
+      setBatchJobs(prev => [...prev, {
+        id: batchData.batchId,
+        type: 'answers',
+        status: batchData.status,
+        createdAt: new Date().toISOString(),
+        questionsCount: questions.length
+      }]);
+
+      // Update questions status
+      setQuestionsForAnswers(prev => prev.map(q => 
+        pendingQuestions.some(pq => pq.id === q.id)
+          ? { ...q, status: 'generating' as const }
+          : q
+      ));
+
+      setAnswerGenerationStatus(t(
+        `✅ Batch job created! ID: ${batchData.batchId}. Status: ${batchData.status}. Monitoring...`,
+        `✅ Batch-Job erstellt! ID: ${batchData.batchId}. Status: ${batchData.status}. Überwache...`
+      ));
+
+      // Start monitoring
+      setMonitoringBatchId(batchData.batchId);
+      monitorBatchJob(batchData.batchId, 'answers');
+    } catch (error) {
+      console.error('Batch generation error:', error);
+      setAnswerGenerationStatus(t(
+        `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      ));
+    } finally {
+      setIsGeneratingAnswers(false);
+    }
+  }
+
+  // Monitor batch job status and download results when complete
+  async function monitorBatchJob(batchId: string, type: 'answers' | 'metadata') {
+    const maxAttempts = 300; // 5 minutes max (1 second intervals)
+    let attempts = 0;
+
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/batch/openai?batchId=${batchId}`);
+        if (!response.ok) {
+          throw new Error('Failed to check batch status');
+        }
+
+        const status = await response.json();
+        
+        // Update batch job status
+        setBatchJobs(prev => prev.map(job => 
+          job.id === batchId ? { ...job, status: status.status } : job
+        ));
+
+        if (status.status === 'completed') {
+          // Download results
+          if (status.output_file_id) {
+            await downloadBatchResults(status.output_file_id, batchId, type);
+          }
+          setMonitoringBatchId(null);
+          return;
+        } else if (status.status === 'failed' || status.status === 'expired' || status.status === 'cancelled') {
+          setAnswerGenerationStatus(t(
+            `Batch job ${status.status}. Check OpenAI dashboard for details.`,
+            `Batch-Job ${status.status}. Prüfen Sie das OpenAI-Dashboard für Details.`
+          ));
+          setMonitoringBatchId(null);
+          return;
+        }
+
+        // Continue monitoring
+        attempts++;
+        if (attempts < maxAttempts && !shouldStopGeneration) {
+          setTimeout(checkStatus, 2000); // Check every 2 seconds
+        } else {
+          setAnswerGenerationStatus(t(
+            'Batch monitoring timeout. Check status manually.',
+            'Batch-Überwachung-Timeout. Status manuell prüfen.'
+          ));
+          setMonitoringBatchId(null);
+        }
+      } catch (error) {
+        console.error('Error monitoring batch:', error);
+        setMonitoringBatchId(null);
+      }
+    };
+
+    checkStatus();
+  }
+
+  // Download and process batch results
+  async function downloadBatchResults(fileId: string, batchId: string, type: 'answers' | 'metadata') {
+    try {
+      setAnswerGenerationStatus(t('Downloading batch results...', 'Lade Batch-Ergebnisse herunter...'));
+
+      const response = await fetch(`/api/batch/openai?fileId=${fileId}`);
+      if (!response.ok) {
+        throw new Error('Failed to download results');
+      }
+
+      const text = await response.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      
+      if (type === 'answers') {
+        // Process answer results
+        type BatchResult = {
+          custom_id: string;
+          response?: {
+            body?: {
+              choices?: Array<{
+                message?: {
+                  content?: string;
+                };
+              }>;
+            };
+          };
+        };
+        const results: BatchResult[] = [];
+        
+        for (const line of lines) {
+          try {
+            const result = JSON.parse(line);
+            results.push(result);
+          } catch (e) {
+            console.error('Error parsing result line:', e);
+          }
+        }
+
+        // Match results to questions by custom_id
+        setQuestionsForAnswers(prev => {
+          const updated = [...prev];
+          results.forEach((result, index) => {
+            const customId = result.custom_id || `request-${index + 1}`;
+            const match = customId.match(/request-(\d+)/);
+            if (match) {
+              const questionIndex = parseInt(match[1]) - 1;
+              const question = updated.find((q, idx) => {
+                const pending = prev.filter(pq => pq.status === 'pending' || pq.status === 'generating');
+                return pending[questionIndex]?.id === q.id;
+              });
+              
+              if (question) {
+                const answer = result.response?.body?.choices?.[0]?.message?.content || '';
+                const questionIndexInUpdated = updated.findIndex(q => q.id === question.id);
+                if (questionIndexInUpdated !== -1) {
+                  updated[questionIndexInUpdated] = {
+                    ...updated[questionIndexInUpdated],
+                    status: 'done',
+                    answer
+                  };
+                }
+              }
+            }
+          });
+          return updated;
+        });
+
+        setAnswerGenerationStatus(t(
+          `✅ Batch completed! Processed ${results.length} answers.`,
+          `✅ Batch abgeschlossen! ${results.length} Antworten verarbeitet.`
+        ));
+      } else if (type === 'metadata') {
+        // Process metadata results
+        type BatchResult = {
+          custom_id: string;
+          response?: {
+            body?: {
+              choices?: Array<{
+                message?: {
+                  content?: string;
+                };
+              }>;
+            };
+          };
+        };
+        const results: BatchResult[] = [];
+        
+        for (const line of lines) {
+          try {
+            const result = JSON.parse(line);
+            results.push(result);
+          } catch (e) {
+            console.error('Error parsing metadata result line:', e);
+          }
+        }
+
+        // Match results to questions
+        setQuestionsForAnswers(prev => {
+          const updated = [...prev];
+          results.forEach((result, index) => {
+            const customId = result.custom_id || `request-${index + 1}`;
+            const match = customId.match(/request-(\d+)/);
+            if (match) {
+              const questionIndex = parseInt(match[1]) - 1;
+              const question = updated.find((q, idx) => {
+                const pending = prev.filter(pq => pq.status === 'done' || pq.status === 'metadata_pending');
+                return pending[questionIndex]?.id === q.id;
+              });
+              
+              if (question) {
+                const metadataText = result.response?.body?.choices?.[0]?.message?.content || '';
+                try {
+                  const metadata = JSON.parse(metadataText);
+                  const questionIndexInUpdated = updated.findIndex(q => q.id === question.id);
+                  if (questionIndexInUpdated !== -1) {
+                    updated[questionIndexInUpdated] = {
+                      ...updated[questionIndexInUpdated],
+                      status: 'metadata_done',
+                      metadata
+                    };
+                  }
+                } catch (e) {
+                  console.error('Error parsing metadata JSON:', e);
+                }
+              }
+            }
+          });
+          return updated;
+        });
+
+        setMetadataGenerationStatus(t(
+          `✅ Batch metadata completed! Processed ${results.length} items.`,
+          `✅ Batch-Metadaten abgeschlossen! ${results.length} Elemente verarbeitet.`
+        ));
+      }
+    } catch (error) {
+      console.error('Error processing batch results:', error);
+      setAnswerGenerationStatus(t(
+        `Error processing results: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Fehler beim Verarbeiten der Ergebnisse: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      ));
+    }
+  }
+
+  async function handleGenerateAnswers() {
+    if (questionsForAnswers.length === 0) {
+      alert(t('No questions loaded. Please paste questions first.', 'Keine Fragen geladen. Bitte fügen Sie zuerst Fragen ein.'));
+      return;
+    }
+
+    // Use batch generation if enabled
+    if (useBatchGeneration) {
+      return handleBatchGenerateAnswers();
+    }
+
+    setIsGeneratingAnswers(true);
     setShouldStopGeneration(false);
-    setAnswerGenerationStatus('Generating answers...');
+    setAnswerGenerationStatus(t('Generating answers...', 'Generiere Antworten...'));
     setAbortControllers([]);
 
     const updatedQuestions = questionsForAnswers.map(q => ({
@@ -376,8 +678,8 @@ export default function CarInternalPage() {
       const selectedModel = models.find(m => m.id === selectedModelId);
       const selectedGeneration = generations.find(g => g.id === selectedGenerationId);
 
-      // Process in batches of 10 for parallel generation
-      const BATCH_SIZE = 10;
+      // Process in batches of 35 for faster parallel generation
+      const BATCH_SIZE = 35;
       const pendingQuestions = questionsForAnswers.filter(q => q.status === 'pending' || q.status === 'generating');
       
       for (let batchStart = 0; batchStart < pendingQuestions.length; batchStart += BATCH_SIZE) {
@@ -740,8 +1042,8 @@ export default function CarInternalPage() {
       let successCount = 0;
       let errorCount = 0;
 
-      // Process in batches of 10 for parallel metadata generation
-      const BATCH_SIZE = 10;
+      // Process in batches of 35 for faster parallel metadata generation
+      const BATCH_SIZE = 35;
       const itemsToProcess = questionsWithAnswers.filter(q => 
         q.status === 'done' || q.status === 'metadata_pending'
       ).filter(q => !(q.status === 'metadata_done' && q.metadata));
@@ -1022,12 +1324,26 @@ export default function CarInternalPage() {
             }
 
             if (data) {
+              const fullUrl = `https://faultbase.com/${lang}/cars/${selectedBrand?.slug}/${selectedModel?.slug}/${selectedGeneration?.slug}/faults/${data.slug}`;
+              
               importedItems.push({
                 id: data.id,
                 slug: data.slug,
                 title,
                 url: `/${lang}/cars/${selectedBrand?.slug}/${selectedModel?.slug}/${selectedGeneration?.slug}/faults/${data.slug}`
               });
+              
+              // Submit to IndexNow for immediate indexing (non-blocking)
+              try {
+                const { submitToIndexNow } = await import('@/lib/submitToIndexNow');
+                submitToIndexNow(fullUrl).catch(err => {
+                  console.warn('[IndexNow] Failed to submit car fault URL:', err);
+                });
+              } catch (err) {
+                // Fail silently - don't let IndexNow errors affect the import
+                console.warn('[IndexNow] Error importing submitToIndexNow:', err);
+              }
+              
               successCount++;
             }
           } else {
@@ -1052,12 +1368,26 @@ export default function CarInternalPage() {
             }
 
             if (data) {
+              const fullUrl = `https://faultbase.com/${lang}/cars/${selectedBrand?.slug}/${selectedModel?.slug}/${selectedGeneration?.slug}/manuals/${data.slug}`;
+              
               importedItems.push({
                 id: data.id,
                 slug: data.slug,
                 title,
                 url: `/${lang}/cars/${selectedBrand?.slug}/${selectedModel?.slug}/${selectedGeneration?.slug}/manuals/${data.slug}`
               });
+              
+              // Submit to IndexNow for immediate indexing (non-blocking)
+              try {
+                const { submitToIndexNow } = await import('@/lib/submitToIndexNow');
+                submitToIndexNow(fullUrl).catch(err => {
+                  console.warn('[IndexNow] Failed to submit car manual URL:', err);
+                });
+              } catch (err) {
+                // Fail silently - don't let IndexNow errors affect the import
+                console.warn('[IndexNow] Error importing submitToIndexNow:', err);
+              }
+              
               successCount++;
             }
           }
@@ -1129,12 +1459,18 @@ export default function CarInternalPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('Car Content Generator', 'Auto-Inhaltsgenerator')}</h1>
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <Link
                 href={`/${lang}/internal`}
                 className="text-blue-600 hover:underline text-sm"
               >
                 ← {t('Back to Internal', 'Zurück zu Intern')}
+              </Link>
+              <Link
+                href={`/${lang}/carbulk`}
+                className="text-red-600 hover:underline text-sm font-semibold"
+              >
+                {t('Bulk Generator', 'Bulk-Generator')} →
               </Link>
               <Link
                 href={`/${lang}/internal/car-comments`}
@@ -1739,7 +2075,7 @@ export default function CarInternalPage() {
                       </a>
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://infoneva.com${item.url}`);
+                          navigator.clipboard.writeText(`https://faultbase.com${item.url}`);
                           alert('URL copied!');
                         }}
                         className="px-3 py-1.5 bg-slate-600 text-white text-xs font-semibold rounded hover:bg-slate-700 transition-colors"
@@ -1753,7 +2089,7 @@ export default function CarInternalPage() {
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={() => {
-                    const allUrls = importedItems.map(item => `https://infoneva.com${item.url}`).join('\n');
+                    const allUrls = importedItems.map(item => `https://faultbase.com${item.url}`).join('\n');
                     navigator.clipboard.writeText(allUrls);
                     alert(`Copied ${importedItems.length} URLs to clipboard!`);
                   }}

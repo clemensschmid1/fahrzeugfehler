@@ -388,83 +388,185 @@ export default function ManualClient({ brand, model, generation, manual, related
             <span>{wordCount} {t('words', 'Wörter')}</span>
           </div>
         </div>
-        {/* Description - Mobile optimized */}
+        {/* Prerequisites Section - New */}
+        <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl sm:rounded-2xl border border-blue-200 dark:border-blue-900/30">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            {t('Prerequisites', 'Voraussetzungen')}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {manual.tools_required && manual.tools_required.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  {t('Tools Required', 'Benötigte Werkzeuge')}
+                </h3>
+                <ul className="space-y-2">
+                  {manual.tools_required.map((tool, index) => (
+                    <li key={index} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>{tool}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {manual.parts_required && manual.parts_required.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  {t('Parts Required', 'Benötigte Teile')}
+                </h3>
+                <ul className="space-y-2">
+                  {manual.parts_required.map((part, index) => (
+                    <li key={index} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>{part}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {manual.estimated_time && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  {t('Estimated Time', 'Geschätzte Zeit')}
+                </h3>
+                <p className="text-lg font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {manual.estimated_time}
+                </p>
+              </div>
+            )}
+            {manual.difficulty_level && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  {t('Difficulty Level', 'Schwierigkeitsgrad')}
+                </h3>
+                <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold border ${getDifficultyColor(manual.difficulty_level)}`}>
+                  {manual.difficulty_level.charAt(0).toUpperCase() + manual.difficulty_level.slice(1)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Description - Enhanced */}
         {manual.description && (
-          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
+          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {t('Overview', 'Übersicht')}
             </h2>
-            <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+            <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-base sm:text-lg">
               {manual.description}
             </p>
           </div>
         )}
 
-        {/* Tools Required - Mobile optimized */}
-        {manual.tools_required && manual.tools_required.length > 0 && (
-          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-amber-50 dark:bg-amber-950/20 rounded-xl sm:rounded-2xl border border-amber-200 dark:border-amber-900/30">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
-              <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {t('Tools Required', 'Benötigte Werkzeuge')}
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {manual.tools_required.map((tool, index) => (
-                <span key={index} className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium">
-                  {tool}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Parts Required - Mobile optimized */}
-        {manual.parts_required && manual.parts_required.length > 0 && (
-          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-purple-50 dark:bg-purple-950/20 rounded-xl sm:rounded-2xl border border-purple-200 dark:border-purple-900/30">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
-              <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-              {t('Parts Required', 'Benötigte Teile')}
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {manual.parts_required.map((part, index) => (
-                <span key={index} className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium">
-                  {part}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Manual Content */}
-        <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-blue-50 dark:bg-blue-950/20 rounded-xl sm:rounded-2xl border border-blue-200 dark:border-blue-900/30">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-6 flex items-center gap-2">
+        {/* Manual Content - Enhanced */}
+        <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-blue-950/20 rounded-xl sm:rounded-2xl border-2 border-blue-200 dark:border-blue-900/30 shadow-lg">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
             <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             {t('Step-by-Step Guide', 'Schritt-für-Schritt-Anleitung')}
           </h2>
-            <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base">
+          <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                h1: ({children}) => <h1 className="text-2xl font-bold mt-6 mb-4 text-slate-900 dark:text-white">{children}</h1>,
-                h2: ({children}) => <h2 className="text-xl font-bold mt-5 mb-3 text-slate-900 dark:text-white">{children}</h2>,
-                h3: ({children}) => <h3 className="text-lg font-semibold mt-4 mb-2 text-slate-800 dark:text-slate-200">{children}</h3>,
+                h1: ({children}) => <h1 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-2xl font-bold mt-6 mb-4 text-slate-900 dark:text-white scroll-mt-20 border-b border-blue-200 dark:border-blue-800 pb-2">{children}</h1>,
+                h2: ({children}) => <h2 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-xl font-bold mt-6 mb-3 text-slate-900 dark:text-white scroll-mt-20 flex items-center gap-2">
+                  <span className="w-1 h-6 bg-blue-600 dark:bg-blue-500 rounded-full"></span>
+                  {children}
+                </h2>,
+                h3: ({children}) => <h3 id={`heading-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`} className="text-lg font-semibold mt-5 mb-2 text-slate-800 dark:text-slate-200 scroll-mt-20">{children}</h3>,
                 p: ({children}) => <p className="mb-4 text-slate-700 dark:text-slate-300 leading-relaxed">{children}</p>,
-                ul: ({children}) => <ul className="list-disc list-inside mb-4 space-y-2 text-slate-700 dark:text-slate-300">{children}</ul>,
-                ol: ({children}) => <ol className="list-decimal list-inside mb-4 space-y-2 text-slate-700 dark:text-slate-300">{children}</ol>,
-                li: ({children}) => <li className="ml-4">{children}</li>,
+                ul: ({children}) => <ul className="list-disc list-outside mb-4 space-y-2 text-slate-700 dark:text-slate-300 ml-6">{children}</ul>,
+                ol: ({children}) => <ol className="list-decimal list-outside mb-4 space-y-3 text-slate-700 dark:text-slate-300 ml-6">{children}</ol>,
+                li: ({children}) => <li className="leading-relaxed">{children}</li>,
                 strong: ({children}) => <strong className="font-bold text-slate-900 dark:text-white">{children}</strong>,
-                code: ({children}) => <code className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>,
+                code: ({node, inline, ...props}: any) => {
+                  const isInline = inline !== false;
+                  return isInline ? (
+                    <code className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono text-blue-600 dark:text-blue-400" {...props} />
+                  ) : (
+                    <code className="block bg-slate-900 dark:bg-slate-950 text-slate-100 p-4 rounded-lg overflow-x-auto text-sm font-mono my-4 border border-slate-700" {...props} />
+                  );
+                },
+                blockquote: ({children}) => (
+                  <blockquote className="border-l-4 border-blue-500 dark:border-blue-400 pl-4 py-2 my-4 bg-blue-50 dark:bg-blue-950/20 italic text-slate-700 dark:text-slate-300">
+                    {children}
+                  </blockquote>
+                ),
+                table: ({children}) => (
+                  <div className="overflow-x-auto my-4">
+                    <table className="min-w-full border-collapse border border-slate-300 dark:border-slate-700">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                th: ({children}) => (
+                  <th className="border border-slate-300 dark:border-slate-700 px-4 py-2 bg-slate-100 dark:bg-slate-800 font-semibold text-left">
+                    {children}
+                  </th>
+                ),
+                td: ({children}) => (
+                  <td className="border border-slate-300 dark:border-slate-700 px-4 py-2">
+                    {children}
+                  </td>
+                ),
               }}
             >
               {manual.content}
             </ReactMarkdown>
           </div>
+        </div>
+
+        {/* Completion Checklist - New Section */}
+        <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-green-50 dark:bg-green-950/20 rounded-xl sm:rounded-2xl border border-green-200 dark:border-green-900/30">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {t('Completion Checklist', 'Abschluss-Checkliste')}
+          </h2>
+          <ul className="space-y-3 text-slate-700 dark:text-slate-300">
+            <li className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{t('All steps have been completed successfully', 'Alle Schritte wurden erfolgreich abgeschlossen')}</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{t('All tools and parts have been properly stored', 'Alle Werkzeuge und Teile wurden ordnungsgemäß verstaut')}</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{t('The work area has been cleaned up', 'Der Arbeitsbereich wurde aufgeräumt')}</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{t('Final inspection and testing have been performed', 'Endprüfung und Tests wurden durchgeführt')}</span>
+            </li>
+          </ul>
         </div>
 
         {/* Additional Info */}

@@ -229,6 +229,32 @@
           "value": "public, max-age=3600, stale-while-revalidate=86400"
         }
       ]
+    },
+    {
+      "source": "/19b8bc246b244733843ff32b3d426207.txt",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/indexnow.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
     }
   ]
 } 

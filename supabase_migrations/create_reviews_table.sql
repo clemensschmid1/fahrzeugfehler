@@ -56,3 +56,5 @@ COMMENT ON COLUMN reviews.rating IS 'User rating from 1 to 5 stars';
 
 
 
+
+

@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { getBrandLogoUrl } from '@/lib/car-brand-logos';
+import SketchfabViewer from '@/components/SketchfabViewer';
+import MinimalCarViewer from '@/components/MinimalCarViewer';
 
 type CarBrand = {
   id: string;
@@ -51,11 +54,30 @@ export default function GenerationListClient({ brand, model, generations, lang }
   const [searchQuery, setSearchQuery] = useState('');
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
-  // Filter generations based on search
-  const filteredGenerations = generations.filter(gen =>
-    gen.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    gen.generation_code?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter and sort generations based on search
+  const filteredGenerations = generations
+    .filter(gen =>
+      gen.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      gen.generation_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      gen.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Featured first
+      if (a.is_featured && !b.is_featured) return -1;
+      if (!a.is_featured && b.is_featured) return 1;
+      // Then by display_order
+      if (a.display_order !== b.display_order) {
+        return a.display_order - b.display_order;
+      }
+      // Then by year_start (newest first)
+      if (a.year_start && b.year_start) {
+        return b.year_start - a.year_start;
+      }
+      if (a.year_start) return -1;
+      if (b.year_start) return 1;
+      // Finally alphabetically
+      return a.name.localeCompare(b.name);
+    });
 
   // Separate featured and regular generations
   const featuredGenerations = filteredGenerations.filter(g => g.is_featured);
@@ -92,15 +114,42 @@ export default function GenerationListClient({ brand, model, generations, lang }
               <span className="text-white font-semibold">{model.name}</span>
             </nav>
 
-            {brand.logo_url && (
-              <div className="mb-6 flex justify-center">
-                <img
-                  src={brand.logo_url}
-                  alt={brand.name}
-                  className="h-16 object-contain"
-                />
-              </div>
-            )}
+            {(() => {
+              const logoUrl = getBrandLogoUrl(brand.slug, brand.name, brand.logo_url);
+              return logoUrl ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2, type: "spring", stiffness: 100 }}
+                  className="mb-10 flex justify-center"
+                >
+                  <div className="relative group">
+                    {/* Animated glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/30 via-white/20 to-white/30 rounded-3xl blur-3xl -z-10 animate-pulse"></div>
+                    <div className="absolute inset-0 bg-white/10 rounded-3xl blur-2xl -z-10 group-hover:bg-white/20 transition-all duration-500"></div>
+                    
+                    {/* Logo container with enhanced styling */}
+                    <div className="relative bg-gradient-to-br from-white/15 via-white/10 to-white/5 dark:from-white/10 dark:via-white/5 dark:to-white/0 backdrop-blur-xl rounded-3xl p-5 sm:p-7 md:p-9 border-2 border-white/30 dark:border-white/20 shadow-2xl group-hover:border-white/40 dark:group-hover:border-white/30 transition-all duration-500 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]">
+                      {/* Inner glow ring */}
+                      <div className="absolute inset-2 rounded-2xl border border-white/10 dark:border-white/5"></div>
+                      
+                      <img
+                        src={logoUrl}
+                        alt={`${brand.name} logo`}
+                        className="relative h-24 sm:h-28 md:h-32 object-contain filter drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500"
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="high"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              ) : null;
+            })()}
 
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white mb-6 tracking-tight">
               {brand.name} {model.name}
@@ -140,29 +189,78 @@ export default function GenerationListClient({ brand, model, generations, lang }
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Statistics Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/30 rounded-xl p-4 border border-red-200 dark:border-red-900/30 text-center">
-            <div className="text-3xl font-black text-red-600 dark:text-red-400 mb-1">{generations.length}</div>
-            <div className="text-xs font-semibold text-red-700 dark:text-red-300">{t('Generations', 'Generationen')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/30 rounded-xl p-4 border border-blue-200 dark:border-blue-900/30 text-center">
-            <div className="text-3xl font-black text-blue-600 dark:text-blue-400 mb-1">{model.production_numbers || '—'}</div>
-            <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">{t('Total Produced', 'Gesamt produziert')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/40 dark:to-green-900/30 rounded-xl p-4 border border-green-200 dark:border-green-900/30 text-center">
-            <div className="text-3xl font-black text-green-600 dark:text-green-400 mb-1">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        {/* 3D Model Viewer - For C-Class - Modern & Minimalistic */}
+        {brand.slug.toLowerCase() === 'mercedes-benz' && model.slug.toLowerCase() === 'c-class' && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mb-16"
+          >
+            <div className="text-center mb-8">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white mb-3 tracking-tight">
+                {t('3D Model Viewer', '3D Modell-Viewer')}
+              </h2>
+              <p className="text-slate-600 dark:text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto">
+                {t('Explore the Mercedes-Benz C-Class in stunning 3D detail', 'Erkunden Sie die Mercedes-Benz C-Klasse in beeindruckenden 3D-Details')}
+              </p>
+            </div>
+            <div className="max-w-6xl mx-auto">
+              <div className="relative group">
+                {/* Subtle glow effect on hover */}
+                <div className="absolute -inset-1 bg-gradient-to-r from-red-500/20 via-transparent to-red-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <MinimalCarViewer 
+                  modelPath="/models/minimal_c_class.obj"
+                  className="w-full relative z-10"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Statistics Bar - Enhanced */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-red-50 via-red-100 to-red-50 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-950/40 rounded-2xl p-5 sm:p-6 border-2 border-red-200 dark:border-red-900/30 shadow-lg hover:shadow-xl transition-shadow text-center"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 mb-2">{generations.length}</div>
+            <div className="text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-wide">{t('Generations', 'Generationen')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-2xl p-5 sm:p-6 border-2 border-blue-200 dark:border-blue-900/30 shadow-lg hover:shadow-xl transition-shadow text-center"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-blue-600 dark:text-blue-400 mb-2">{model.production_numbers || '—'}</div>
+            <div className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{t('Total Produced', 'Gesamt produziert')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-gradient-to-br from-green-50 via-green-100 to-green-50 dark:from-green-950/40 dark:via-green-900/30 dark:to-green-950/40 rounded-2xl p-5 sm:p-6 border-2 border-green-200 dark:border-green-900/30 shadow-lg hover:shadow-xl transition-shadow text-center"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-green-600 dark:text-green-400 mb-2">
               {generations.filter(g => g.year_start && g.year_start >= 2010).length}
             </div>
-            <div className="text-xs font-semibold text-green-700 dark:text-green-300">{t('Modern (2010+)', 'Modern (2010+)')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-900/30 rounded-xl p-4 border border-purple-200 dark:border-purple-900/30 text-center">
-            <div className="text-3xl font-black text-purple-600 dark:text-purple-400 mb-1">
+            <div className="text-sm font-bold text-green-700 dark:text-green-300 uppercase tracking-wide">{t('Modern (2010+)', 'Modern (2010+)')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-gradient-to-br from-purple-50 via-purple-100 to-purple-50 dark:from-purple-950/40 dark:via-purple-900/30 dark:to-purple-950/40 rounded-2xl p-5 sm:p-6 border-2 border-purple-200 dark:border-purple-900/30 shadow-lg hover:shadow-xl transition-shadow text-center"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-purple-600 dark:text-purple-400 mb-2">
               {generations.filter(g => !g.year_end).length}
             </div>
-            <div className="text-xs font-semibold text-purple-700 dark:text-purple-300">{t('Current Production', 'Aktuelle Produktion')}</div>
-          </div>
+            <div className="text-sm font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">{t('Current Production', 'Aktuelle Produktion')}</div>
+          </motion.div>
         </div>
         {/* Search Bar */}
         {generations.length > 3 && (
@@ -193,7 +291,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
           <div className="mb-16">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-black text-slate-900 dark:text-white">
-                {t('Popular Generations', 'Beliebte Generationen')}
+                {t('Featured Generations', 'Empfohlene Generationen')}
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -229,46 +327,80 @@ export default function GenerationListClient({ brand, model, generations, lang }
                         </div>
                       )}
 
-                      <div className="p-6 flex-grow flex flex-col relative z-10">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-2xl font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors">
+                      <div className="p-6 sm:p-7 flex-grow flex flex-col relative z-10 bg-gradient-to-b from-transparent to-white/50 dark:to-slate-900/50">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors leading-tight pr-2">
                             {generation.name}
                           </h3>
-                          <span className="ml-2 px-2 py-1 bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400/90 text-xs font-bold rounded-lg border border-red-200/50 dark:border-red-900/30">
-                            {t('Featured', 'Empfohlen')}
-                          </span>
+                          {generation.is_featured && (
+                            <span className="ml-2 px-3 py-1 bg-red-600 dark:bg-red-500 text-white text-xs font-black rounded-full shadow-lg border-2 border-white/50 flex-shrink-0">
+                              {t('Featured', 'Empfohlen')}
+                            </span>
+                          )}
                         </div>
 
                         {(generation.year_start || generation.year_end) && (
-                          <div className="flex items-center gap-1.5 mb-3">
-                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-2 mb-4">
+                            <svg className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                            <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">
                               {generation.year_start} - {generation.year_end || t('Present', 'Heute')}
                             </p>
+                            {generation.year_start && generation.year_end && (
+                              <span className="ml-auto px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold rounded-full">
+                                {generation.year_end - generation.year_start + 1} {t('years', 'Jahre')}
+                              </span>
+                            )}
                           </div>
                         )}
 
-                        {generation.description && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 flex-grow mb-4 leading-relaxed">
-                            {generation.description}
-                          </p>
-                        )}
-
                         {generation.generation_code && (
-                          <div className="mb-3">
-                            <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-mono rounded border border-slate-200 dark:border-slate-700">
+                          <div className="mb-4">
+                            <span className="inline-flex items-center px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-mono font-bold rounded-lg border-2 border-slate-200 dark:border-slate-700">
                               {generation.generation_code}
                             </span>
                           </div>
                         )}
 
-                        <div className="mt-auto flex items-center text-red-600 dark:text-red-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                          {t('View Faults & Manuals', 'Fehler & Anleitungen ansehen')}
-                          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
+                        {generation.description && (
+                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 flex-grow mb-5 leading-relaxed">
+                            {generation.description}
+                          </p>
+                        )}
+
+                        {/* Generation Info Badge */}
+                        <div className="mb-4 flex items-center gap-2 flex-wrap">
+                          {generation.generation_code && (
+                            <span className="inline-flex items-center px-3 py-1.5 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 text-slate-700 dark:text-slate-300 text-xs font-mono font-black rounded-lg border-2 border-slate-300 dark:border-slate-600 shadow-sm">
+                              {generation.generation_code}
+                            </span>
+                          )}
+                          {(generation.year_start || generation.year_end) && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              {generation.year_start || '?'}
+                              {generation.year_end && generation.year_start !== generation.year_end && `-${generation.year_end}`}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center text-red-600 dark:text-red-400/90 font-bold text-sm group-hover:translate-x-1 transition-transform">
+                              {t('View Details', 'Details ansehen')}
+                              <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                            {generation.is_featured && (
+                              <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 text-xs font-bold rounded-full">
+                                {t('Featured', 'Empfohlen')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -285,10 +417,32 @@ export default function GenerationListClient({ brand, model, generations, lang }
             {t('All Generations', 'Alle Generationen')}
           </h2>
           {regularGenerations.length === 0 && filteredGenerations.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-lg text-slate-500 dark:text-slate-400">
-                {t('No generations found.', 'Keine Generationen gefunden.')}
-              </p>
+            <div className="text-center py-16 sm:py-24">
+              <div className="max-w-md mx-auto">
+                <svg className="w-24 h-24 mx-auto text-slate-300 dark:text-slate-700 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                  {t('No generations found', 'Keine Generationen gefunden')}
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-6">
+                  {t(
+                    'Try adjusting your search to find what you\'re looking for.',
+                    'Versuchen Sie, Ihre Suche anzupassen, um zu finden, wonach Sie suchen.'
+                  )}
+                </p>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {t('Clear Search', 'Suche zurücksetzen')}
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -320,22 +474,49 @@ export default function GenerationListClient({ brand, model, generations, lang }
                         </div>
                       )}
 
-                      <div className="p-5 flex-grow flex flex-col">
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors">
+                      <div className="p-5 flex-grow flex flex-col bg-gradient-to-b from-transparent to-white/30 dark:to-slate-900/30">
+                        <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-3 group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors leading-tight">
                           {generation.name}
                         </h3>
 
                         {(generation.year_start || generation.year_end) && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                            {generation.year_start} - {generation.year_end || t('Present', 'Heute')}
-                          </p>
+                          <div className="flex items-center gap-1.5 mb-3">
+                            <svg className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                              {generation.year_start} - {generation.year_end || t('Present', 'Heute')}
+                            </p>
+                          </div>
                         )}
 
-                        <div className="mt-auto flex items-center text-red-600 dark:text-red-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                          {t('View Details', 'Details ansehen')}
-                          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
+                        {/* Generation Info Badge */}
+                        <div className="mb-3 flex items-center gap-2 flex-wrap">
+                          {generation.generation_code && (
+                            <span className="inline-flex items-center px-2.5 py-1 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 text-slate-700 dark:text-slate-300 text-xs font-mono font-black rounded-lg border border-slate-300 dark:border-slate-600">
+                              {generation.generation_code}
+                            </span>
+                          )}
+                          {(generation.year_start || generation.year_end) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              {generation.year_start || '?'}
+                              {generation.year_end && generation.year_start !== generation.year_end && `-${generation.year_end}`}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-auto pt-3 border-t border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center text-red-600 dark:text-red-400/90 font-bold text-sm group-hover:translate-x-1 transition-transform">
+                              {t('View Details', 'Details ansehen')}
+                              <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
