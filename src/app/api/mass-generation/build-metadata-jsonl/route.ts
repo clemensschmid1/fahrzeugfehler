@@ -312,12 +312,104 @@ Example output:
     const metadataFilePath = join(publicDir, metadataFilename);
     await writeFile(metadataFilePath, batchJsonl, 'utf-8');
 
+    // Return example prompts for display
+    const exampleQa = qaPairs[0];
+    const exampleGenData = exampleQa?.generationId ? generationDataMap.get(exampleQa.generationId) : null;
+    const context = exampleGenData 
+      ? `This is about ${exampleGenData.brand} ${exampleGenData.model} ${exampleGenData.generation}.`
+      : '';
+    
+    const exampleMetadataPrompt = contentType === 'fault'
+      ? `You are an expert automotive technician and SEO specialist. Generate comprehensive metadata for a car fault/solution page.
+
+Context: ${context}
+
+Question/Problem: ${exampleQa?.question || 'Example question'}
+Solution: ${exampleQa?.answer?.substring(0, 2000) || 'Example solution'}
+
+Return **ONLY valid JSON** (no markdown, no code blocks, no explanations).
+
+**REQUIRED fields (never null):**
+- severity: "low" | "medium" | "high" | "critical"
+- difficulty_level: "easy" | "medium" | "hard" | "expert"
+- meta_title: Short, SEO-optimized title (50-60 characters, includes brand/model if context provided)
+- meta_description: 1-2 sentences for SEO (150-160 characters, no markdown)
+- seo_score: Integer 1-99 (assess SEO optimization: keyword relevance, search intent match, structure)
+- content_score: Integer 1-99 (assess content quality: detail, accuracy, practical relevance, step-by-step clarity)
+
+**REQUIRED fields (must extract from solution, infer if not explicit):**
+- symptoms: Array of symptom strings (MUST extract from solution or infer from problem description, minimum 2-3 symptoms)
+- diagnostic_steps: Array of diagnostic step strings (MUST extract from solution, minimum 3-5 steps)
+- tools_required: Array of required tools (MUST extract from solution, minimum 2-3 tools)
+- affected_component: Main component affected (MUST infer from problem, e.g., "Engine", "Transmission", "Brakes", "Electrical", "Cooling System", "Fuel System")
+- estimated_repair_time: String (MUST estimate based on solution complexity, e.g., "1-2 hours", "2-4 hours", "4-8 hours")
+
+**STRONGLY PREFERRED fields (extract if present, otherwise null):**
+- error_code: OBD-II or manufacturer error codes (e.g., "P0301", "P0420", "P0420, P0430")
+
+**Extraction rules (CRITICAL - these fields are REQUIRED for sortability):**
+- symptoms: MUST extract ALL symptoms mentioned in solution. If solution doesn't explicitly list symptoms, infer them from the problem description. Minimum 2-3 symptoms. Examples: ["Check engine light", "Rough idle", "Loss of power", "Stalling", "Poor fuel economy"]
+- diagnostic_steps: MUST extract ALL diagnostic steps from solution. Break down the solution into clear diagnostic procedures. Minimum 3-5 steps. Examples: ["Scan for error codes", "Check spark plugs", "Test ignition coils", "Inspect fuel injectors", "Check compression"]
+- tools_required: MUST extract ALL tools mentioned in solution. If tools aren't explicitly mentioned, infer standard tools needed for this type of repair. Minimum 2-3 tools. Examples: ["OBD-II scanner", "Spark plug socket", "Multimeter", "Socket set", "Torque wrench"]
+- affected_component: MUST identify the main component. If unclear, infer from problem description and solution content.
+- estimated_repair_time: MUST provide realistic time estimate based on solution steps and complexity.
+- Extract error codes from question/solution (P-codes, manufacturer codes)
+- Infer severity from problem description (safety issues = critical/high, minor = low)
+- Infer difficulty from solution complexity
+- Generate meta_title: Include key terms like error code, component, brand/model. Keep it concise and search-friendly.
+- Score seo_score: Higher if includes specific error codes, brand/model, clear search intent (70-90 for good content, 50-70 for average, below 50 for poor)
+- Score content_score: Higher if detailed, step-by-step, accurate, practical (80-95 for excellent, 70-80 for good, 60-70 for average, below 60 for poor)
+
+**Scoring Guidelines:**
+- seo_score: Assess keyword optimization, search intent match, title/description quality. Good technical content should score 70-90.
+- content_score: Assess detail level, accuracy, step-by-step clarity, practical value. Comprehensive guides should score 80-95.`
+      : `You are an expert automotive technician and SEO specialist. Generate comprehensive metadata for a car maintenance/repair manual page.
+
+Context: ${context}
+
+Title/Procedure: ${exampleQa?.question || 'Example procedure'}
+Content: ${exampleQa?.answer?.substring(0, 2000) || 'Example content'}
+
+Return **ONLY valid JSON** (no markdown, no code blocks, no explanations).
+
+**REQUIRED fields (never null):**
+- difficulty_level: "easy" | "medium" | "hard" | "expert"
+- manual_type: "maintenance" | "repair" | "diagnostic" | "parts" | "specifications" | "other"
+- meta_title: Short, SEO-optimized title (50-60 characters, includes brand/model if context provided)
+- meta_description: 1-2 sentences for SEO (150-160 characters, no markdown)
+
+**STRONGLY PREFERRED fields (extract if present, otherwise null):**
+- estimated_time: String (e.g., "30 minutes", "1-2 hours", "2-4 hours")
+- tools_required: Array of required tools
+- parts_required: Array of required parts/components
+
+**Extraction rules:**
+- Classify manual type from content
+- Infer difficulty from procedure complexity
+- Extract time estimates from content
+- List all tools mentioned
+- List all parts/components mentioned
+- Generate meta_title: Include procedure type, brand/model. Keep it concise and search-friendly.`;
+
     return NextResponse.json({
       success: true,
       fileUrl: `/generated/${metadataFilename}`,
       filename: metadataFilename,
       count: batchJsonlLines.length,
       qaPairsCount: qaPairs.length,
+      prompts: {
+        systemPrompt: 'You are an expert at extracting structured metadata from automotive technical content. Always return valid JSON only. Be precise with scores and ensure all required fields are present.',
+        exampleUserPrompt: exampleMetadataPrompt,
+        model: MODEL_METADATA,
+        temperature: 0.2,
+        maxTokens: 1500,
+        responseFormat: 'json_object',
+        generationContext: exampleGenData ? {
+          brand: exampleGenData.brand,
+          model: exampleGenData.model,
+          generation: exampleGenData.generation,
+        } : null,
+      },
     });
   } catch (error) {
     console.error('Build metadata JSONL error:', error);

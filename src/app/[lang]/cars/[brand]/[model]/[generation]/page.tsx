@@ -83,8 +83,17 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   };
 }
 
-export default async function GenerationDetailPage({ params }: { params: Promise<Params> }) {
+export default async function GenerationDetailPage({ 
+  params,
+  searchParams 
+}: { 
+  params: Promise<Params>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { lang, brand, model, generation } = await params;
+  const searchParamsResolved = await searchParams;
+  const faultPage = parseInt(searchParamsResolved.faultPage as string || '1', 10);
+  const manualPage = parseInt(searchParamsResolved.manualPage as string || '1', 10);
   
   const cookieStore = await getCookies();
   const supabase = createServerClient(
@@ -149,25 +158,49 @@ export default async function GenerationDetailPage({ params }: { params: Promise
 
   const generationData = generationResult.data;
 
-  // Fetch faults for this generation
+  const pageSize = 60;
+  
+  // Fetch total counts first
+  const { count: totalFaultsCount } = await supabase
+    .from('car_faults')
+    .select('*', { count: 'exact', head: true })
+    .eq('model_generation_id', generationData.id)
+    .eq('language_path', lang)
+    .eq('status', 'live');
+
+  const { count: totalManualsCount } = await supabase
+    .from('car_manuals')
+    .select('*', { count: 'exact', head: true })
+    .eq('model_generation_id', generationData.id)
+    .eq('language_path', lang)
+    .eq('status', 'live');
+
+  const totalFaults = totalFaultsCount || 0;
+  const totalManuals = totalManualsCount || 0;
+  const totalFaultPages = Math.ceil(totalFaults / pageSize);
+  const totalManualPages = Math.ceil(totalManuals / pageSize);
+
+  // Fetch faults for this generation with pagination
   const faultsResult = await supabase
     .from('car_faults')
     .select('*')
     .eq('model_generation_id', generationData.id)
     .eq('language_path', lang)
     .eq('status', 'live')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range((faultPage - 1) * pageSize, faultPage * pageSize - 1);
 
   const faults = faultsResult.data || [];
 
-  // Fetch manuals for this generation
+  // Fetch manuals for this generation with pagination
   const manualsResult = await supabase
     .from('car_manuals')
     .select('*')
     .eq('model_generation_id', generationData.id)
     .eq('language_path', lang)
     .eq('status', 'live')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range((manualPage - 1) * pageSize, manualPage * pageSize - 1);
 
   const manuals = manualsResult.data || [];
 
@@ -194,7 +227,13 @@ export default async function GenerationDetailPage({ params }: { params: Promise
           generation={generationData}
           faults={faults}
           manuals={manuals}
-          lang={lang} 
+          lang={lang}
+          totalFaults={totalFaults}
+          totalManuals={totalManuals}
+          faultPage={faultPage}
+          manualPage={manualPage}
+          totalFaultPages={totalFaultPages}
+          totalManualPages={totalManualPages}
         />
       </Suspense>
     </>

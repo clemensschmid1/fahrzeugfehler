@@ -15,6 +15,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing OpenAI API key' }, { status: 500 });
     }
 
+    // Use gpt-4o-mini for cost optimization (16.7x cheaper), can be overridden via env var
+    const openaiModel = process.env.OPENAI_MODEL_METADATA || 'gpt-4o-mini';
+
     // Build context-aware metadata prompt
     const context = brand && model && generation 
       ? `This is about ${brand} ${model} ${generation}. `
@@ -126,7 +129,7 @@ Example output:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o', // Using GPT-4o for better accuracy in metadata extraction
+        model: openaiModel, // Using gpt-4o-mini for cost optimization (16.7x cheaper)
         messages: [
           { role: 'system', content: 'You are an expert at extracting structured metadata from automotive technical content. Always return valid JSON only. Be precise with scores and ensure all required fields are present.' },
           { role: 'user', content: metadataPrompt }

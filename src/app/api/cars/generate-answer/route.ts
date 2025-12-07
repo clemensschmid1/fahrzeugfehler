@@ -15,6 +15,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing OpenAI API key' }, { status: 500 });
     }
 
+    // Use gpt-4o-mini for cost optimization (16.7x cheaper), can be overridden via env var
+    const openaiModel = process.env.OPENAI_MODEL_ANSWERS || 'gpt-4o-mini';
+
     // Build context-aware prompt
     const context = brand && model && generation 
       ? `You are an expert automotive technician. This question is about ${brand} ${model} ${generation}. `
@@ -43,7 +46,7 @@ Do not mention AI, do not refer to yourself, and do not simulate a human persona
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: openaiModel,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: context + question }

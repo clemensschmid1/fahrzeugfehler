@@ -6,6 +6,12 @@
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
+    },
+    "app/api/cars/bulk-generate/route.ts": {
+      "maxDuration": 3600
+    },
+    "app/api/cars/bulk-generate-continue/route.ts": {
+      "maxDuration": 300
     }
   },
   "headers": [

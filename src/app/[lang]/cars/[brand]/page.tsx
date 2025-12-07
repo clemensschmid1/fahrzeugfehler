@@ -113,6 +113,38 @@ export default async function BrandPage({ params }: { params: Promise<Params> })
 
   const models = modelsResult.data || [];
 
+  // Fetch fault/manual counts for this brand
+  const modelIds = models.map(m => m.id);
+  let brandFaultsCount = 0;
+  let brandManualsCount = 0;
+
+  if (modelIds.length > 0) {
+    // Get all generations for these models
+    const { data: allGenerations } = await supabase
+      .from('model_generations')
+      .select('id, car_model_id')
+      .in('car_model_id', modelIds);
+
+    const generationIds = allGenerations?.map(g => g.id) || [];
+
+    // Count faults: either by model_id or generation_id
+    const { count: faultsCount } = await supabase
+      .from('car_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'live')
+      .or(`car_model_id.in.(${modelIds.join(',')}),model_generation_id.in.(${generationIds.length > 0 ? generationIds.join(',') : 'null'})`);
+
+    // Count manuals: either by model_id or generation_id
+    const { count: manualsCount } = await supabase
+      .from('car_manuals')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'live')
+      .or(`car_model_id.in.(${modelIds.join(',')}),model_generation_id.in.(${generationIds.length > 0 ? generationIds.join(',') : 'null'})`);
+
+    brandFaultsCount = faultsCount || 0;
+    brandManualsCount = manualsCount || 0;
+  }
+
   return (
     <>
       <Header />
@@ -130,7 +162,7 @@ export default async function BrandPage({ params }: { params: Promise<Params> })
           </div>
         </div>
       }>
-        <BrandClient brand={brandData} models={models} lang={lang} />
+        <BrandClient brand={brandData} models={models} lang={lang} faultsCount={brandFaultsCount} manualsCount={brandManualsCount} />
       </Suspense>
     </>
   );

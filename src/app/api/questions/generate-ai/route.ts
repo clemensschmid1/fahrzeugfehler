@@ -4,7 +4,9 @@ export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
-    const { prompt, count = 20, language = 'en', model = 'gpt-4o' } = await req.json();
+    // Use gpt-4o-mini for cost optimization (16.7x cheaper), can be overridden via request
+    const defaultModel = process.env.OPENAI_MODEL_QUESTIONS || 'gpt-4o-mini';
+    const { prompt, count = 20, language = 'en', model = defaultModel } = await req.json();
     if (!prompt || typeof prompt !== 'string') {
       return new NextResponse('Missing or invalid prompt', { status: 400 });
     }

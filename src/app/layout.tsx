@@ -30,8 +30,16 @@ export const metadata: Metadata = {
   description:
     "Transform fault codes into instant solutions. Precision diagnosis for industrial automation.",
   icons: {
-    icon: '/icon.svg',
-    apple: '/apple-icon.svg',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/apple-icon.svg', type: 'image/svg+xml' },
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 
@@ -122,7 +130,7 @@ export default async function RootLayout({
           strategy="afterInteractive"
         />
         {/* End ContentSquare */}
-        <style dangerouslySetInnerHTML={{__html: `
+        <style suppressHydrationWarning dangerouslySetInnerHTML={{__html: `
           /* Force theme styles */
           html:not(.dark) {
             color-scheme: light;

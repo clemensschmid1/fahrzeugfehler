@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
@@ -37,7 +37,7 @@ export async function GET() {
         host: hostToUse,
         key: INDEXNOW_KEY,
         keyLocation: KEY_LOCATION,
-        url: testUrl,
+        urlList: [testUrl],
       };
 
       const response = await fetch('https://api.indexnow.org/indexnow', {

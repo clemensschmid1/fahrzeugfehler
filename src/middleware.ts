@@ -18,9 +18,14 @@ export function middleware(request: NextRequest) {
   // Get the pathname of the request (e.g. /, /knowledge, /chat)
   const pathname = request.nextUrl.pathname;
 
-  // CRITICAL: Check for .txt files FIRST - IndexNow key files must be accessible without redirect
+  // CRITICAL: Check for static files FIRST - these must be accessible without redirect
   // Any .txt file in public/ should be served directly
   if (pathname.endsWith('.txt')) {
+    return NextResponse.next();
+  }
+  
+  // Allow PNG images and JSONL files from generated directory
+  if (pathname.startsWith('/generated/') && (pathname.endsWith('.png') || pathname.endsWith('.jsonl'))) {
     return NextResponse.next();
   }
 
@@ -117,9 +122,9 @@ export function middleware(request: NextRequest) {
 // Configure the middleware to run on specific paths
 export const config = {
   matcher: [
-    // Skip all internal paths (_next), API routes, static files, favicon, and .txt files
+    // Skip all internal paths (_next), API routes, static files, favicon, .txt files, and generated files
     // IndexNow key files are .txt files, so excluding all .txt prevents redirects
     // The middleware function itself checks for .txt files first, but we also exclude them from matcher
-    '/((?!_next|api|favicon\\.ico|sitemap.*\\.xml|.*\\.txt$).*)',
+    '/((?!_next|api|favicon\\.ico|sitemap.*\\.xml|.*\\.txt$|generated/.*\\.png$|generated/.*\\.jsonl$).*)',
   ],
 }; 

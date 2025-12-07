@@ -105,6 +105,139 @@ export default async function CarsPage({ params }: { params: Promise<Params> }) 
     totalManuals: manualsResult.status === 'fulfilled' ? (manualsResult.value.count || 0) : 0,
   };
 
+  // Fetch fault/manual counts per brand efficiently
+  let brandCountsMap = new Map<string, { faults: number; manuals: number }>();
+  
+  try {
+    // Try RPC function first (if it exists)
+    const rpcResult = await supabase.rpc('get_brand_content_counts');
+    if (rpcResult.data && !rpcResult.error) {
+      brandCountsMap = new Map(
+        rpcResult.data.map((bc: any) => [bc.brand_id, { faults: bc.faults_count || 0, manuals: bc.manuals_count || 0 }])
+      );
+    } else {
+      throw new Error('RPC not available');
+    }
+  } catch {
+    // Fallback: manual query if RPC doesn't exist
+    const brandIds = (brands || []).map(b => b.id);
+    if (brandIds.length > 0) {
+      // Get all models for these brands
+      const { data: allModels } = await supabase
+        .from('car_models')
+        .select('id, brand_id')
+        .in('brand_id', brandIds);
+
+      if (allModels && allModels.length > 0) {
+        const modelIds = allModels.map(m => m.id);
+        
+        // Get all generations for these models
+        const { data: allGenerations } = await supabase
+          .from('model_generations')
+          .select('id, car_model_id')
+          .in('car_model_id', modelIds);
+
+        const generationIds = allGenerations?.map(g => g.id) || [];
+
+        // Count faults per brand - use efficient aggregation
+        // Query faults by model_id first
+        const { data: faultsByModel } = await supabase
+          .from('car_faults')
+          .select('car_model_id')
+          .eq('status', 'live')
+          .in('car_model_id', modelIds);
+
+        // Query faults by generation_id
+        const { data: faultsByGeneration } = generationIds.length > 0 ? await supabase
+          .from('car_faults')
+          .select('model_generation_id')
+          .eq('status', 'live')
+          .in('model_generation_id', generationIds) : { data: null };
+
+        // Combine results (avoid duplicates by using Set)
+        const faultsData = [
+          ...(faultsByModel || []).map(f => ({ car_model_id: f.car_model_id, model_generation_id: null })),
+          ...(faultsByGeneration || []).map(f => ({ car_model_id: null, model_generation_id: f.model_generation_id }))
+        ];
+
+        // Count manuals per brand - same approach
+        const { data: manualsByModel } = await supabase
+          .from('car_manuals')
+          .select('car_model_id')
+          .eq('status', 'live')
+          .in('car_model_id', modelIds);
+
+        const { data: manualsByGeneration } = generationIds.length > 0 ? await supabase
+          .from('car_manuals')
+          .select('model_generation_id')
+          .eq('status', 'live')
+          .in('model_generation_id', generationIds) : { data: null };
+
+        const manualsData = [
+          ...(manualsByModel || []).map(m => ({ car_model_id: m.car_model_id, model_generation_id: null })),
+          ...(manualsByGeneration || []).map(m => ({ car_model_id: null, model_generation_id: m.model_generation_id }))
+        ];
+
+        // Create lookup maps for efficiency
+        const generationToModelMap = new Map<string, string>();
+        allGenerations?.forEach(gen => {
+          generationToModelMap.set(gen.id, gen.car_model_id);
+        });
+
+        const modelToBrandMap = new Map<string, string>();
+        allModels.forEach(model => {
+          modelToBrandMap.set(model.id, model.brand_id);
+        });
+
+        // Aggregate counts by brand
+        const countsByBrand: Record<string, { faults_count: number; manuals_count: number }> = {};
+        brandIds.forEach(id => {
+          countsByBrand[id] = { faults_count: 0, manuals_count: 0 };
+        });
+
+        // Count faults efficiently
+        if (faultsData) {
+          for (const fault of faultsData) {
+            let modelId: string | null = null;
+            if (fault.car_model_id) {
+              modelId = fault.car_model_id;
+            } else if (fault.model_generation_id) {
+              modelId = generationToModelMap.get(fault.model_generation_id) || null;
+            }
+            if (modelId) {
+              const brandId = modelToBrandMap.get(modelId);
+              if (brandId && countsByBrand[brandId]) {
+                countsByBrand[brandId].faults_count++;
+              }
+            }
+          }
+        }
+
+        // Count manuals efficiently
+        if (manualsData) {
+          for (const manual of manualsData) {
+            let modelId: string | null = null;
+            if (manual.car_model_id) {
+              modelId = manual.car_model_id;
+            } else if (manual.model_generation_id) {
+              modelId = generationToModelMap.get(manual.model_generation_id) || null;
+            }
+            if (modelId) {
+              const brandId = modelToBrandMap.get(modelId);
+              if (brandId && countsByBrand[brandId]) {
+                countsByBrand[brandId].manuals_count++;
+              }
+            }
+          }
+        }
+
+        brandCountsMap = new Map(
+          brandIds.map(id => [id, { faults: countsByBrand[id]?.faults_count || 0, manuals: countsByBrand[id]?.manuals_count || 0 }])
+        );
+      }
+    }
+  }
+
   return (
     <>
       <Header />
@@ -122,7 +255,7 @@ export default async function CarsPage({ params }: { params: Promise<Params> }) 
           </div>
         </div>
       }>
-        <CarsClient brands={brands || []} lang={lang} stats={stats} />
+        <CarsClient brands={brands || []} lang={lang} stats={stats} brandCounts={brandCountsMap} />
       </Suspense>
     </>
   );

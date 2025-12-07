@@ -252,7 +252,7 @@ export default function CarInternalPage() {
               prompt: batchPrompt,
               count: batchSize,
               language: lang,
-              model: 'gpt-4o'
+              model: 'gpt-4o-mini' // Cost-optimized: 16.7x cheaper than gpt-4o
             }),
             signal: abortController.signal
           });
@@ -398,7 +398,7 @@ export default function CarInternalPage() {
         body: JSON.stringify({
           questions,
           prompt: systemPrompt,
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini', // Cost-optimized: 16.7x cheaper than gpt-4o
           metadata: {
             type: 'car_answers',
             brand: selectedBrand?.name,
@@ -869,7 +869,7 @@ export default function CarInternalPage() {
         method: 'POST',
         url: '/v1/chat/completions',
         body: {
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini', // Cost-optimized: 16.7x cheaper than gpt-4o
           messages: [
             {
               role: 'system',
@@ -909,7 +909,7 @@ export default function CarInternalPage() {
         method: 'POST',
         url: '/v1/chat/completions',
         body: {
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini', // Cost-optimized: 16.7x cheaper than gpt-4o
           messages: [
             {
               role: 'system',

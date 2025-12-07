@@ -132,6 +132,21 @@ export default async function ModelGenerationsPage({ params }: { params: Promise
 
   const generations = generationsResult.data || [];
 
+  // Fetch total fault count for this model across all generations
+  const generationIds = generations.map(g => g.id);
+  let totalFaultsCount = 0;
+
+  if (generationIds.length > 0 || modelData.id) {
+    // Count faults: either by model_id or generation_id
+    const { count: faultsCount } = await supabase
+      .from('car_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'live')
+      .or(`car_model_id.eq.${modelData.id},model_generation_id.in.(${generationIds.length > 0 ? generationIds.join(',') : 'null'})`);
+
+    totalFaultsCount = faultsCount || 0;
+  }
+
   return (
     <>
       <Header />
@@ -153,7 +168,8 @@ export default async function ModelGenerationsPage({ params }: { params: Promise
           brand={brandData} 
           model={modelData} 
           generations={generations} 
-          lang={lang} 
+          lang={lang}
+          totalFaultsCount={totalFaultsCount}
         />
       </Suspense>
     </>

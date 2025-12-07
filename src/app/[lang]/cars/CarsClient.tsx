@@ -27,12 +27,13 @@ type CarsClientProps = {
     totalFaults: number;
     totalManuals: number;
   };
+  brandCounts?: Map<string, { faults: number; manuals: number }>;
 };
 
 type FilterType = 'all' | 'featured' | 'country';
 type SortType = 'alphabetical' | 'featured' | 'country';
 
-export default function CarsClient({ brands, lang, stats }: CarsClientProps) {
+export default function CarsClient({ brands, lang, stats, brandCounts }: CarsClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('featured');
@@ -520,6 +521,38 @@ export default function CarsClient({ brands, lang, stats }: CarsClientProps) {
                         )}
                       </div>
                       
+                      {/* Content Counts - Prominent Fault Count */}
+                      {brandCounts && brandCounts.has(brand.id) && (() => {
+                        const counts = brandCounts.get(brand.id)!;
+                        return (
+                          <div className="mb-4 relative z-10">
+                            {counts.faults > 0 && (
+                              <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/30 border-2 border-red-200 dark:border-red-800 rounded-lg">
+                                <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span className="text-sm font-bold text-red-700 dark:text-red-300">
+                                  {counts.faults.toLocaleString()} {t('Faults', 'Fehler')}
+                                </span>
+                                {counts.manuals > 0 && (
+                                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
+                                    + {counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {counts.faults === 0 && counts.manuals > 0 && (
+                              <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-lg">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                                <span className="text-sm font-bold">{counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* CTA */}
                       <div className="mt-auto flex items-center justify-between relative z-10 pt-4 border-t border-slate-200 dark:border-slate-700">
                         <div className="flex items-center text-red-600 dark:text-red-400 font-bold text-sm group-hover:translate-x-1 transition-transform duration-300">
@@ -664,6 +697,38 @@ export default function CarsClient({ brands, lang, stats }: CarsClientProps) {
                         </div>
                       )}
                       
+                      {/* Content Counts - Prominent Fault Count */}
+                      {brandCounts && brandCounts.has(brand.id) && (() => {
+                        const counts = brandCounts.get(brand.id)!;
+                        return (
+                          <div className="mb-3 relative z-10">
+                            {counts.faults > 0 && (
+                              <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/30 border-2 border-red-200 dark:border-red-800 rounded-lg">
+                                <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span className="text-sm font-bold text-red-700 dark:text-red-300">
+                                  {counts.faults.toLocaleString()} {t('Faults', 'Fehler')}
+                                </span>
+                                {counts.manuals > 0 && (
+                                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
+                                    + {counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {counts.faults === 0 && counts.manuals > 0 && (
+                              <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-lg">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                                <span className="text-sm font-bold">{counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* CTA */}
                       <div className="mt-auto flex items-center justify-between relative z-10 pt-3 border-t border-slate-200 dark:border-slate-700">
                         <div className="flex items-center text-red-600 dark:text-red-400 font-bold text-sm group-hover:translate-x-1 transition-transform">

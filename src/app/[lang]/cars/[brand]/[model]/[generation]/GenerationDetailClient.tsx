@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrandLogoUrl } from '@/lib/car-brand-logos';
 
 type CarBrand = {
@@ -60,9 +61,30 @@ type Props = {
   faults: CarFault[];
   manuals: CarManual[];
   lang: string;
+  totalFaults: number;
+  totalManuals: number;
+  faultPage: number;
+  manualPage: number;
+  totalFaultPages: number;
+  totalManualPages: number;
 };
 
-export default function GenerationDetailClient({ brand, model, generation, faults, manuals, lang }: Props) {
+export default function GenerationDetailClient({ 
+  brand, 
+  model, 
+  generation, 
+  faults, 
+  manuals, 
+  lang,
+  totalFaults,
+  totalManuals,
+  faultPage,
+  manualPage,
+  totalFaultPages,
+  totalManualPages,
+}: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<'faults' | 'manuals'>('faults');
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -70,6 +92,124 @@ export default function GenerationDetailClient({ brand, model, generation, fault
   const [componentFilter, setComponentFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'severity'>('recent');
   const t = (en: string, de: string) => lang === 'de' ? de : en;
+
+  // Pagination helper function
+  const updatePage = (newPage: number, type: 'faults' | 'manuals') => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (type === 'faults') {
+      params.set('faultPage', newPage.toString());
+      if (newPage === 1) params.delete('faultPage');
+    } else {
+      params.set('manualPage', newPage.toString());
+      if (newPage === 1) params.delete('manualPage');
+    }
+    router.push(`?${params.toString()}`);
+  };
+
+  // Pagination component
+  const Pagination = ({ currentPage, totalPages, type }: { currentPage: number; totalPages: number; type: 'faults' | 'manuals' }) => {
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisible = 7;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    const startIndex = (currentPage - 1) * 60 + 1;
+    const endIndex = Math.min(currentPage * 60, type === 'faults' ? totalFaults : totalManuals);
+    const totalItems = type === 'faults' ? totalFaults : totalManuals;
+
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        {/* Page info */}
+        <div className="text-sm text-slate-600 dark:text-slate-400 font-semibold">
+          {t(`Showing ${startIndex.toLocaleString()}-${endIndex.toLocaleString()} of ${totalItems.toLocaleString()}`, 
+             `Zeige ${startIndex.toLocaleString()}-${endIndex.toLocaleString()} von ${totalItems.toLocaleString()}`)}
+        </div>
+        
+        {/* Pagination controls */}
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          {currentPage > 1 && (
+            <button
+              onClick={() => updatePage(currentPage - 1, type)}
+              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:border-red-500 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400 hover:shadow-lg transition-all"
+            >
+              <svg className="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              {t('Previous', 'Zurück')}
+            </button>
+          )}
+          
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => updatePage(1, type)}
+                className={`px-4 py-2.5 rounded-xl font-bold transition-all ${
+                  1 === currentPage
+                    ? 'bg-red-600 dark:bg-red-500 text-white border-2 border-red-600 dark:border-red-500 shadow-lg'
+                    : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-red-500 dark:hover:border-red-500 hover:shadow-md'
+                }`}
+              >
+                1
+              </button>
+              {startPage > 2 && <span className="px-2 text-slate-500 dark:text-slate-400 font-bold">...</span>}
+            </>
+          )}
+
+          {pages.map((page) => (
+            <button
+              key={page}
+              onClick={() => updatePage(page, type)}
+              className={`px-4 py-2.5 rounded-xl font-bold transition-all min-w-[44px] ${
+                page === currentPage
+                  ? 'bg-red-600 dark:bg-red-500 text-white border-2 border-red-600 dark:border-red-500 shadow-lg scale-105'
+                  : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-red-500 dark:hover:border-red-500 hover:shadow-md'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2 text-slate-500 dark:text-slate-400 font-bold">...</span>}
+              <button
+                onClick={() => updatePage(totalPages, type)}
+                className={`px-4 py-2.5 rounded-xl font-bold transition-all ${
+                  totalPages === currentPage
+                    ? 'bg-red-600 dark:bg-red-500 text-white border-2 border-red-600 dark:border-red-500 shadow-lg'
+                    : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-red-500 dark:hover:border-red-500 hover:shadow-md'
+                }`}
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+
+          {currentPage < totalPages && (
+            <button
+              onClick={() => updatePage(currentPage + 1, type)}
+              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:border-red-500 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400 hover:shadow-lg transition-all"
+            >
+              {t('Next', 'Weiter')}
+              <svg className="w-5 h-5 inline-block ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Get unique values for filters
   const uniqueSeverities = Array.from(new Set(faults.map(f => f.severity).filter(Boolean)));
@@ -268,8 +408,9 @@ export default function GenerationDetailClient({ brand, model, generation, fault
             transition={{ delay: 0.1 }}
             className="bg-gradient-to-br from-red-50 via-red-100 to-red-50 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-950/40 rounded-2xl p-5 sm:p-6 border-2 border-red-200 dark:border-red-900/30 shadow-lg hover:shadow-xl transition-shadow"
           >
-            <div className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 mb-2">{faults.length}</div>
+            <div className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 mb-2">{totalFaults.toLocaleString()}</div>
             <div className="text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-wide">{t('Faults', 'Fehler')}</div>
+            <div className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">{t('Total', 'Gesamt')}</div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -277,8 +418,9 @@ export default function GenerationDetailClient({ brand, model, generation, fault
             transition={{ delay: 0.2 }}
             className="bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-2xl p-5 sm:p-6 border-2 border-blue-200 dark:border-blue-900/30 shadow-lg hover:shadow-xl transition-shadow"
           >
-            <div className="text-4xl sm:text-5xl font-black text-blue-600 dark:text-blue-400 mb-2">{manuals.length}</div>
+            <div className="text-4xl sm:text-5xl font-black text-blue-600 dark:text-blue-400 mb-2">{totalManuals.toLocaleString()}</div>
             <div className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{t('Manuals', 'Anleitungen')}</div>
+            <div className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">{t('Total', 'Gesamt')}</div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -409,7 +551,7 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              {t('Faults', 'Fehler')} <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 rounded-full text-xs font-bold">{faults.length}</span>
+              {t('Faults', 'Fehler')} <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 rounded-full text-xs font-bold">{totalFaults.toLocaleString()}</span>
             </button>
             <button
               onClick={() => setActiveTab('manuals')}
@@ -419,7 +561,7 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              {t('Manuals', 'Anleitungen')} <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">{manuals.length}</span>
+              {t('Manuals', 'Anleitungen')} <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">{totalManuals.toLocaleString()}</span>
             </button>
           </div>
         </div>
@@ -427,6 +569,11 @@ export default function GenerationDetailClient({ brand, model, generation, fault
         {/* Content */}
         {activeTab === 'faults' ? (
           <div>
+            {totalFaultPages > 1 && (
+              <div className="mb-8">
+                <Pagination currentPage={faultPage} totalPages={totalFaultPages} type="faults" />
+              </div>
+            )}
             {filteredFaults.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-lg text-slate-500 dark:text-slate-400">
@@ -526,9 +673,19 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                 ))}
               </div>
             )}
+            {totalFaultPages > 1 && (
+              <div className="mt-10">
+                <Pagination currentPage={faultPage} totalPages={totalFaultPages} type="faults" />
+              </div>
+            )}
           </div>
         ) : (
           <div>
+            {totalManualPages > 1 && (
+              <div className="mb-8">
+                <Pagination currentPage={manualPage} totalPages={totalManualPages} type="manuals" />
+              </div>
+            )}
             {filteredManuals.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-lg text-slate-500 dark:text-slate-400">
@@ -611,6 +768,11 @@ export default function GenerationDetailClient({ brand, model, generation, fault
                     </Link>
                   </motion.div>
                 ))}
+              </div>
+            )}
+            {totalManualPages > 1 && (
+              <div className="mt-10">
+                <Pagination currentPage={manualPage} totalPages={totalManualPages} type="manuals" />
               </div>
             )}
           </div>

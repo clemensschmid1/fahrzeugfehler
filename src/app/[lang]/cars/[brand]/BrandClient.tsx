@@ -37,9 +37,11 @@ type BrandClientProps = {
   brand: CarBrand;
   models: CarModel[];
   lang: string;
+  faultsCount?: number;
+  manualsCount?: number;
 };
 
-export default function BrandClient({ brand, models, lang }: BrandClientProps) {
+export default function BrandClient({ brand, models, lang, faultsCount = 0, manualsCount = 0 }: BrandClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
@@ -161,6 +163,24 @@ export default function BrandClient({ brand, models, lang }: BrandClientProps) {
                 <span className="font-semibold text-white">{models.length}</span>
                 <span>{t('Models', 'Modelle')}</span>
               </div>
+              {faultsCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span className="font-semibold text-white">{faultsCount.toLocaleString()}</span>
+                  <span>{t('Fault Solutions', 'Fehlerlösungen')}</span>
+                </div>
+              )}
+              {manualsCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  <span className="font-semibold text-white">{manualsCount.toLocaleString()}</span>
+                  <span>{t('Manuals', 'Anleitungen')}</span>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
@@ -169,16 +189,36 @@ export default function BrandClient({ brand, models, lang }: BrandClientProps) {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Enhanced Statistics Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 sm:gap-6 mb-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="bg-gradient-to-br from-red-50 via-red-100 to-red-50 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-950/40 rounded-2xl p-5 sm:p-6 border-2 border-red-200 dark:border-red-900/30 shadow-lg hover:shadow-xl transition-all text-center"
           >
-            <div className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 mb-2">{models.length}</div>
+            <div className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 mb-2">{models.length.toLocaleString()}</div>
             <div className="text-xs sm:text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-wide">{t('Car Models', 'Automodelle')}</div>
             <div className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">{t('Total Available', 'Gesamt verfügbar')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 dark:from-orange-950/40 dark:via-orange-900/30 dark:to-orange-950/40 rounded-2xl p-5 sm:p-6 border-2 border-orange-200 dark:border-orange-900/30 shadow-lg hover:shadow-xl transition-all text-center"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-orange-600 dark:text-orange-400 mb-2">{faultsCount.toLocaleString()}</div>
+            <div className="text-xs sm:text-sm font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wide">{t('Fault Solutions', 'Fehlerlösungen')}</div>
+            <div className="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">{t('Verified', 'Verifiziert')}</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-2xl p-5 sm:p-6 border-2 border-blue-200 dark:border-blue-900/30 shadow-lg hover:shadow-xl transition-all text-center"
+          >
+            <div className="text-4xl sm:text-5xl font-black text-blue-600 dark:text-blue-400 mb-2">{manualsCount.toLocaleString()}</div>
+            <div className="text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{t('Manuals', 'Anleitungen')}</div>
+            <div className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">{t('Step-by-Step', 'Schritt-für-Schritt')}</div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}

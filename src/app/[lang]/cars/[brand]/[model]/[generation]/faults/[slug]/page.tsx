@@ -62,7 +62,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // Fetch fault
   const { data: faultData } = await supabase
     .from('car_faults')
-    .select('title, description, meta_title, meta_description')
+    .select('title, description, meta_title, meta_description, solution, created_at, error_code, affected_component, severity, difficulty_level, estimated_repair_time')
     .eq('slug', slug)
     .eq('language_path', lang)
     .eq('status', 'live')
@@ -89,17 +89,24 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     description,
     keywords: faultData.title ? `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car repair, automotive troubleshooting, fault diagnosis` : undefined,
     alternates: {
-      canonical: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
+      canonical: `https://faultbase.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
       languages: {
-        'en': `https://infoneva.com/en/cars/${brand}/${model}/${generation}/faults/${slug}`,
-        'de': `https://infoneva.com/de/cars/${brand}/${model}/${generation}/faults/${slug}`,
+        'en': `https://faultbase.com/en/cars/${brand}/${model}/${generation}/faults/${slug}`,
+        'de': `https://faultbase.com/de/cars/${brand}/${model}/${generation}/faults/${slug}`,
       },
     },
     openGraph: {
       title: `${title} | Cars`,
       description,
       type: 'article',
-      url: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
+      url: `https://faultbase.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
+      siteName: 'FAULTBASE',
+      images: [{
+        url: `https://faultbase.com/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: faultData.title,
+      }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -236,8 +243,74 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
     user_name: usernamesMap[c.user_id] || null,
   }));
 
+  // Generate JSON-LD structured data for SEO
+  const baseUrl = 'https://faultbase.com';
+  const pageUrl = `${baseUrl}/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": faultData.title,
+    "description": faultData.meta_description || faultData.description,
+    "url": pageUrl,
+    "image": `${baseUrl}/logo.png`,
+    "datePublished": faultData.created_at || new Date().toISOString(),
+    "dateModified": faultData.created_at || new Date().toISOString(),
+    "author": {
+      "@type": "Organization",
+      "name": "FAULTBASE",
+      "url": baseUrl
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "FAULTBASE",
+      "url": baseUrl,
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${baseUrl}/logo.png`
+      }
+    },
+    "mainEntity": {
+      "@type": "Question",
+      "name": faultData.title,
+      "text": faultData.title,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faultData.solution || faultData.description,
+        "author": {
+          "@type": "Organization",
+          "name": "FAULTBASE Editorial Team"
+        }
+      }
+    },
+    "about": {
+      "@type": "Vehicle",
+      "name": `${brandData.name} ${modelData.name} ${generationData.name}`,
+      "brand": {
+        "@type": "Brand",
+        "name": brandData.name
+      },
+      "model": modelData.name
+    },
+    ...(faultData.error_code ? {
+      "identifier": {
+        "@type": "PropertyValue",
+        "name": "Error Code",
+        "value": faultData.error_code
+      }
+    } : {}),
+    ...(faultData.affected_component ? {
+      "category": faultData.affected_component
+    } : {}),
+    "inLanguage": lang,
+    "keywords": `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car repair, automotive troubleshooting, fault diagnosis${faultData.error_code ? `, ${faultData.error_code}` : ''}`
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Header />
       <CarPageTracker
         slug={slug}

@@ -7,69 +7,35 @@ interface IndexNowPayload {
   host: string;
   key: string;
   keyLocation: string;
-  url: string;
+  urlList: string[];
 }
 
 export async function submitToIndexNow(url: string): Promise<void> {
-  // Configuration - try environment variable first, then fallback to hardcoded key
-  const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
-  const HOST = 'faultbase.com';
-  const KEY_LOCATION = `https://faultbase.com/${INDEXNOW_KEY}.txt`;
-
-  // Don't proceed if key is not configured
-  if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
-    console.log('[IndexNow] Key not configured, skipping submission for:', url);
-    return;
-  }
-
-  // Validate URL is from the same host
+  // Use server-side API route to avoid CORS issues
   try {
-    const urlObj = new URL(url);
-    if (urlObj.hostname !== HOST && urlObj.hostname !== `www.${HOST}`) {
-      console.warn('[IndexNow] URL hostname mismatch:', urlObj.hostname, 'expected:', HOST);
-      return;
+    // Determine base URL - use absolute URL in server context, relative in client context
+    let apiUrl = '/api/indexnow/submit';
+    if (typeof window === 'undefined') {
+      // Server-side: use environment variable or default
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      apiUrl = `${baseUrl}/api/indexnow/submit`;
     }
-  } catch (error) {
-    console.warn('[IndexNow] Invalid URL format:', url);
-    return;
-  }
-
-  // Extract hostname from URL to ensure it matches
-  let urlHostname: string;
-  try {
-    const urlObj = new URL(url);
-    urlHostname = urlObj.hostname.replace(/^www\./, ''); // Remove www. prefix if present
-  } catch (error) {
-    console.warn('[IndexNow] Invalid URL format:', url);
-    return;
-  }
-
-  // Ensure host matches URL hostname
-  const hostToUse = urlHostname;
-
-  const payload: IndexNowPayload = {
-    host: hostToUse,
-    key: INDEXNOW_KEY,
-    keyLocation: KEY_LOCATION,
-    url: url,
-  };
-
-  try {
-    console.log('[IndexNow] Submitting URL for indexing:', url, 'Payload:', JSON.stringify(payload));
     
-    const response = await fetch('https://api.indexnow.org/indexnow', {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ url }),
     });
 
     if (response.ok) {
+      const result = await response.json();
       console.log('[IndexNow] Successfully submitted URL for indexing:', url);
     } else {
-      const errorText = await response.text().catch(() => '');
-      console.warn('[IndexNow] Failed to submit URL, status:', response.status, 'URL:', url, 'Error:', errorText);
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      console.warn('[IndexNow] Failed to submit URL, status:', response.status, 'URL:', url, 'Error:', errorData.message);
     }
   } catch (error) {
     // Fail silently - don't let IndexNow errors affect the user experience
@@ -84,64 +50,56 @@ export async function submitToIndexNow(url: string): Promise<void> {
 export async function submitMultipleToIndexNow(urls: string[]): Promise<void> {
   if (urls.length === 0) return;
 
-  // Configuration - try environment variable first, then fallback to hardcoded key
-  const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
-  const HOST = 'faultbase.com';
-  const KEY_LOCATION = `https://faultbase.com/${INDEXNOW_KEY}.txt`;
-
-  // Don't proceed if key is not configured
-  if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
-    console.log('[IndexNow] Key not configured, skipping batch submission for', urls.length, 'URLs');
-    return;
-  }
-
-  // Validate all URLs are from the same host and filter invalid ones
-  const validUrls = urls.filter(url => {
-    try {
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname.replace(/^www\./, '');
-      return hostname === HOST;
-    } catch {
-      return false;
+  // Use server-side API route to avoid CORS issues
+  try {
+    // Determine base URL - use absolute URL in server context, relative in client context
+    let apiUrl = '/api/indexnow/submit';
+    if (typeof window === 'undefined') {
+      // Server-side: use environment variable or default
+      // In development, always use localhost
+      const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.VERCEL_URL;
+      if (isDevelopment) {
+        const port = process.env.PORT || '3000';
+        apiUrl = `http://localhost:${port}/api/indexnow/submit`;
+      } else {
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        apiUrl = `${baseUrl}/api/indexnow/submit`;
+      }
     }
-  });
-
-  if (validUrls.length === 0) {
-    console.warn('[IndexNow] No valid URLs to submit');
-    return;
-  }
-
-  // Extract hostname from first URL (all should be same)
-  let hostToUse = HOST;
-  try {
-    const firstUrl = new URL(validUrls[0]);
-    hostToUse = firstUrl.hostname.replace(/^www\./, '');
-  } catch {
-    // Use default HOST
-  }
-
-  const payload = {
-    host: hostToUse,
-    key: INDEXNOW_KEY,
-    keyLocation: KEY_LOCATION,
-    urlList: validUrls,
-  };
-
-  try {
-    console.log('[IndexNow] Submitting', urls.length, 'URLs for indexing');
     
-    const response = await fetch('https://api.indexnow.org/indexnow', {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ urls }),
     });
 
     if (response.ok) {
-      console.log('[IndexNow] Successfully submitted', urls.length, 'URLs for indexing');
+      const result = await response.json();
+      if (result.success) {
+        console.log(`[IndexNow] Successfully submitted ${result.submittedCount || urls.length} URLs to ${result.endpointsSucceeded || 1} endpoint(s)`);
+      } else {
+        console.warn('[IndexNow] API returned non-success:', result.message || 'Unknown error');
+      }
     } else {
-      console.warn('[IndexNow] Failed to submit URLs, status:', response.status);
+      // Better error handling for 404 - reduce log spam for large batches
+      if (response.status === 404) {
+        // Only log first few 404s to avoid spam
+        if (urls.length <= 100) {
+          const errorData = await response.json().catch(() => ({ message: 'Route not found' }));
+          console.warn(`[IndexNow] Route not found (404). Check if /api/indexnow/submit exists. URL: ${apiUrl}. Error:`, errorData.message || errorData.error);
+        } else {
+          // For large batches, only log once per 1000 URLs
+          if (urls.length % 1000 < 100) {
+            console.warn(`[IndexNow] Route not found (404) for batch. URL: ${apiUrl}. This will be retried later via /api/indexnow/submit-all`);
+          }
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.warn('[IndexNow] Failed to submit URLs, status:', response.status, 'URLs:', urls.length, 'Error:', errorData.message || errorData.error);
+      }
     }
   } catch (error) {
     // Fail silently - don't let IndexNow errors affect the user experience

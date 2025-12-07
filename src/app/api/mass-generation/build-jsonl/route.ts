@@ -194,12 +194,34 @@ Format your response with clear headings and structured steps. Include sections 
     const jsonlFilePath = join(publicDir, jsonlFilename);
     await writeFile(jsonlFilePath, jsonlContent, 'utf-8');
 
+    // Return example prompts for display
+    const exampleQuestion = questions[0] || 'Example question';
+    const exampleGenData = generationDataMap.size > 0 
+      ? Array.from(generationDataMap.values())[0]
+      : null;
+    const exampleUserPrompt = exampleGenData
+      ? `${exampleQuestion} - ${exampleGenData.brand} ${exampleGenData.model} ${exampleGenData.generation}${exampleGenData.generationCode ? ` (${exampleGenData.generationCode})` : ''}`
+      : exampleQuestion;
+
     return NextResponse.json({
       success: true,
       fileUrl: `/generated/${jsonlFilename}`,
       filename: jsonlFilename,
       count: jsonlLines.length,
       questionsCount: questions.length,
+      prompts: {
+        systemPrompt,
+        exampleUserPrompt,
+        model: MODEL_ANSWERS,
+        temperature: 0.7,
+        maxTokens: 2000,
+        generationContext: exampleGenData ? {
+          brand: exampleGenData.brand,
+          model: exampleGenData.model,
+          generation: exampleGenData.generation,
+          generationCode: exampleGenData.generationCode,
+        } : null,
+      },
     });
   } catch (error) {
     console.error('Build JSONL error:', error);

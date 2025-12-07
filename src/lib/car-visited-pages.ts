@@ -122,3 +122,6 @@ export function removeVisitedCarPage(slug: string, type: 'fault' | 'manual', gen
 }
 
 
+
+
+

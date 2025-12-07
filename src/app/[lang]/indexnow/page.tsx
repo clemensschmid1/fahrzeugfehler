@@ -26,6 +26,45 @@ export default function IndexNowPage() {
     status: string;
   } | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isSubmittingAll, setIsSubmittingAll] = useState(false);
+  const [submitAllResults, setSubmitAllResults] = useState<{
+    submitted: number;
+    failed: number;
+    total: number;
+    message: string;
+  } | null>(null);
+
+  const submitAllToIndexNow = async () => {
+    if (!confirm(t(
+      'This will submit ALL URLs from the database to IndexNow. This may take a long time. Continue?',
+      'Dies wird ALLE URLs aus der Datenbank an IndexNow senden. Dies kann lange dauern. Fortfahren?'
+    ))) {
+      return;
+    }
+
+    setIsSubmittingAll(true);
+    setSubmitAllResults(null);
+
+    try {
+      const response = await fetch('/api/indexnow/submit-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, language }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Submission failed');
+      }
+
+      const data = await response.json();
+      setSubmitAllResults(data);
+    } catch (error) {
+      console.error('Submit all error:', error);
+      alert(t('Submission failed', 'Übermittlung fehlgeschlagen') + ': ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsSubmittingAll(false);
+    }
+  };
 
   const loadUrls = async () => {
     setIsLoadingUrls(true);
@@ -170,6 +209,45 @@ export default function IndexNowPage() {
             >
               {isSubmitting ? t('Submitting...', "Übermittle...") : t('Submit to IndexNow', "An IndexNow übermitteln")}
             </button>
+          </div>
+
+          {/* Submit All Section */}
+          <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+              {t('Submit All URLs', "Alle URLs übermitteln")}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              {t(
+                'Submit ALL URLs from the database to IndexNow. Use this if submissions failed during bulk generation. This may take a long time for large volumes.',
+                'Übermittle ALLE URLs aus der Datenbank an IndexNow. Verwende dies, wenn Übermittlungen während der Bulk-Generierung fehlgeschlagen sind. Dies kann bei großen Volumen lange dauern.'
+              )}
+            </p>
+            <button
+              onClick={submitAllToIndexNow}
+              disabled={isSubmittingAll}
+              className="px-6 py-3 bg-orange-600 dark:bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 transition-all"
+            >
+              {isSubmittingAll ? t('Submitting All...', "Übermittle alle...") : t('Submit All URLs to IndexNow', "Alle URLs an IndexNow übermitteln")}
+            </button>
+            {submitAllResults && (
+              <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900/30">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{submitAllResults.submitted}</div>
+                    <div className="text-sm text-green-700 dark:text-green-300">{t('Submitted', "Übermittelt")}</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">{submitAllResults.failed}</div>
+                    <div className="text-sm text-red-700 dark:text-red-300">{t('Failed', "Fehlgeschlagen")}</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{submitAllResults.total}</div>
+                    <div className="text-sm text-blue-700 dark:text-blue-300">{t('Total', "Gesamt")}</div>
+                  </div>
+                </div>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{submitAllResults.message}</p>
+              </div>
+            )}
           </div>
 
           {urls.length > 0 && (

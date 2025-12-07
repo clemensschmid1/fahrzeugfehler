@@ -62,7 +62,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // Fetch manual
   const { data: manualData } = await supabase
     .from('car_manuals')
-    .select('title, description, meta_title, meta_description')
+    .select('title, description, meta_title, meta_description, content, created_at, manual_type, difficulty_level, estimated_time')
     .eq('slug', slug)
     .eq('language_path', lang)
     .eq('status', 'live')
@@ -89,17 +89,24 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     description,
     keywords: manualData.title ? `${manualData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car manual, automotive guide, maintenance instructions` : undefined,
     alternates: {
-      canonical: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/manuals/${slug}`,
+      canonical: `https://faultbase.com/${lang}/cars/${brand}/${model}/${generation}/manuals/${slug}`,
       languages: {
-        'en': `https://infoneva.com/en/cars/${brand}/${model}/${generation}/manuals/${slug}`,
-        'de': `https://infoneva.com/de/cars/${brand}/${model}/${generation}/manuals/${slug}`,
+        'en': `https://faultbase.com/en/cars/${brand}/${model}/${generation}/manuals/${slug}`,
+        'de': `https://faultbase.com/de/cars/${brand}/${model}/${generation}/manuals/${slug}`,
       },
     },
     openGraph: {
       title: `${title} | Cars`,
       description,
       type: 'article',
-      url: `https://infoneva.com/${lang}/cars/${brand}/${model}/${generation}/manuals/${slug}`,
+      url: `https://faultbase.com/${lang}/cars/${brand}/${model}/${generation}/manuals/${slug}`,
+      siteName: 'FAULTBASE',
+      images: [{
+        url: `https://faultbase.com/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: manualData.title,
+      }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -236,8 +243,57 @@ export default async function ManualPage({ params }: { params: Promise<Params> }
     user_name: usernamesMap[c.user_id] || null,
   }));
 
+  // Generate JSON-LD structured data for SEO
+  const baseUrl = 'https://faultbase.com';
+  const pageUrl = `${baseUrl}/${lang}/cars/${brand}/${model}/${generation}/manuals/${slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": manualData.title,
+    "description": manualData.meta_description || manualData.description,
+    "url": pageUrl,
+    "image": `${baseUrl}/logo.png`,
+    "datePublished": manualData.created_at || new Date().toISOString(),
+    "dateModified": manualData.created_at || new Date().toISOString(),
+    "author": {
+      "@type": "Organization",
+      "name": "FAULTBASE",
+      "url": baseUrl
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "FAULTBASE",
+      "url": baseUrl,
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${baseUrl}/logo.png`
+      }
+    },
+    "about": {
+      "@type": "Vehicle",
+      "name": `${brandData.name} ${modelData.name} ${generationData.name}`,
+      "brand": {
+        "@type": "Brand",
+        "name": brandData.name
+      },
+      "model": modelData.name
+    },
+    ...(manualData.manual_type ? {
+      "category": manualData.manual_type
+    } : {}),
+    ...(manualData.estimated_time ? {
+      "totalTime": manualData.estimated_time
+    } : {}),
+    "inLanguage": lang,
+    "keywords": `${manualData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car manual, automotive guide, maintenance instructions`
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Header />
       <CarPageTracker
         slug={slug}
