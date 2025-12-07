@@ -21,7 +21,6 @@
     "@aws-sdk/client-bedrock-runtime": "^3.821.0",
     "@langchain/openai": "^0.5.10",
     "@microsoft/clarity": "^1.0.0",
-    "@napi-rs/canvas-win32-x64-msvc": "^0.1.83",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "@supabase/ssr": "^0.6.1",
