@@ -100,7 +100,7 @@ async function generateSitemaps() {
     allUrls.push({ url: `${baseUrl}/en/cars`, priority: 0.9, changefreq: 'daily' });
     allUrls.push({ url: `${baseUrl}/de/cars`, priority: 0.9, changefreq: 'daily' });
     
-    // Note: Internal pages (internal/*, carinternal, carbulk) are intentionally excluded from sitemap
+    // Note: Internal pages (internal/*, carinternal, carbulk, prompts) are intentionally excluded from sitemap
     
     // Add knowledge article URLs with lastmod dates (exclude internal pages)
     for (const question of allQuestions) {
