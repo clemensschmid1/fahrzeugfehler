@@ -69,7 +69,7 @@ function PromptsContent() {
   const [contentType, setContentType] = useState<'fault' | 'manual'>('fault');
   const [language, setLanguage] = useState<'en' | 'de'>('en');
   const [prompts, setPrompts] = useState<GenerationPrompt[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -104,7 +104,7 @@ function PromptsContent() {
   // Load models when brand selected
   useEffect(() => {
     if (!supabase || !selectedBrand) {
-      setModels([]);
+      // Don't update if already empty to avoid re-render loops
       return;
     }
     const loadModels = async () => {
@@ -126,7 +126,7 @@ function PromptsContent() {
   // Load generations when model selected
   useEffect(() => {
     if (!supabase || !selectedModel) {
-      setGenerations([]);
+      // Don't update if already empty to avoid re-render loops
       return;
     }
     const loadGenerations = async () => {
@@ -148,10 +148,10 @@ function PromptsContent() {
   // Load prompts when generation selected
   useEffect(() => {
     if (!supabase || !selectedGeneration) {
-      setPrompts([]);
-      setLoading(false);
+      // Don't update state if already in the correct state to avoid re-render loops
       return;
     }
+    let cancelled = false;
     const loadPrompts = async () => {
       setLoading(true);
       try {
@@ -163,16 +163,25 @@ function PromptsContent() {
           .eq('language', language)
           .order('prompt_order');
         if (error) throw error;
-        setPrompts(data || []);
+        if (!cancelled) {
+          setPrompts(data || []);
+        }
       } catch (err) {
-        console.error('Error loading prompts:', err);
-        setError(t('Failed to load prompts', 'Fehler beim Laden der Prompts'));
+        if (!cancelled) {
+          console.error('Error loading prompts:', err);
+          setError(lang === 'de' ? 'Fehler beim Laden der Prompts' : 'Failed to load prompts');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
     loadPrompts();
-  }, [supabase, selectedGeneration, contentType, language, t]);
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, selectedGeneration, contentType, language, lang]);
 
   const handleSavePrompt = async (prompt: Partial<GenerationPrompt>, promptOrder: number) => {
     if (!supabase || !selectedGeneration) {
