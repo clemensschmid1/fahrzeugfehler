@@ -142,13 +142,38 @@ async function generateSitemaps() {
     // Add Cars pages (brands, models, generations, faults, manuals)
     console.log('🔄 Fetching Cars data for sitemap...');
     try {
-      // Fetch all car brands
-      const { data: brands } = await supabase
-        .from('car_brands')
-        .select('slug, updated_at, created_at');
+      // Fetch all car brands with pagination
+      const allBrands: Array<{ slug: string; updated_at?: string; created_at?: string }> = [];
+      let brandsFrom = 0;
+      const brandsBatchSize = 1000;
       
-      if (brands && brands.length > 0) {
-        for (const brand of brands) {
+      while (true) {
+        const { data: brands, error: brandsError } = await supabase
+          .from('car_brands')
+          .select('slug, updated_at, created_at')
+          .range(brandsFrom, brandsFrom + brandsBatchSize - 1);
+        
+        if (brandsError) {
+          console.error('⚠️  Error fetching brands:', brandsError);
+          break;
+        }
+        
+        if (!brands || brands.length === 0) {
+          break;
+        }
+        
+        allBrands.push(...brands);
+        console.log(`📊 Fetched ${brands.length} brands (total: ${allBrands.length})`);
+        
+        if (brands.length < brandsBatchSize) {
+          break;
+        }
+        
+        brandsFrom += brandsBatchSize;
+      }
+      
+      if (allBrands.length > 0) {
+        for (const brand of allBrands) {
           const enUrl = `${baseUrl}/en/cars/${brand.slug}`;
           const deUrl = `${baseUrl}/de/cars/${brand.slug}`;
           
@@ -183,13 +208,38 @@ async function generateSitemaps() {
           }
         }
         
-        // Fetch all car models
-        const { data: models } = await supabase
-          .from('car_models')
-          .select('slug, updated_at, created_at, car_brands(slug)');
+        // Fetch all car models with pagination
+        const allModels: Array<{ slug: string; updated_at?: string; created_at?: string; car_brands: any }> = [];
+        let modelsFrom = 0;
+        const modelsBatchSize = 1000;
         
-        if (models && models.length > 0) {
-          for (const model of models) {
+        while (true) {
+          const { data: models, error: modelsError } = await supabase
+            .from('car_models')
+            .select('slug, updated_at, created_at, car_brands(slug)')
+            .range(modelsFrom, modelsFrom + modelsBatchSize - 1);
+          
+          if (modelsError) {
+            console.error('⚠️  Error fetching models:', modelsError);
+            break;
+          }
+          
+          if (!models || models.length === 0) {
+            break;
+          }
+          
+          allModels.push(...models);
+          console.log(`📊 Fetched ${models.length} models (total: ${allModels.length})`);
+          
+          if (models.length < modelsBatchSize) {
+            break;
+          }
+          
+          modelsFrom += modelsBatchSize;
+        }
+        
+        if (allModels.length > 0) {
+          for (const model of allModels) {
             const carBrands = model.car_brands as unknown as { slug: string } | { slug: string }[];
             const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
             if (!brandSlug) continue;
@@ -229,13 +279,38 @@ async function generateSitemaps() {
           }
         }
         
-        // Fetch all model generations
-        const { data: generations } = await supabase
-          .from('model_generations')
-          .select('slug, updated_at, created_at, car_models(slug, car_brands(slug))');
+        // Fetch all model generations with pagination
+        const allGenerations: Array<{ slug: string; updated_at?: string; created_at?: string; car_models: any }> = [];
+        let generationsFrom = 0;
+        const generationsBatchSize = 1000;
         
-        if (generations && generations.length > 0) {
-          for (const generation of generations) {
+        while (true) {
+          const { data: generations, error: generationsError } = await supabase
+            .from('model_generations')
+            .select('slug, updated_at, created_at, car_models(slug, car_brands(slug))')
+            .range(generationsFrom, generationsFrom + generationsBatchSize - 1);
+          
+          if (generationsError) {
+            console.error('⚠️  Error fetching generations:', generationsError);
+            break;
+          }
+          
+          if (!generations || generations.length === 0) {
+            break;
+          }
+          
+          allGenerations.push(...generations);
+          console.log(`📊 Fetched ${generations.length} generations (total: ${allGenerations.length})`);
+          
+          if (generations.length < generationsBatchSize) {
+            break;
+          }
+          
+          generationsFrom += generationsBatchSize;
+        }
+        
+        if (allGenerations.length > 0) {
+          for (const generation of allGenerations) {
             const carModels = generation.car_models as unknown as { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[];
             const modelData = Array.isArray(carModels) ? carModels[0] : carModels;
             if (!modelData) continue;
@@ -279,14 +354,39 @@ async function generateSitemaps() {
           }
         }
         
-        // Fetch all car faults
-        const { data: faults } = await supabase
-          .from('car_faults')
-          .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
-          .eq('status', 'live');
+        // Fetch all car faults with pagination
+        const allFaults: Array<{ slug: string; language_path: string; updated_at?: string; created_at?: string; model_generations: any }> = [];
+        let faultsFrom = 0;
+        const faultsBatchSize = 1000;
         
-        if (faults && faults.length > 0) {
-          for (const fault of faults) {
+        while (true) {
+          const { data: faults, error: faultsError } = await supabase
+            .from('car_faults')
+            .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
+            .eq('status', 'live')
+            .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
+          
+          if (faultsError) {
+            console.error('⚠️  Error fetching faults:', faultsError);
+            break;
+          }
+          
+          if (!faults || faults.length === 0) {
+            break;
+          }
+          
+          allFaults.push(...faults);
+          console.log(`📊 Fetched ${faults.length} faults (total: ${allFaults.length})`);
+          
+          if (faults.length < faultsBatchSize) {
+            break;
+          }
+          
+          faultsFrom += faultsBatchSize;
+        }
+        
+        if (allFaults.length > 0) {
+          for (const fault of allFaults) {
             if (!fault.slug || !fault.language_path || (fault.language_path !== 'en' && fault.language_path !== 'de')) continue;
             
             const generationData = fault.model_generations as unknown as { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] } | { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] }[];
@@ -320,14 +420,39 @@ async function generateSitemaps() {
           }
         }
         
-        // Fetch all car manuals
-        const { data: manuals } = await supabase
-          .from('car_manuals')
-          .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
-          .eq('status', 'live');
+        // Fetch all car manuals with pagination
+        const allManuals: Array<{ slug: string; language_path: string; updated_at?: string; created_at?: string; model_generations: any }> = [];
+        let manualsFrom = 0;
+        const manualsBatchSize = 1000;
         
-        if (manuals && manuals.length > 0) {
-          for (const manual of manuals) {
+        while (true) {
+          const { data: manuals, error: manualsError } = await supabase
+            .from('car_manuals')
+            .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
+            .eq('status', 'live')
+            .range(manualsFrom, manualsFrom + manualsBatchSize - 1);
+          
+          if (manualsError) {
+            console.error('⚠️  Error fetching manuals:', manualsError);
+            break;
+          }
+          
+          if (!manuals || manuals.length === 0) {
+            break;
+          }
+          
+          allManuals.push(...manuals);
+          console.log(`📊 Fetched ${manuals.length} manuals (total: ${allManuals.length})`);
+          
+          if (manuals.length < manualsBatchSize) {
+            break;
+          }
+          
+          manualsFrom += manualsBatchSize;
+        }
+        
+        if (allManuals.length > 0) {
+          for (const manual of allManuals) {
             if (!manual.slug || !manual.language_path || (manual.language_path !== 'en' && manual.language_path !== 'de')) continue;
             
             const generationData = manual.model_generations as unknown as { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] } | { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] }[];
@@ -361,7 +486,7 @@ async function generateSitemaps() {
           }
         }
         
-        console.log(`✅ Added ${brands.length} brands, ${models?.length || 0} models, ${generations?.length || 0} generations, ${faults?.length || 0} faults, and ${manuals?.length || 0} manuals to sitemap`);
+        console.log(`✅ Added ${allBrands.length} brands, ${allModels.length} models, ${allGenerations.length} generations, ${allFaults.length} faults, and ${allManuals.length} manuals to sitemap`);
       }
     } catch (error) {
       console.log('⚠️  Cars data fetch failed (this is normal if database is unavailable):', error);
