@@ -78,6 +78,8 @@ type StepCardProps = {
   onAction: () => void;
   actionLabel: string;
   disabled: boolean;
+  onCancel?: () => void;
+  canCancel?: boolean;
   fileUrl?: string | null;
   batchId?: string | null;
   batchStatus?: BatchStatus | null;
@@ -477,6 +479,19 @@ function MassGenerationContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step3AutoRefresh, step2BatchId]);
 
+  // AbortController for canceling Step 1 generation
+  const [step1AbortController, setStep1AbortController] = useState<AbortController | null>(null);
+
+  // Step 1: Cancel Generation
+  const handleCancelGeneration = () => {
+    if (step1AbortController) {
+      step1AbortController.abort();
+      setStep1AbortController(null);
+      setStep1Status('error');
+      setStep1Error(t('Generation cancelled by user', 'Generierung vom Benutzer abgebrochen'));
+    }
+  };
+
   // Step 1: Generate Questions with Streaming
   const handleGenerateQuestions = async () => {
     const brandIdsToUse = selectedBrands.length > 0 ? selectedBrands : (selectedBrand ? [selectedBrand] : []);
@@ -508,6 +523,10 @@ function MassGenerationContent() {
     setStep1Details(null);
     setGenerationProgress(new Map()); // Reset generation progress
 
+    // Create AbortController for cancellation
+    const abortController = new AbortController();
+    setStep1AbortController(abortController);
+
     try {
       const response = await fetch('/api/mass-generation/generate-questions-stream', {
         method: 'POST',
@@ -519,6 +538,7 @@ function MassGenerationContent() {
           questionsPerGeneration,
           language,
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -533,6 +553,12 @@ function MassGenerationContent() {
       }
 
       while (true) {
+        // Check if cancelled
+        if (abortController.signal.aborted) {
+          reader.cancel();
+          break;
+        }
+
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -708,6 +734,7 @@ function MassGenerationContent() {
                   setStep1FileUrl(data.fileUrl);
                   setStep1Status('complete');
                   setStep1Progress({ current: data.count, total: totalCount });
+                  setStep1AbortController(null); // Clear abort controller on completion
                   break;
                 
                 case 'error':
@@ -747,8 +774,14 @@ function MassGenerationContent() {
       }
     } catch (error: any) {
       console.error('Error generating questions:', error);
-      setStep1Error(error.message || t('Unknown error', 'Unbekannter Fehler'));
+      // Don't show error if it was cancelled
+      if (error.name === 'AbortError' || abortController.signal.aborted) {
+        setStep1Error(t('Generation cancelled', 'Generierung abgebrochen'));
+      } else {
+        setStep1Error(error.message || t('Unknown error', 'Unbekannter Fehler'));
+      }
       setStep1Status('error');
+      setStep1AbortController(null);
     }
   };
 
@@ -1260,6 +1293,8 @@ function MassGenerationContent() {
           onAction={handleGenerateQuestions}
           actionLabel={t('Generate Questions', 'Fragen generieren')}
           disabled={(selectedBrands.length === 0 && !selectedBrand) || selectedGenerations.length === 0}
+          onCancel={handleCancelGeneration}
+          canCancel={step1Status === 'generating'}
           fileUrl={step1FileUrl}
           details={step1Details}
           generationProgress={generationProgress}
@@ -1421,6 +1456,8 @@ function StepCard({
   step4Prompts,
   batches,
   onDownloadBatch,
+  onCancel,
+  canCancel,
   t,
 }: StepCardProps) {
   const statusColors = {
@@ -1675,7 +1712,7 @@ function StepCard({
       )}
 
       {/* Command Center - Detailed Generation View */}
-      {generationProgress && generationProgress.size > 0 && status === 'generating' && (
+      {generationProgress && generationProgress.size > 0 && (
         <div className="mb-6 p-8 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 border-4 border-blue-400 dark:border-blue-600 rounded-2xl shadow-2xl">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -1978,13 +2015,23 @@ function StepCard({
       )}
 
       <div className="flex items-center gap-4">
-        <button
-          onClick={onAction}
-          disabled={disabled || ['generating', 'uploading', 'importing', 'building'].includes(status)}
-          className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-500 dark:to-red-600 text-white rounded-lg font-bold hover:from-red-700 hover:to-red-800 dark:hover:from-red-600 dark:hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-        >
-          {actionLabel}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={onAction}
+            disabled={disabled || ['generating', 'uploading', 'importing', 'building'].includes(status)}
+            className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-500 dark:to-red-600 text-white rounded-lg font-bold hover:from-red-700 hover:to-red-800 dark:hover:from-red-600 dark:hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+          >
+            {actionLabel}
+          </button>
+          {canCancel && onCancel && (
+            <button
+              onClick={onCancel}
+              className="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 dark:from-orange-500 dark:to-orange-600 text-white rounded-lg font-bold hover:from-orange-700 hover:to-orange-800 dark:hover:from-orange-600 dark:hover:to-orange-700 transition-all shadow-lg"
+            >
+              {t('Cancel', 'Abbrechen')}
+            </button>
+          )}
+        </div>
         {onAutoRefreshChange && batchStatus && batchStatus.status !== 'completed' && (
           <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
             <input
