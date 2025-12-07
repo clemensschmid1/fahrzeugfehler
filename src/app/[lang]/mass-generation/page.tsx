@@ -1077,12 +1077,20 @@ function MassGenerationContent() {
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">
               {t('Mass Generation', 'Massen-Generierung')}
             </h1>
-            <Link
-              href={`/${lang}/carbulk`}
-              className="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition-all text-sm font-medium"
-            >
-              ← {t('Back to Bulk Generator', 'Zurück zum Bulk-Generator')}
-            </Link>
+            <div className="flex gap-3 flex-wrap">
+              <Link
+                href={`/${lang}/carbulk`}
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition-all text-sm font-medium"
+              >
+                ← {t('Back to Bulk Generator', 'Zurück zum Bulk-Generator')}
+              </Link>
+              <Link
+                href={`/${lang}/prompts`}
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-all text-sm font-medium"
+              >
+                {t('Prompt Variance Center', 'Prompt-Varianz-Zentrum')} →
+              </Link>
+            </div>
           </div>
           <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base">
             {t(

@@ -198,6 +198,9 @@ async function generateQuestionsForGeneration(
     sendUpdate(dataWithGenerationId);
   };
 
+  // Get Supabase client for loading prompts
+  const supabase = getSupabaseClient();
+
   if (contentType === 'fault') {
     return await generateFaultQuestionsImproved(
       brand,
@@ -208,7 +211,9 @@ async function generateQuestionsForGeneration(
       language,
       apiKey,
       existingQuestions,
-      wrappedSendUpdate
+      wrappedSendUpdate,
+      generationId,
+      supabase
     );
   } else {
     return await generateManualQuestionsImproved(
@@ -220,9 +225,96 @@ async function generateQuestionsForGeneration(
       language,
       apiKey,
       existingQuestions,
-      wrappedSendUpdate
+      wrappedSendUpdate,
+      generationId,
+      supabase
     );
   }
+}
+
+// Load prompts from database for a generation
+async function loadGenerationPrompts(
+  supabase: any,
+  generationId: string,
+  contentType: 'fault' | 'manual',
+  language: 'en' | 'de'
+): Promise<Array<{
+  prompt_order: number;
+  system_prompt: string;
+  user_prompt_template: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+}>> {
+  try {
+    const { data, error } = await supabase
+      .from('generation_prompts')
+      .select('prompt_order, system_prompt, user_prompt_template, model, temperature, max_tokens')
+      .eq('generation_id', generationId)
+      .eq('content_type', contentType)
+      .eq('language', language)
+      .eq('is_active', true)
+      .order('prompt_order');
+    
+    if (error) {
+      console.error('Error loading prompts:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (err) {
+    console.error('Error loading prompts:', err);
+    return [];
+  }
+}
+
+// Get prompt for a specific batch (rotates every 5 batches)
+function getPromptForBatch(
+  prompts: Array<{ prompt_order: number; system_prompt: string; user_prompt_template: string; model: string; temperature: number; max_tokens: number }>,
+  batchNumber: number,
+  brand: string,
+  model: string,
+  generation: string,
+  generationCode: string | null,
+  totalBatches: number
+): {
+  systemPrompt: string;
+  userPrompt: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
+} {
+  // If no custom prompts, return default
+  if (prompts.length === 0) {
+    return {
+      systemPrompt: '',
+      userPrompt: '',
+      model: 'gpt-4o-mini',
+      temperature: 0.8,
+      maxTokens: 4000,
+    };
+  }
+  
+  // Rotate prompt every 5 batches: batch 1-5 use prompt 1, batch 6-10 use prompt 2, etc.
+  const promptIndex = Math.floor((batchNumber - 1) / 5) % prompts.length;
+  const selectedPrompt = prompts[promptIndex];
+  
+  // Replace placeholders in user prompt template
+  const userPrompt = selectedPrompt.user_prompt_template
+    .replace(/{brand}/g, brand)
+    .replace(/{model}/g, model)
+    .replace(/{generation}/g, generation)
+    .replace(/{generationCode}/g, generationCode || '')
+    .replace(/{batchNumber}/g, batchNumber.toString())
+    .replace(/{totalBatches}/g, totalBatches.toString());
+  
+  return {
+    systemPrompt: selectedPrompt.system_prompt,
+    userPrompt,
+    model: selectedPrompt.model,
+    temperature: selectedPrompt.temperature,
+    maxTokens: selectedPrompt.max_tokens,
+  };
 }
 
 // Improved fault question generation with detailed progress
@@ -235,14 +327,23 @@ async function generateFaultQuestionsImproved(
   language: 'en' | 'de',
   apiKey: string,
   existingQuestions: Set<string>,
-  sendUpdate: (data: any) => void
+  sendUpdate: (data: any) => void,
+  generationId?: string,
+  supabase?: any
 ): Promise<string[]> {
   const yearRange = generationCode ? ` (${generationCode})` : '';
+  
+  // Load custom prompts from database if generationId and supabase are provided
+  let customPrompts: Array<{ prompt_order: number; system_prompt: string; user_prompt_template: string; model: string; temperature: number; max_tokens: number }> = [];
+  if (generationId && supabase) {
+    customPrompts = await loadGenerationPrompts(supabase, generationId, 'fault', language);
+  }
   
   // Create a list of existing questions (normalized) to avoid duplicates
   const existingQuestionsList = Array.from(existingQuestions).slice(-200);
   
-  const contextPrompt = language === 'en'
+  // Default context prompt (used if no custom prompts)
+  const defaultContextPrompt = language === 'en'
     ? `Generate the ${count} MOST SEARCHED and COMMON problems, faults, and issues for ${brand} ${model} ${generation}${yearRange}. 
 
 CRITICAL REQUIREMENTS:
@@ -297,18 +398,44 @@ Format: Ein Problem/Frage pro Zeile, keine Nummerierung, klar und durchsuchbar. 
     totalBatches: batches,
     batchSize: BATCH_SIZE,
     totalQuestions: count,
-    prompt: contextPrompt.substring(0, 500) + '...', // Preview of prompt
+    prompt: customPrompts.length > 0 
+      ? `Using ${customPrompts.length} custom prompts (rotating every 5 batches)` 
+      : (defaultContextPrompt.substring(0, 500) + '...'), // Preview of prompt
     generationId: '', // Will be added by wrapper
   });
 
   for (let i = 0; i < batches; i++) {
+    const batchNumber = i + 1;
     const batchCount = i === batches - 1 ? count - (i * BATCH_SIZE) : BATCH_SIZE;
-    const batchPrompt = `${contextPrompt} 
+    
+    // Get prompt for this batch (rotates every 5 batches)
+    let systemPrompt: string;
+    let userPrompt: string;
+    let modelToUse: string;
+    let temperatureToUse: number;
+    let maxTokensToUse: number;
+    
+    if (customPrompts.length > 0) {
+      // Use custom prompts from database
+      const promptData = getPromptForBatch(customPrompts, batchNumber, brand, model, generation, generationCode, batches);
+      systemPrompt = promptData.systemPrompt;
+      userPrompt = promptData.userPrompt;
+      modelToUse = promptData.model;
+      temperatureToUse = promptData.temperature;
+      maxTokensToUse = promptData.maxTokens;
+      
+      // Add batch-specific instructions to user prompt
+      userPrompt = `${userPrompt}
+
+Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
+    } else {
+      // Use default prompts
+      const batchPrompt = `${defaultContextPrompt} 
 
 Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
 
-    const systemPrompt = language === 'de'
-      ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Probleme für jedes Automodell. Generiere ${batchCount} hochwertige, einzigartige, präzise, technische Fragen zum Thema: "${batchPrompt}". 
+      systemPrompt = language === 'de'
+        ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Probleme für jedes Automodell. Generiere ${batchCount} hochwertige, einzigartige, präzise, technische Fragen zum Thema: "${batchPrompt}". 
 
 WICHTIG: 
 - Priorisiere Fragen nach Suchhäufigkeit (meistgesucht zuerst)
@@ -316,7 +443,7 @@ WICHTIG:
 - Jede Frage muss spezifisch für dieses Modell/Generation sein
 - Keine Wiederholungen oder ähnliche Fragen
 - Gib nur die Fragen aus, eine pro Zeile, mit normalen Leerzeichen und korrekter Formatierung. Keine Nummerierung, keine Antworten, keine Wiederholungen, keine Einleitung, keine doppelten Fragen. Schreibe normale, lesbare Sätze wie Menschen sie suchen würden.`
-      : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched problems for each car model. Generate ${batchCount} high-quality, unique, precise, technical questions about: "${batchPrompt}".
+        : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched problems for each car model. Generate ${batchCount} high-quality, unique, precise, technical questions about: "${batchPrompt}".
 
 IMPORTANT:
 - Prioritize questions by search frequency (most searched first)
@@ -324,19 +451,25 @@ IMPORTANT:
 - Each question must be specific to this model/generation
 - No repetitions or similar questions
 - Output only the questions, one per line, with proper spacing and normal sentence formatting. No numbering, no answers, no introduction, no duplicates. Write normal, readable sentences as people would search for them.`;
+      
+      userPrompt = batchPrompt;
+      modelToUse = 'gpt-4o-mini';
+      temperatureToUse = 0.8;
+      maxTokensToUse = 4000;
+    }
 
     // Send API call details
     sendUpdate({
       type: 'api_call_start',
-      batchNumber: i + 1,
+      batchNumber,
       totalBatches: batches,
       batchSize: batchCount,
-      model: 'gpt-4o-mini',
-      temperature: 0.8,
-      maxTokens: 4000,
+      model: modelToUse,
+      temperature: temperatureToUse,
+      maxTokens: maxTokensToUse,
       systemPrompt: systemPrompt,
-      userPrompt: batchPrompt,
-      fullPrompt: `${systemPrompt}\n\n${batchPrompt}`,
+      userPrompt: userPrompt,
+      fullPrompt: `${systemPrompt}\n\n${userPrompt}`,
     });
 
     let response: Response | null = null;
@@ -354,12 +487,13 @@ IMPORTANT:
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: modelToUse,
             messages: [
               { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
             ],
-            temperature: 0.8,
-            max_tokens: 4000,
+            temperature: temperatureToUse,
+            max_tokens: maxTokensToUse,
           }),
         });
 
@@ -373,11 +507,11 @@ IMPORTANT:
           } catch (e) {
             errorText = `Status ${response.status}`;
           }
-          lastError = new Error(`Failed to generate questions batch ${i + 1} (attempt ${retry + 1}/${maxRetries}): ${response.status} ${errorText.substring(0, 200)}`);
+          lastError = new Error(`Failed to generate questions batch ${batchNumber} (attempt ${retry + 1}/${maxRetries}): ${response.status} ${errorText.substring(0, 200)}`);
           
           sendUpdate({
             type: 'api_call_retry',
-            batchNumber: i + 1,
+            batchNumber,
             attempt: retry + 1,
             maxRetries,
             error: errorText.substring(0, 200),
@@ -396,7 +530,7 @@ IMPORTANT:
           } catch (e) {
             errorText = `Status ${response.status}`;
           }
-          throw new Error(`Failed to generate questions batch ${i + 1}: ${response.status} ${errorText.substring(0, 200)}`);
+          throw new Error(`Failed to generate questions batch ${batchNumber}: ${response.status} ${errorText.substring(0, 200)}`);
         } else {
           break;
         }
@@ -418,7 +552,7 @@ IMPORTANT:
           const delay = retryDelay * Math.pow(2, retry);
           sendUpdate({
             type: 'api_call_retry',
-            batchNumber: i + 1,
+            batchNumber,
             attempt: retry + 1,
             maxRetries,
             error: errorMsg.substring(0, 200),
@@ -433,7 +567,7 @@ IMPORTANT:
     }
 
     if (!response || !response.ok) {
-      throw lastError || new Error(`Failed to generate questions batch ${i + 1} after ${maxRetries} attempts`);
+      throw lastError || new Error(`Failed to generate questions batch ${batchNumber} after ${maxRetries} attempts`);
     }
 
     const responseTime = Date.now() - startTime;
@@ -441,7 +575,7 @@ IMPORTANT:
     const content = data.choices?.[0]?.message?.content?.trim();
     
     if (!content) {
-      throw new Error(`No questions generated in batch ${i + 1}`);
+      throw new Error(`No questions generated in batch ${batchNumber}`);
     }
 
     // Parse and validate questions
@@ -486,7 +620,7 @@ IMPORTANT:
     // Report validation results
     sendUpdate({
       type: 'validation_results',
-      batchNumber: i + 1,
+      batchNumber,
       valid: validQuestions.length,
       invalid: invalidQuestions.length,
       invalidReasons: invalidQuestions.slice(0, 10).map(iq => `${iq.question.substring(0, 50)}... (${iq.reason})`),
@@ -496,7 +630,7 @@ IMPORTANT:
 
     sendUpdate({
       type: 'api_call_complete',
-      batchNumber: i + 1,
+      batchNumber,
       totalBatches: batches,
       questionsGenerated: validQuestions.length,
       rawQuestionsGenerated: rawQuestions.length,
@@ -512,7 +646,7 @@ IMPORTANT:
     if (validQuestions.length < batchCount * 0.7 && i < batches - 1) {
       sendUpdate({
         type: 'low_quality_batch',
-        batchNumber: i + 1,
+        batchNumber,
         validQuestions: validQuestions.length,
         expected: batchCount,
         warning: 'Low quality batch - many questions were filtered',
@@ -624,12 +758,22 @@ async function generateManualQuestionsImproved(
   language: 'en' | 'de',
   apiKey: string,
   existingQuestions: Set<string>,
-  sendUpdate: (data: any) => void
+  sendUpdate: (data: any) => void,
+  generationId?: string,
+  supabase?: any
 ): Promise<string[]> {
   const yearRange = generationCode ? ` (${generationCode})` : '';
+  
+  // Load custom prompts from database if generationId and supabase are provided
+  let customPrompts: Array<{ prompt_order: number; system_prompt: string; user_prompt_template: string; model: string; temperature: number; max_tokens: number }> = [];
+  if (generationId && supabase) {
+    customPrompts = await loadGenerationPrompts(supabase, generationId, 'manual', language);
+  }
+  
   const existingQuestionsList = Array.from(existingQuestions).slice(-200);
   
-  const contextPrompt = language === 'en'
+  // Default context prompt (used if no custom prompts)
+  const defaultContextPrompt = language === 'en'
     ? `Generate the ${count} MOST SEARCHED and COMMON maintenance procedures, repair guides, and how-to instructions for ${brand} ${model} ${generation}${yearRange}.
 
 CRITICAL REQUIREMENTS:
@@ -667,17 +811,43 @@ Format: Eine Anleitung/Leitfaden pro Zeile, keine Nummerierung, klar und umsetzb
     totalBatches: batches,
     batchSize: BATCH_SIZE,
     totalQuestions: count,
-    prompt: contextPrompt.substring(0, 500) + '...',
+    prompt: customPrompts.length > 0 
+      ? `Using ${customPrompts.length} custom prompts (rotating every 5 batches)` 
+      : (defaultContextPrompt.substring(0, 500) + '...'),
   });
 
   for (let i = 0; i < batches; i++) {
+    const batchNumber = i + 1;
     const batchCount = i === batches - 1 ? count - (i * BATCH_SIZE) : BATCH_SIZE;
-    const batchPrompt = `${contextPrompt} 
+    
+    // Get prompt for this batch (rotates every 5 batches)
+    let systemPrompt: string;
+    let userPrompt: string;
+    let modelToUse: string;
+    let temperatureToUse: number;
+    let maxTokensToUse: number;
+    
+    if (customPrompts.length > 0) {
+      // Use custom prompts from database
+      const promptData = getPromptForBatch(customPrompts, batchNumber, brand, model, generation, generationCode, batches);
+      systemPrompt = promptData.systemPrompt;
+      userPrompt = promptData.userPrompt;
+      modelToUse = promptData.model;
+      temperatureToUse = promptData.temperature;
+      maxTokensToUse = promptData.maxTokens;
+      
+      // Add batch-specific instructions to user prompt
+      userPrompt = `${userPrompt}
+
+Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
+    } else {
+      // Use default prompts
+      const batchPrompt = `${defaultContextPrompt} 
 
 Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
 
-    const systemPrompt = language === 'de'
-      ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Wartungsverfahren für jedes Automodell. Generiere ${batchCount} hochwertige, einzigartige, präzise, technische Fragen zum Thema: "${batchPrompt}". 
+      systemPrompt = language === 'de'
+        ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Wartungsverfahren für jedes Automodell. Generiere ${batchCount} hochwertige, einzigartige, präzise, technische Fragen zum Thema: "${batchPrompt}". 
 
 WICHTIG: 
 - Priorisiere Fragen nach Suchhäufigkeit (meistgesucht zuerst)
@@ -685,7 +855,7 @@ WICHTIG:
 - Jede Frage muss spezifisch für dieses Modell/Generation sein
 - Keine Wiederholungen oder ähnliche Fragen
 - Gib nur die Fragen aus, eine pro Zeile, mit normalen Leerzeichen und korrekter Formatierung. Keine Nummerierung, keine Antworten, keine Wiederholungen, keine Einleitung, keine doppelten Fragen. Schreibe normale, lesbare Sätze wie Menschen sie suchen würden.`
-      : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched maintenance procedures for each car model. Generate ${batchCount} high-quality, unique, precise, technical questions about: "${batchPrompt}".
+        : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched maintenance procedures for each car model. Generate ${batchCount} high-quality, unique, precise, technical questions about: "${batchPrompt}".
 
 IMPORTANT:
 - Prioritize questions by search frequency (most searched first)
@@ -693,18 +863,24 @@ IMPORTANT:
 - Each question must be specific to this model/generation
 - No repetitions or similar questions
 - Output only the questions, one per line, with proper spacing and normal sentence formatting. No numbering, no answers, no introduction, no duplicates. Write normal, readable sentences as people would search for them.`;
+      
+      userPrompt = batchPrompt;
+      modelToUse = 'gpt-4o-mini';
+      temperatureToUse = 0.8;
+      maxTokensToUse = 4000;
+    }
 
     sendUpdate({
       type: 'api_call_start',
-      batchNumber: i + 1,
+      batchNumber,
       totalBatches: batches,
       batchSize: batchCount,
-      model: 'gpt-4o-mini',
-      temperature: 0.8,
-      maxTokens: 4000,
+      model: modelToUse,
+      temperature: temperatureToUse,
+      maxTokens: maxTokensToUse,
       systemPrompt: systemPrompt,
-      userPrompt: batchPrompt,
-      fullPrompt: `${systemPrompt}\n\n${batchPrompt}`,
+      userPrompt: userPrompt,
+      fullPrompt: `${systemPrompt}\n\n${userPrompt}`,
     });
 
     let response: Response | null = null;
