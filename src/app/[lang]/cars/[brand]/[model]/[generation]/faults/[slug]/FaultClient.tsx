@@ -42,12 +42,18 @@ type CarFault = {
   symptoms?: string[];
   diagnostic_steps?: string[];
   tools_required?: string[];
+  parts_required?: string[];
+  safety_warnings?: string[];
 };
 
 type RelatedFault = {
   id: string;
   slug: string;
   title: string;
+  similarity?: number;
+  brandName?: string;
+  modelName?: string;
+  generationName?: string;
 };
 
 type Comment = {
@@ -64,12 +70,13 @@ type Props = {
   generation: ModelGeneration;
   fault: CarFault;
   relatedFaults: RelatedFault[];
+  globalRelatedFaults?: RelatedFault[];
   lang: string;
   initialComments?: Comment[];
   user?: User | null;
 };
 
-export default function FaultClient({ brand, model, generation, fault, relatedFaults, lang, initialComments = [], user }: Props) {
+export default function FaultClient({ brand, model, generation, fault, relatedFaults, globalRelatedFaults = [], lang, initialComments = [], user }: Props) {
   const t = (en: string, de: string) => lang === 'de' ? de : en;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -80,32 +87,124 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [relatedFaultsScope, setRelatedFaultsScope] = useState<'generation' | 'global'>('generation');
+  const [isLoadingRelatedFaults, setIsLoadingRelatedFaults] = useState(false);
   
   const supabase = useMemo(() => getSupabaseClient(), []);
   const formMountTime = useRef<number>(Date.now());
+  const [loadedGlobalFaults, setLoadedGlobalFaults] = useState<RelatedFault[]>(globalRelatedFaults);
+  
+  // Update loadedGlobalFaults when globalRelatedFaults prop changes
+  useEffect(() => {
+    if (globalRelatedFaults.length > 0) {
+      setLoadedGlobalFaults(globalRelatedFaults);
+    }
+  }, [globalRelatedFaults]);
+  
+  // Load global related faults on demand
+  const loadGlobalRelatedFaults = async () => {
+    if (isLoadingRelatedFaults) return;
+    
+    setIsLoadingRelatedFaults(true);
+    try {
+      const response = await fetch('/api/embeddings/find-similar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          faultId: fault.id,
+          scope: 'global',
+          matchThreshold: 0.7,
+          matchCount: 6,
+          language: lang,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || `HTTP ${response.status}` };
+        }
+        console.error('[Related Faults] Failed to load global faults:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error('[Related Faults] API returned error:', data.error);
+        return;
+      }
+      
+      if (data.success && data.results && data.results.length > 0) {
+        setLoadedGlobalFaults(data.results.map((f: any) => ({
+          id: f.id,
+          slug: f.slug,
+          title: f.title,
+          similarity: typeof f.similarity === 'number' ? f.similarity : parseFloat(f.similarity || '0'),
+          brandName: f.brand_name,
+          modelName: f.model_name,
+          generationName: f.generation_name,
+        })));
+      } else {
+        console.warn('[Related Faults] No global results found:', {
+          success: data.success,
+          count: data.count,
+          resultsLength: data.results?.length,
+          data,
+        });
+      }
+    } catch (error) {
+      console.error('[Related Faults] Failed to load global related faults:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    } finally {
+      setIsLoadingRelatedFaults(false);
+    }
+  };
 
   useEffect(() => {
     formMountTime.current = Date.now();
   }, []);
 
-  // Clean solution to remove redundant symptoms/diagnostic steps sections
+  // Clean solution to remove redundant sections (symptoms, diagnostic steps, verification, prevention tips)
+  // These are displayed separately, so we remove them from the solution text
   const cleanSolution = useMemo(() => {
     let cleaned = fault.solution;
     
-    // Remove symptoms section if it exists in markdown (since we show it in summary box)
+    // Remove symptoms section if it exists in markdown (since we show it separately)
     if (fault.symptoms && fault.symptoms.length > 0) {
-      // Remove markdown headings and content for symptoms
       cleaned = cleaned.replace(/###?\s*Symptoms?[\s\S]*?(?=###|##|$)/gi, '');
       cleaned = cleaned.replace(/##\s*Symptoms?[\s\S]*?(?=##|$)/gi, '');
     }
     
-    // Remove diagnostic steps section if it exists in markdown (since we show it in summary box)
+    // Remove diagnostic steps section if it exists in markdown (since we show it separately)
     if (fault.diagnostic_steps && fault.diagnostic_steps.length > 0) {
-      // Remove markdown headings and content for diagnostic steps
       cleaned = cleaned.replace(/###?\s*Diagnostic\s+Steps?[\s\S]*?(?=###|##|$)/gi, '');
       cleaned = cleaned.replace(/##\s*Diagnostic\s+Steps?[\s\S]*?(?=##|$)/gi, '');
       cleaned = cleaned.replace(/###?\s*Diagnosis[\s\S]*?(?=###|##|$)/gi, '');
     }
+    
+    // Remove verification section (we show it separately)
+    cleaned = cleaned.replace(/###?\s*Verification[\s\S]*?(?=###|##|$)/gi, '');
+    cleaned = cleaned.replace(/##\s*Verification[\s\S]*?(?=##|$)/gi, '');
+    
+    // Remove prevention tips section (we show it separately)
+    cleaned = cleaned.replace(/###?\s*Prevention\s+Tips?[\s\S]*?(?=###|##|$)/gi, '');
+    cleaned = cleaned.replace(/##\s*Prevention\s+Tips?[\s\S]*?(?=##|$)/gi, '');
+    cleaned = cleaned.replace(/###?\s*Prevention[\s\S]*?(?=###|##|$)/gi, '');
+    
+    // Remove problem statement if it appears in solution (we show it separately)
+    cleaned = cleaned.replace(/###?\s*Problem\s+Statement[\s\S]*?(?=###|##|$)/gi, '');
+    cleaned = cleaned.replace(/##\s*Problem\s+Statement[\s\S]*?(?=##|$)/gi, '');
     
     // Clean up multiple consecutive newlines
     cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
@@ -150,6 +249,29 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const pdfUrl = `/api/faults/${fault.slug}/pdf?lang=${lang}&brand=${brand.slug}&model=${model.slug}&generation=${generation.slug}`;
+      
+      // Open PDF HTML in new window with print dialog
+      const newWindow = window.open(pdfUrl, '_blank');
+      if (!newWindow) {
+        alert(lang === 'de' ? 'Bitte erlauben Sie Pop-ups für diese Seite' : 'Please allow pop-ups for this site');
+        return;
+      }
+      
+      // Wait for window to load, then trigger print (which allows saving as PDF)
+      newWindow.onload = () => {
+        setTimeout(() => {
+          newWindow.print();
+        }, 500);
+      };
+    } catch (error) {
+      console.error('PDF export error:', error);
+      alert(lang === 'de' ? 'Fehler beim Exportieren des PDFs' : 'Error exporting PDF');
+    }
   };
 
   const handleCommentSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -235,8 +357,8 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
   const getSeverityColor = (severity?: string) => {
     switch (severity?.toLowerCase()) {
       case 'high': case 'critical': return 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30';
-      case 'medium': return 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-900/30';
-      case 'low': return 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/30';
+      case 'medium': return 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/30';
+      case 'low': return 'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/30';
       default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     }
   };
@@ -343,6 +465,16 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                 </svg>
                 <span className="hidden sm:inline">{t('Print', 'Drucken')}</span>
               </button>
+              <button
+                onClick={handleExportPDF}
+                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
+                title={t('Export as PDF', 'Als PDF exportieren')}
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="hidden sm:inline">{t('PDF', 'PDF')}</span>
+              </button>
               {tocItems.length > 0 && (
                 <button
                   onClick={() => setShowTOC(!showTOC)}
@@ -356,26 +488,29 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               )}
             </div>
 
-            {/* Badges - Mobile optimized */}
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+            {/* Badges - Enhanced and Prominent */}
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
               {fault.severity && (
-                <span className={`px-3 py-1 rounded-lg text-sm font-bold border ${getSeverityColor(fault.severity)}`}>
+                <span className={`px-4 py-2 rounded-xl text-sm font-black border-2 uppercase tracking-wide ${getSeverityColor(fault.severity)} shadow-sm`}>
                   {t('Severity', 'Schweregrad')}: {fault.severity}
                 </span>
               )}
               {fault.difficulty_level && (
-                <span className={`px-3 py-1 rounded-lg text-sm font-bold border ${getDifficultyColor(fault.difficulty_level)}`}>
+                <span className={`px-4 py-2 rounded-xl text-sm font-black border-2 uppercase tracking-wide ${getDifficultyColor(fault.difficulty_level)} shadow-sm`}>
                   {t('Difficulty', 'Schwierigkeit')}: {fault.difficulty_level}
                 </span>
               )}
               {fault.error_code && (
-                <span className="px-3 py-1 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                <span className="px-4 py-2 rounded-xl text-sm font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-2 border-blue-200 dark:border-blue-900/50 shadow-sm font-mono">
                   {t('Error Code', 'Fehlercode')}: {fault.error_code}
                 </span>
               )}
               {fault.estimated_repair_time && (
-                <span className="px-3 py-1 rounded-lg text-sm font-semibold bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30">
-                  ⏱️ {fault.estimated_repair_time}
+                <span className="px-4 py-2 rounded-xl text-sm font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-2 border-blue-200 dark:border-blue-900/50 shadow-sm flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {fault.estimated_repair_time}
                 </span>
               )}
             </div>
@@ -448,28 +583,30 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           </div>
         )}
 
-        {/* Problem Statement - Enhanced */}
+        {/* Problem Statement - Enhanced & Improved */}
         {fault.description && (
-          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <div className="flex items-start gap-3 mb-3">
-              <div className="p-2 bg-red-100 dark:bg-red-950/50 rounded-lg">
-                <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <div className="mb-8 sm:mb-10 p-6 sm:p-8 bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 dark:from-red-950/30 dark:via-orange-950/20 dark:to-amber-950/20 rounded-2xl border-2 border-red-200 dark:border-red-800/50 shadow-lg">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-red-100 dark:bg-red-900/50 rounded-xl shadow-sm flex-shrink-0">
+                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                  {t('Problem Statement', 'Problembeschreibung')}
+                <h2 className="text-2xl sm:text-3xl font-black text-red-900 dark:text-red-200 mb-4 flex items-center gap-2">
+                  <span>{t('Problem Statement', 'Problembeschreibung')}</span>
                 </h2>
-                <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-base sm:text-lg">
+                <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-red-200/50 dark:border-red-800/30">
+                  <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg sm:text-xl font-medium">
                   {fault.description}
                 </p>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Quick Reference Card - Enhanced */}
+        {/* Quick Reference Cards - Error Code, Component, Repair Time */}
         <div className="mb-6 sm:mb-8 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           {fault.error_code && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900/30">
@@ -505,6 +642,31 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             </div>
           )}
         </div>
+
+
+        {/* Safety Warnings - Before Solution */}
+        {fault.safety_warnings && fault.safety_warnings.length > 0 && (
+          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-red-50 dark:bg-red-950/30 border-2 border-red-500 dark:border-red-600 rounded-xl sm:rounded-2xl">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-red-900 dark:text-red-300 mb-3">
+                  {t('Safety Warnings', 'Sicherheitshinweise')}
+                </h3>
+                <ul className="space-y-2">
+                  {fault.safety_warnings.map((warning, index) => (
+                    <li key={index} className="text-red-800 dark:text-red-200 leading-relaxed flex items-start gap-2">
+                      <span className="text-red-600 dark:text-red-400 font-bold flex-shrink-0 mt-0.5">⚠</span>
+                      <span>{warning}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Symptoms & Diagnostic Steps - Side by Side - Mobile optimized */}
         {(fault.symptoms && fault.symptoms.length > 0) || (fault.diagnostic_steps && fault.diagnostic_steps.length > 0) ? (
@@ -687,7 +849,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           </ul>
         </div>
 
-        {/* Tools Required - Enhanced */}
+        {/* Tools & Equipment Required - With Checkboxes */}
         {fault.tools_required && fault.tools_required.length > 0 && (
           <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-amber-50 dark:bg-amber-950/20 rounded-xl sm:rounded-2xl border border-amber-200 dark:border-amber-900/30">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
@@ -697,80 +859,351 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               </svg>
               {t('Tools & Equipment Required', 'Benötigte Werkzeuge & Ausrüstung')}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ul className="space-y-3">
               {fault.tools_required.map((tool, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <span className="text-slate-700 dark:text-slate-300 font-medium">{tool}</span>
-                </div>
+                <li key={index} className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 text-amber-600 dark:text-amber-400 bg-white dark:bg-slate-800 border-2 border-amber-300 dark:border-amber-700 rounded focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 cursor-pointer flex-shrink-0"
+                    readOnly
+                  />
+                  <span className="text-base font-medium">{tool}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
 
-        {/* Additional Info - Mobile optimized */}
+        {/* Parts Required - With Checkboxes */}
+        {fault.parts_required && fault.parts_required.length > 0 && (
+          <div className="mb-6 sm:mb-8 p-5 sm:p-6 bg-indigo-50 dark:bg-indigo-950/20 rounded-xl sm:rounded-2xl border border-indigo-200 dark:border-indigo-900/30">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+              {t('Parts Required', 'Benötigte Teile')}
+            </h2>
+            <ul className="space-y-3">
+              {fault.parts_required.map((part, index) => (
+                <li key={index} className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 border-2 border-indigo-300 dark:border-indigo-700 rounded focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-pointer flex-shrink-0"
+                    readOnly
+                  />
+                  <span className="text-base font-medium">{part}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+
+        {/* Additional Information - Enhanced with all metadata */}
         <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
             {t('Additional Information', 'Zusätzliche Informationen')}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            {fault.affected_component && (
-              <div>
-                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {t('Affected Component', 'Betroffene Komponente')}:
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {fault.error_code && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/30">
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-1">
+                  {t('Error Code', 'Fehlercode')}
                 </span>
-                <p className="text-slate-900 dark:text-white font-medium">{fault.affected_component}</p>
+                <code className="text-base font-mono font-bold text-blue-900 dark:text-blue-200">
+                  {fault.error_code}
+                </code>
+              </div>
+            )}
+            {fault.affected_component && (
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-900/30">
+                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider block mb-1">
+                  {t('Component', 'Komponente')}
+                </span>
+                <p className="text-base font-semibold text-purple-900 dark:text-purple-200">{fault.affected_component}</p>
               </div>
             )}
             {fault.estimated_repair_time && (
-              <div>
-                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {t('Estimated Repair Time', 'Geschätzte Reparaturzeit')}:
+              <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900/30">
+                <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider block mb-1">
+                  {t('Repair Time', 'Reparaturzeit')}
                 </span>
-                <p className="text-slate-900 dark:text-white font-medium">{fault.estimated_repair_time}</p>
+                <p className="text-base font-semibold text-green-900 dark:text-green-200 flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {fault.estimated_repair_time}
+                </p>
               </div>
             )}
             {fault.difficulty_level && (
-              <div>
-                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {t('Difficulty Level', 'Schwierigkeitsgrad')}:
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-900/30">
+                <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider block mb-1">
+                  {t('Difficulty', 'Schwierigkeit')}
                 </span>
-                <p className="text-slate-900 dark:text-white font-medium capitalize">{fault.difficulty_level}</p>
+                <p className="text-base font-semibold text-yellow-900 dark:text-yellow-200 capitalize">{fault.difficulty_level}</p>
               </div>
             )}
             {fault.severity && (
-              <div>
-                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {t('Severity', 'Schweregrad')}:
+              <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-900/30">
+                <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider block mb-1">
+                  {t('Severity', 'Schweregrad')}
                 </span>
-                <p className="text-slate-900 dark:text-white font-medium capitalize">{fault.severity}</p>
+                <p className="text-base font-semibold text-orange-900 dark:text-orange-200 capitalize">{fault.severity}</p>
+              </div>
+            )}
+            {fault.tools_required && fault.tools_required.length > 0 && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900/30">
+                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider block mb-1">
+                  {t('Tools', 'Werkzeuge')}
+                </span>
+                <p className="text-base font-semibold text-amber-900 dark:text-amber-200">
+                  {fault.tools_required.length} {t('items', 'Artikel')}
+                </p>
+              </div>
+            )}
+            {fault.parts_required && fault.parts_required.length > 0 && (
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-900/30">
+                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block mb-1">
+                  {t('Parts', 'Teile')}
+                </span>
+                <p className="text-base font-semibold text-indigo-900 dark:text-indigo-200">
+                  {fault.parts_required.length} {t('items', 'Artikel')}
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Related Faults */}
-        {relatedFaults.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-              {t('Related Faults', 'Ähnliche Fehler')}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {relatedFaults.map((related) => (
-                <Link
-                  key={related.id}
-                  href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${related.slug}`}
-                  className="group block p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-500/50 transition-all"
+        {/* Related Faults - Enhanced with Vector Similarity */}
+        {(relatedFaults.length > 0 || globalRelatedFaults.length > 0 || isLoadingRelatedFaults) && (
+          <section 
+            className="mb-8"
+            aria-label={t('Related Faults', 'Ähnliche Fehler')}
+            itemScope
+            itemType="https://schema.org/ItemList"
+          >
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white" itemProp="name">
+                {t('Related Faults', 'Ähnliche Fehler')}
+              </h2>
+              
+              {/* Scope Toggle Buttons */}
+              <nav 
+                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 shadow-inner"
+                aria-label={t('Filter related faults by scope', 'Ähnliche Fehler nach Bereich filtern')}
+                role="tablist"
+              >
+                <button
+                  onClick={() => setRelatedFaultsScope('generation')}
+                  disabled={relatedFaults.length === 0}
+                  role="tab"
+                  aria-selected={relatedFaultsScope === 'generation'}
+                  aria-controls="related-faults-generation"
+                  aria-label={t('Show faults from this generation only', 'Nur Fehler aus dieser Generation anzeigen')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    relatedFaultsScope === 'generation'
+                      ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  } ${relatedFaults.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                    {related.title}
-                  </h3>
-                </Link>
-              ))}
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    {t('This Generation', 'Diese Generation')}
+                    {relatedFaults.length > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs font-bold" aria-label={t('Number of related faults', 'Anzahl ähnlicher Fehler')}>
+                        {relatedFaults.length}
+                      </span>
+                    )}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    setRelatedFaultsScope('global');
+                    // Load global faults if not already loaded
+                    if (loadedGlobalFaults.length === 0 && !isLoadingRelatedFaults) {
+                      loadGlobalRelatedFaults();
+                    }
+                  }}
+                  role="tab"
+                  aria-selected={relatedFaultsScope === 'global'}
+                  aria-controls="related-faults-global"
+                  aria-label={t('Show faults from all generations', 'Fehler aus allen Generationen anzeigen')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    relatedFaultsScope === 'global'
+                      ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {t('All Generations', 'Alle Generationen')}
+                    {loadedGlobalFaults.length > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs font-bold" aria-label={t('Number of related faults', 'Anzahl ähnlicher Fehler')}>
+                        {loadedGlobalFaults.length}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </nav>
             </div>
-          </div>
+
+            {isLoadingRelatedFaults && (
+              <div className="text-center py-12" role="status" aria-live="polite">
+                <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 dark:border-red-400" aria-hidden="true"></div>
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{t('Loading similar faults...', 'Lade ähnliche Fehler...')}</p>
+              </div>
+            )}
+
+            {!isLoadingRelatedFaults && (
+              <>
+                {relatedFaultsScope === 'generation' && relatedFaults.length === 0 && (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    {t('No similar faults found in this generation.', 'Keine ähnlichen Fehler in dieser Generation gefunden.')}
+                  </div>
+                )}
+                {relatedFaultsScope === 'global' && loadedGlobalFaults.length === 0 && (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    {t('No similar faults found across all generations.', 'Keine ähnlichen Fehler in allen Generationen gefunden.')}
+                  </div>
+                )}
+                {((relatedFaultsScope === 'generation' && relatedFaults.length > 0) || (relatedFaultsScope === 'global' && loadedGlobalFaults.length > 0)) && (
+                  <ol className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" itemScope itemType="https://schema.org/ItemList">
+                    {(relatedFaultsScope === 'generation' ? relatedFaults : loadedGlobalFaults).map((related, index) => {
+                      // Debug: Log first fault to see similarity value
+                      if (index === 0) {
+                        console.log(`[Related Faults ${relatedFaultsScope}] First fault:`, {
+                          id: related.id,
+                          title: related.title,
+                          similarity: related.similarity,
+                          similarityType: typeof related.similarity,
+                        });
+                      }
+                      
+                      // Determine URL based on whether it's from same generation or global
+                      const isSameGeneration = !related.generationName || related.generationName === generation.name;
+                      const href = isSameGeneration
+                        ? `/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${related.slug}`
+                        : `/${lang}/cars/${related.brandName?.toLowerCase().replace(/\s+/g, '-')}/${related.modelName?.toLowerCase().replace(/\s+/g, '-')}/${related.generationName?.toLowerCase().replace(/\s+/g, '-')}/faults/${related.slug}`;
+                      
+                      // Format similarity to 2 decimal places (e.g., 95.23%)
+                      // Always show similarity if available, even if 0
+                      // Handle both number and string formats
+                      let similarityValue: number | null = null;
+                      
+                      if (related.similarity !== undefined && related.similarity !== null) {
+                        if (typeof related.similarity === 'number') {
+                          similarityValue = related.similarity;
+                        } else if (typeof related.similarity === 'string') {
+                          similarityValue = parseFloat(related.similarity);
+                        }
+                      }
+                      
+                      const similarityPercent = similarityValue !== null && !isNaN(similarityValue) && similarityValue >= 0 && similarityValue <= 1
+                        ? parseFloat((similarityValue * 100).toFixed(2))
+                        : null;
+                      
+                      const similarityColor = similarityPercent !== null
+                        ? similarityPercent >= 85 
+                          ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950/40 border-green-300 dark:border-green-800'
+                          : similarityPercent >= 75
+                          ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800'
+                          : similarityPercent >= 70
+                          ? 'text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-950/40 border-yellow-300 dark:border-yellow-800'
+                          : 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800'
+                        : 'text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
+                      
+                      return (
+                        <li 
+                          key={related.id}
+                          className="list-none"
+                          itemProp="itemListElement"
+                          itemScope
+                          itemType="https://schema.org/ListItem"
+                        >
+                          <meta itemProp="position" content={String(index + 1)} />
+                          <Link
+                            href={href}
+                            className="group block p-6 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-500/50 transition-all shadow-md hover:shadow-xl hover:scale-[1.02]"
+                            itemProp="url"
+                            aria-label={t(`View fault: ${related.title}`, `Fehler anzeigen: ${related.title}`)}
+                          >
+                            <article itemScope itemType="https://schema.org/Article">
+                              <meta itemProp="headline" content={related.title} />
+                              <meta itemProp="name" content={related.title} />
+                              <div className="flex items-start justify-between gap-3 mb-3">
+                                <h3 className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors flex-1 leading-tight" itemProp="headline">
+                                  {related.title}
+                                </h3>
+                                {similarityPercent !== null ? (
+                                  <div 
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-black border-2 ${similarityColor} flex-shrink-0 min-w-[75px] text-center shadow-sm`}
+                                    aria-label={t(`Similarity: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeit: ${similarityPercent.toFixed(2)}%`)}
+                                    title={t(`Similarity: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeit: ${similarityPercent.toFixed(2)}%`)}
+                                  >
+                                    <span aria-hidden="true">{similarityPercent.toFixed(2)}%</span>
+                                  </div>
+                                ) : (
+                                  <div 
+                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex-shrink-0 min-w-[75px] text-center"
+                                    aria-label={t('Similarity not available', 'Ähnlichkeit nicht verfügbar')}
+                                  >
+                                    <span aria-hidden="true">{t('N/A', 'N/A')}</span>
+                                  </div>
+                                )}
+                              </div>
+                          
+                              {!isSameGeneration && (related.brandName || related.modelName || related.generationName) && (
+                                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-2 mb-3" itemProp="about" itemScope itemType="https://schema.org/Vehicle">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                  </svg>
+                                  <span className="font-semibold" itemProp="brand">{related.brandName}</span>
+                                  <span className="font-semibold" itemProp="model">{related.modelName}</span>
+                                  {related.generationName && (
+                                    <span className="text-slate-400 dark:text-slate-500" itemProp="name">• {related.generationName}</span>
+                                  )}
+                                </div>
+                              )}
+                          
+                              {similarityPercent !== null && (
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700" aria-label={t(`Similarity match: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeitsübereinstimmung: ${similarityPercent.toFixed(2)}%`)}>
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner" role="progressbar" aria-valuenow={similarityPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t(`Similarity: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeit: ${similarityPercent.toFixed(2)}%`)}>
+                                      <div 
+                                        className={`h-full rounded-full transition-all duration-500 ${
+                                          similarityPercent >= 85 
+                                            ? 'bg-gradient-to-r from-green-500 to-green-600 dark:from-green-400 dark:to-green-500'
+                                            : similarityPercent >= 75
+                                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500'
+                                            : similarityPercent >= 70
+                                            ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 dark:from-yellow-400 dark:to-yellow-500'
+                                            : 'bg-gradient-to-r from-orange-500 to-orange-600 dark:from-orange-400 dark:to-orange-500'
+                                        }`}
+                                        style={{ width: `${similarityPercent}%` }}
+                                        aria-hidden="true"
+                                      />
+                                    </div>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap">
+                                      {t('Match', 'Übereinstimmung')}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </article>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </>
+            )}
+          </section>
         )}
 
         {/* Social Sharing */}

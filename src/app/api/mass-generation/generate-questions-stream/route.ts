@@ -10,9 +10,104 @@ const OPENAI_API_URL = 'https://api.openai.com/v1';
 
 // Fixed batch size - exactly 50 questions per API call as requested
 const BATCH_SIZE = 50; // Fixed at 50 questions per API call
-const PARALLEL_GENERATIONS = 5; // Process 5 generations in parallel
-const PARALLEL_BATCHES_PER_GENERATION = 3; // Process 3 batches per generation in parallel
-const DELAY_BETWEEN_BATCHES = 200; // Reduced delay for faster processing
+// For 45,000 questions (9 generations × 5,000), we want maximum parallelization
+// With rate limits: 10M TPM, 10k RPM
+// Each generation has ~100 batches (5,000 / 50)
+// We can process multiple generations in parallel, each with many batches
+const PARALLEL_GENERATIONS = 9; // Process all 9 generations in parallel for 45k questions
+
+// Rate Limits for GPT-4o-mini
+const MAX_TOKENS_PER_MINUTE = 10_000_000; // 10M tokens per minute
+const MAX_REQUESTS_PER_MINUTE = 10_000; // 10k requests per minute
+const ESTIMATED_TOKENS_PER_REQUEST = 2500; // Estimated: ~2000 input + ~500 output tokens per batch
+
+// Rate Limiter class - OPTIMIZED: Non-blocking, optimistic approach
+class RateLimiter {
+  private tokenWindow: Array<{ timestamp: number; tokens: number }> = [];
+  private requestWindow: number[] = [];
+  private readonly windowSize = 60_000; // 1 minute in ms
+  private readonly safetyMargin = 0.95; // Use 95% of limits (increased from 85% for more throughput)
+
+  async waitForCapacity(maxWaitTime: number = 5000): Promise<void> {
+    const startTime = Date.now();
+    const now = Date.now();
+    
+    // Clean old entries
+    this.tokenWindow = this.tokenWindow.filter(t => now - t.timestamp < this.windowSize);
+    this.requestWindow = this.requestWindow.filter(t => now - t < this.windowSize);
+
+    // Calculate current usage
+    const currentTokens = this.tokenWindow.reduce((sum, entry) => sum + entry.tokens, 0);
+    const currentRequests = this.requestWindow.length;
+
+    // Use safety margin to avoid hitting limits
+    const maxTokensAllowed = MAX_TOKENS_PER_MINUTE * this.safetyMargin;
+    const maxRequestsAllowed = MAX_REQUESTS_PER_MINUTE * this.safetyMargin;
+
+    // OPTIMISTIC APPROACH: Only wait if we're VERY close to the limit
+    // This allows much more parallelization
+    const tokenThreshold = maxTokensAllowed * 0.98; // Only wait at 98% of safety margin
+    const requestThreshold = maxRequestsAllowed * 0.98; // Only wait at 98% of safety margin
+
+    // Quick check - if we're well below limits, proceed immediately
+    if (currentTokens + ESTIMATED_TOKENS_PER_REQUEST < tokenThreshold && 
+        currentRequests < requestThreshold) {
+      return; // Proceed immediately - no waiting needed
+    }
+
+    // Only wait if we're really close to the limit
+    if (currentTokens + ESTIMATED_TOKENS_PER_REQUEST > tokenThreshold) {
+      const oldestToken = this.tokenWindow[0]?.timestamp;
+      if (oldestToken) {
+        const waitTime = Math.min(this.windowSize - (now - oldestToken), maxWaitTime - (Date.now() - startTime));
+        if (waitTime > 0 && waitTime < 5000) {
+          // Very short wait - just enough to let some requests complete
+          await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, 100))); // Max 100ms wait
+          return this.waitForCapacity(maxWaitTime - (Date.now() - startTime));
+        }
+      }
+    }
+
+    // Only wait if we're really close to request limit
+    if (currentRequests >= requestThreshold) {
+      const oldestRequest = this.requestWindow[0];
+      if (oldestRequest) {
+        const waitTime = Math.min(this.windowSize - (now - oldestRequest), maxWaitTime - (Date.now() - startTime));
+        if (waitTime > 0 && waitTime < 5000) {
+          // Very short wait - just enough to let some requests complete
+          await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, 100))); // Max 100ms wait
+          return this.waitForCapacity(maxWaitTime - (Date.now() - startTime));
+        }
+      }
+    }
+
+    // If we've waited too long, proceed anyway (don't block forever)
+    if (Date.now() - startTime > maxWaitTime) {
+      return;
+    }
+  }
+
+  // Record successful API call (call this AFTER successful response)
+  recordSuccess(actualTokens?: number): void {
+    const now = Date.now();
+    const tokensUsed = actualTokens || ESTIMATED_TOKENS_PER_REQUEST;
+    this.tokenWindow.push({ timestamp: now, tokens: tokensUsed });
+    this.requestWindow.push(now);
+  }
+
+  getCurrentUsage(): { tokens: number; requests: number } {
+    const now = Date.now();
+    this.tokenWindow = this.tokenWindow.filter(t => now - t.timestamp < this.windowSize);
+    this.requestWindow = this.requestWindow.filter(t => now - t < this.windowSize);
+    return {
+      tokens: this.tokenWindow.reduce((sum, entry) => sum + entry.tokens, 0),
+      requests: this.requestWindow.length,
+    };
+  }
+}
+
+// Global rate limiter instance
+const rateLimiter = new RateLimiter();
 
 // Quality thresholds - relaxed for better results
 const MIN_QUESTION_LENGTH = 10; // Minimum characters (reduced further for edge cases)
@@ -171,7 +266,55 @@ function getOpenAIApiKey() {
 
 // Helper to send progress update
 function sendProgress(data: any) {
-  return `data: ${JSON.stringify(data)}\n\n`;
+  try {
+    // Truncate very long strings (like prompts) to prevent JSON issues
+    const sanitized = { ...data };
+    
+    // Remove or truncate very long prompt fields to prevent JSON serialization issues
+    if (sanitized.systemPrompt) {
+      if (sanitized.systemPrompt.length > 2000) {
+        sanitized.systemPrompt = sanitized.systemPrompt.substring(0, 2000) + '... [truncated]';
+      }
+    }
+    if (sanitized.userPrompt) {
+      if (sanitized.userPrompt.length > 2000) {
+        sanitized.userPrompt = sanitized.userPrompt.substring(0, 2000) + '... [truncated]';
+      }
+    }
+    // Remove fullPrompt and other potentially problematic fields
+    delete sanitized.fullPrompt; // Remove fullPrompt as it's redundant and can be very long
+    delete sanitized.prompts; // Remove nested prompts object if it exists
+    
+    // Aggressively truncate remaining prompt fields
+    if (sanitized.systemPrompt && sanitized.systemPrompt.length > 500) {
+      sanitized.systemPrompt = sanitized.systemPrompt.substring(0, 500) + '... [truncated]';
+    }
+    if (sanitized.userPrompt && sanitized.userPrompt.length > 500) {
+      sanitized.userPrompt = sanitized.userPrompt.substring(0, 500) + '... [truncated]';
+    }
+    
+    const jsonStr = JSON.stringify(sanitized);
+    
+    // Additional safety check - if JSON is still too long, truncate the whole thing
+    if (jsonStr.length > 50000) {
+      // Send minimal data instead
+      return `data: ${JSON.stringify({ 
+        type: data.type || 'progress', 
+        batchNumber: data.batchNumber,
+        message: 'Progress update (prompts truncated due to size)'
+      })}\n\n`;
+    }
+    
+    return `data: ${jsonStr}\n\n`;
+  } catch (error) {
+    // If JSON.stringify fails, send a safe error message
+    console.error('Error serializing progress data:', error);
+    return `data: ${JSON.stringify({ 
+      type: data?.type || 'error', 
+      error: 'Failed to serialize progress data',
+      batchNumber: data?.batchNumber
+    })}\n\n`;
+  }
 }
 
 // Wrapper function that calls the appropriate generation function with generationId tracking
@@ -268,7 +411,8 @@ async function loadGenerationPrompts(
   }
 }
 
-// Get prompt for a specific batch (rotates every 5 batches)
+// Get prompt for a specific batch (rotates every 4 batches for 25 slots = 200 questions per slot)
+// With BATCH_SIZE = 50: 200 questions / 50 = 4 batches per slot
 function getPromptForBatch(
   prompts: Array<{ prompt_order: number; system_prompt: string; user_prompt_template: string; model: string; temperature: number; max_tokens: number }>,
   batchNumber: number,
@@ -291,12 +435,15 @@ function getPromptForBatch(
       userPrompt: '',
       model: 'gpt-4o-mini',
       temperature: 0.8,
-      maxTokens: 4000,
+      maxTokens: 5000,
     };
   }
   
-  // Rotate prompt every 5 batches: batch 1-5 use prompt 1, batch 6-10 use prompt 2, etc.
-  const promptIndex = Math.floor((batchNumber - 1) / 5) % prompts.length;
+  // Rotate prompt every 4 batches (200 questions per slot):
+  // Batches 1-4 use prompt 1, batches 5-8 use prompt 2, etc.
+  // This supports up to 25 slots (100 batches = 5,000 questions)
+  const BATCHES_PER_SLOT = 4; // 200 questions / 50 batch size = 4 batches
+  const promptIndex = Math.floor((batchNumber - 1) / BATCHES_PER_SLOT) % prompts.length;
   const selectedPrompt = prompts[promptIndex];
   
   // Replace placeholders in user prompt template
@@ -399,16 +546,36 @@ Format: Ein Problem/Frage pro Zeile, keine Nummerierung, klar und durchsuchbar. 
     batchSize: BATCH_SIZE,
     totalQuestions: count,
     prompt: customPrompts.length > 0 
-      ? `Using ${customPrompts.length} custom prompts (rotating every 5 batches)` 
+      ? `Using ${customPrompts.length} custom prompts (rotating every 4 batches)` 
       : (defaultContextPrompt.substring(0, 500) + '...'), // Preview of prompt
     generationId: '', // Will be added by wrapper
   });
 
-  for (let i = 0; i < batches; i++) {
-    const batchNumber = i + 1;
-    const batchCount = i === batches - 1 ? count - (i * BATCH_SIZE) : BATCH_SIZE;
-    
-    // Get prompt for this batch (rotates every 5 batches)
+  // Process batches in parallel groups (respecting rate limits)
+  // For 5,000 questions = 100 batches, we can process many in parallel
+  // With 10M TPM and ~2500 tokens per request, we can do ~4000 requests/min = ~66 requests/sec
+  // With 10k RPM, we can theoretically do 166 requests/sec, but we'll be conservative
+  // For maximum speed: Process up to 100 batches in parallel per generation
+  // This allows us to utilize the full 10k RPM limit when processing multiple generations
+  const PARALLEL_BATCHES = 100; // Increased from 40 to 100 for maximum speed
+  const batchGroups: number[][] = [];
+  
+  for (let i = 0; i < batches; i += PARALLEL_BATCHES) {
+    const group = Array.from({ length: Math.min(PARALLEL_BATCHES, batches - i) }, (_, j) => i + j + 1);
+    batchGroups.push(group);
+  }
+
+  for (const batchGroup of batchGroups) {
+    // Process batches in this group in parallel
+    const batchResults = await Promise.all(batchGroup.map(async (batchNumber) => {
+      const batchIndex = batchNumber - 1;
+      const batchCount = batchIndex === batches - 1 ? count - (batchIndex * BATCH_SIZE) : BATCH_SIZE;
+      
+      // Wait for rate limit capacity (short timeout - optimistic approach)
+      // Most requests will proceed immediately without waiting
+      await rateLimiter.waitForCapacity(5000);
+      
+      // Get prompt for this batch (rotates every 4 batches)
     let systemPrompt: string;
     let userPrompt: string;
     let modelToUse: string;
@@ -422,12 +589,37 @@ Format: Ein Problem/Frage pro Zeile, keine Nummerierung, klar und durchsuchbar. 
       userPrompt = promptData.userPrompt;
       modelToUse = promptData.model;
       temperatureToUse = promptData.temperature;
-      maxTokensToUse = promptData.maxTokens;
+      // Increase max_tokens to ensure we can generate all 50 questions
+      // Each question is ~50-100 tokens, so 50 questions = ~2500-5000 tokens
+      maxTokensToUse = Math.max(promptData.maxTokens || 5000, batchCount * 100); // At least 100 tokens per question
       
-      // Add batch-specific instructions to user prompt
+      // Add batch-specific instructions to user prompt with STRONG emphasis
       userPrompt = `${userPrompt}
 
-Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
+CRITICAL REQUIREMENT - MUST BE FOLLOWED EXACTLY:
+You MUST generate EXACTLY ${batchCount} unique questions - NOT ${batchCount - 1}, NOT ${batchCount + 1}, EXACTLY ${batchCount}.
+This is a HARD REQUIREMENT. Your response is INCOMPLETE and UNUSABLE if you generate fewer than ${batchCount} questions.
+
+BEFORE OUTPUTTING:
+1. Count your questions carefully
+2. Ensure you have EXACTLY ${batchCount} questions
+3. If you have fewer, generate more until you reach ${batchCount}
+4. If you have more, remove the extras until you have exactly ${batchCount}
+
+QUALITY REQUIREMENTS:
+- Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}
+- Do not repeat questions from previous batches or from the existing questions list
+- Use natural, searchable question formats that real users would type
+- Prioritize high-search-volume problems and issues
+- Ensure questions are unique and not too similar to each other
+
+OUTPUT FORMAT:
+- One question per line
+- No numbering, no bullets, no prefixes
+- Just the question text, one per line
+- EXACTLY ${batchCount} lines of questions
+
+OUTPUT EXACTLY ${batchCount} QUESTIONS - THIS IS MANDATORY AND NON-NEGOTIABLE.`;
     } else {
       // Use default prompts
       const batchPrompt = `${defaultContextPrompt} 
@@ -435,30 +627,42 @@ Generate exactly ${batchCount} unique questions. Do not repeat questions from pr
 Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
 
       systemPrompt = language === 'de'
-        ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Probleme für jedes Automodell. Generiere ${batchCount} hochwertige, einzigartige, präzise, technische Fragen zum Thema: "${batchPrompt}". 
+        ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Probleme für jedes Automodell. 
 
-WICHTIG: 
+KRITISCH WICHTIG - MUSS GENAU EINGEHALTEN WERDEN:
+- Du MUSST GENAU ${batchCount} Fragen generieren - NICHT weniger, NICHT mehr
+- Wenn du weniger als ${batchCount} Fragen generierst, ist deine Antwort UNVOLLSTÄNDIG und UNBRAUCHBAR
+- Zähle deine Fragen vor dem Ausgeben - es müssen EXAKT ${batchCount} sein
 - Priorisiere Fragen nach Suchhäufigkeit (meistgesucht zuerst)
 - Verwende natürliche Suchanfrage-Formulierungen
 - Jede Frage muss spezifisch für dieses Modell/Generation sein
 - Keine Wiederholungen oder ähnliche Fragen
-- Gib nur die Fragen aus, eine pro Zeile, mit normalen Leerzeichen und korrekter Formatierung. Keine Nummerierung, keine Antworten, keine Wiederholungen, keine Einleitung, keine doppelten Fragen. Schreibe normale, lesbare Sätze wie Menschen sie suchen würden.`
-        : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched problems for each car model. Generate ${batchCount} high-quality, unique, precise, technical questions about: "${batchPrompt}".
+- Gib NUR die Fragen aus, eine pro Zeile, mit normalen Leerzeichen und korrekter Formatierung
+- Keine Nummerierung, keine Antworten, keine Wiederholungen, keine Einleitung, keine doppelten Fragen
+- Schreibe normale, lesbare Sätze wie Menschen sie suchen würden
+- GENERIERE EXAKT ${batchCount} FRAGEN - DIES IST EINE HARTE ANFORDERUNG`
+        : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched problems for each car model.
 
-IMPORTANT:
+CRITICALLY IMPORTANT - MUST BE FOLLOWED EXACTLY:
+- You MUST generate EXACTLY ${batchCount} questions - NOT fewer, NOT more
+- If you generate fewer than ${batchCount} questions, your response is INCOMPLETE and UNUSABLE
+- Count your questions before outputting - there must be EXACTLY ${batchCount}
 - Prioritize questions by search frequency (most searched first)
 - Use natural search query formulations
 - Each question must be specific to this model/generation
 - No repetitions or similar questions
-- Output only the questions, one per line, with proper spacing and normal sentence formatting. No numbering, no answers, no introduction, no duplicates. Write normal, readable sentences as people would search for them.`;
+- Output ONLY the questions, one per line, with proper spacing and normal sentence formatting
+- No numbering, no answers, no introduction, no duplicates
+- Write normal, readable sentences as people would search for them
+- GENERATE EXACTLY ${batchCount} QUESTIONS - THIS IS A HARD REQUIREMENT`;
       
       userPrompt = batchPrompt;
       modelToUse = 'gpt-4o-mini';
       temperatureToUse = 0.8;
-      maxTokensToUse = 4000;
+      maxTokensToUse = 5000;
     }
 
-    // Send API call details
+    // Send API call details (without fullPrompt to avoid JSON size issues)
     sendUpdate({
       type: 'api_call_start',
       batchNumber,
@@ -467,9 +671,9 @@ IMPORTANT:
       model: modelToUse,
       temperature: temperatureToUse,
       maxTokens: maxTokensToUse,
-      systemPrompt: systemPrompt,
-      userPrompt: userPrompt,
-      fullPrompt: `${systemPrompt}\n\n${userPrompt}`,
+      // Only send truncated prompts for debugging, not full prompts
+      systemPrompt: systemPrompt.length > 500 ? systemPrompt.substring(0, 500) + '... [truncated]' : systemPrompt,
+      userPrompt: userPrompt.length > 500 ? userPrompt.substring(0, 500) + '... [truncated]' : userPrompt,
     });
 
     let response: Response | null = null;
@@ -477,25 +681,79 @@ IMPORTANT:
     const maxRetries = 5;
     const retryDelay = 2000;
     const startTime = Date.now();
+    let rawQuestions: string[] = [];
+    let validQuestions: string[] = [];
+    let invalidQuestions: Array<{ question: string; reason: string }> = [];
+    let content = '';
+    let data: any = null;
     
     for (let retry = 0; retry < maxRetries; retry++) {
       try {
-        response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: modelToUse,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            temperature: temperatureToUse,
-            max_tokens: maxTokensToUse,
-          }),
-        });
+        // If retrying due to insufficient questions, strengthen the prompt
+        let currentUserPrompt = userPrompt;
+        if (retry > 0 && rawQuestions.length > 0) {
+          const missingCount = batchCount - rawQuestions.length;
+          currentUserPrompt = `${userPrompt}
+
+CRITICAL RETRY: You previously generated only ${rawQuestions.length} questions, but you MUST generate EXACTLY ${batchCount} questions. Generate ${missingCount} more questions now. This is mandatory.`;
+        }
+        
+        // Add timeout and better error handling for network issues
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (reduced from 60)
+        
+        try {
+          response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: modelToUse,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: currentUserPrompt },
+              ],
+              temperature: temperatureToUse,
+              max_tokens: maxTokensToUse,
+            }),
+            signal: controller.signal,
+          });
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          // Handle network errors (socket errors, timeouts, etc.)
+          if (fetchError.name === 'AbortError' || fetchError.code === 'UND_ERR_SOCKET' || fetchError.message?.includes('fetch failed')) {
+            lastError = new Error(`Network error (attempt ${retry + 1}/${maxRetries}): ${fetchError.message || 'Connection failed'}`);
+            
+            sendUpdate({
+              type: 'api_call_retry',
+              batchNumber,
+              attempt: retry + 1,
+              maxRetries,
+              error: `Network error: ${fetchError.message || 'Connection failed'}`,
+              responseTime: Date.now() - startTime,
+            });
+            
+            if (retry < maxRetries - 1) {
+              // Exponential backoff with jitter for network errors
+              const delay = retryDelay * Math.pow(2, retry) + Math.random() * 1000;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            // After max retries, return empty questions instead of throwing to allow other batches to continue
+            sendUpdate({
+              type: 'batch_failed',
+              batchNumber,
+              error: `Network error after ${maxRetries} attempts: ${lastError.message}`,
+              warning: 'Batch failed due to network issues, but continuing with other batches',
+            });
+            return { batchNumber, questions: [], tokensUsed: 0 };
+          }
+          throw fetchError;
+        }
+        
+        clearTimeout(timeoutId);
 
         const responseTime = Date.now() - startTime;
         totalApiCalls++;
@@ -531,9 +789,132 @@ IMPORTANT:
             errorText = `Status ${response.status}`;
           }
           throw new Error(`Failed to generate questions batch ${batchNumber}: ${response.status} ${errorText.substring(0, 200)}`);
-        } else {
+        }
+
+        // Parse response
+        data = await response.json();
+        content = data.choices?.[0]?.message?.content?.trim();
+        
+        if (!content) {
+          throw new Error(`No questions generated in batch ${batchNumber}`);
+        }
+        
+        // Record successful API call in rate limiter (only after successful response)
+        const actualTokens = data.usage?.total_tokens || ESTIMATED_TOKENS_PER_REQUEST;
+        rateLimiter.recordSuccess(actualTokens);
+
+        // Parse and validate questions
+        rawQuestions = content
+          .split('\n')
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.length > 0 && !line.match(/^\d+[\.\)]/));
+        
+        // Check if we got enough raw questions - if not, retry with stronger prompt
+        // Use 0.98 threshold (49 for 50) to ensure we get very close to the target
+        if (rawQuestions.length < batchCount * 0.98 && retry < maxRetries - 1) {
+          const missingCount = batchCount - rawQuestions.length;
+          sendUpdate({
+            type: 'insufficient_questions',
+            batchNumber,
+            rawQuestions: rawQuestions.length,
+            expected: batchCount,
+            attempt: retry + 1,
+            warning: `Only ${rawQuestions.length} questions generated (missing ${missingCount}), retrying with stronger prompt...`,
+          });
+          
+          // Strengthen prompt for retry - be VERY explicit
+          userPrompt = `${userPrompt}
+
+🚨 URGENT RETRY - CRITICAL FAILURE 🚨
+You generated ONLY ${rawQuestions.length} questions, but you MUST generate EXACTLY ${batchCount} questions.
+You are missing ${missingCount} questions. This is UNACCEPTABLE.
+
+MANDATORY ACTION:
+1. Generate ${missingCount} MORE questions immediately
+2. Count ALL questions carefully - you must have EXACTLY ${batchCount}
+3. Do NOT stop until you have ${batchCount} questions
+4. Output EXACTLY ${batchCount} questions total - NO EXCEPTIONS
+
+Your previous response was INCOMPLETE and REJECTED. Generate the missing ${missingCount} questions NOW.`;
+          
+          lastError = new Error(`Insufficient questions: ${rawQuestions.length} < ${batchCount * 0.98}`);
+          const delay = retryDelay * Math.pow(2, retry);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // Validate questions
+        validQuestions = [];
+        invalidQuestions = [];
+        const existingQuestionsArray = Array.from(existingQuestions);
+        
+        for (const rawQ of rawQuestions) {
+          // Validate and clean
+          const validation = validateAndCleanQuestion(rawQ, brand, model, generation);
+          
+          if (!validation.valid) {
+            invalidQuestions.push({ question: rawQ, reason: validation.reason || 'Invalid' });
+            continue;
+          }
+          
+          const cleaned = validation.cleaned;
+          const normalized = cleaned.toLowerCase().trim();
+          
+          // Check exact duplicate
+          if (existingQuestions.has(normalized)) {
+            invalidQuestions.push({ question: cleaned, reason: 'Exact duplicate' });
+            continue;
+          }
+          
+          // Check similarity (only check against recent questions for performance)
+          const recentQuestions = existingQuestionsArray.slice(-100);
+          if (isTooSimilar(cleaned, recentQuestions, 0.85)) {
+            invalidQuestions.push({ question: cleaned, reason: 'Too similar to existing question' });
+            continue;
+          }
+          
+          validQuestions.push(cleaned);
+          existingQuestions.add(normalized);
+        }
+        
+        // If we got enough valid questions (98% threshold), break out of retry loop
+        if (validQuestions.length >= batchCount * 0.98) {
           break;
         }
+        
+        // If we got too few valid questions after validation, retry with stronger prompt
+        if (retry < maxRetries - 1) {
+          const missingValid = batchCount - validQuestions.length;
+          const invalidCount = rawQuestions.length - validQuestions.length;
+          sendUpdate({
+            type: 'insufficient_valid_questions',
+            batchNumber,
+            validQuestions: validQuestions.length,
+            rawQuestions: rawQuestions.length,
+            invalidCount,
+            expected: batchCount,
+            attempt: retry + 1,
+            warning: `Only ${validQuestions.length} valid questions after validation (${invalidCount} invalid, missing ${missingValid}), retrying with stronger prompt...`,
+          });
+          
+          // Strengthen prompt to generate more questions and avoid invalid ones
+          userPrompt = `${userPrompt}
+
+CRITICAL RETRY - VALIDATION FAILED: You generated ${rawQuestions.length} raw questions, but only ${validQuestions.length} passed validation. ${invalidCount} questions were rejected. You MUST generate EXACTLY ${batchCount} VALID questions. Focus on:
+- Questions that are specific to ${brand} ${model} ${generation}
+- Natural, searchable question formats
+- Avoid duplicates or overly similar questions
+- Ensure each question is unique and distinct
+Generate ${missingValid} MORE valid questions. Output EXACTLY ${batchCount} valid questions total.`;
+          
+          lastError = new Error(`Insufficient valid questions: ${validQuestions.length} < ${batchCount * 0.95}`);
+          const delay = retryDelay * Math.pow(2, retry);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // If we reach here, we've exhausted retries but have some questions
+        break;
       } catch (err: any) {
         lastError = err;
         const errorMsg = err.message || String(err);
@@ -561,61 +942,30 @@ IMPORTANT:
           continue;
         }
         if (retry === maxRetries - 1) {
-          throw lastError || err;
+          // After max retries, return empty questions instead of throwing to allow other batches to continue
+          sendUpdate({
+            type: 'batch_failed',
+            batchNumber,
+            error: `Failed after ${maxRetries} attempts: ${lastError?.message || err.message}`,
+            warning: 'Batch failed, but continuing with other batches',
+          });
+          return { batchNumber, questions: [], tokensUsed: 0 };
         }
       }
     }
 
-    if (!response || !response.ok) {
-      throw lastError || new Error(`Failed to generate questions batch ${batchNumber} after ${maxRetries} attempts`);
+    if (!response || !response.ok || !content) {
+      // After all retries failed, return empty questions instead of throwing
+      sendUpdate({
+        type: 'batch_failed',
+        batchNumber,
+        error: `Failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`,
+        warning: 'Batch failed, but continuing with other batches',
+      });
+      return { batchNumber, questions: [], tokensUsed: 0 };
     }
 
     const responseTime = Date.now() - startTime;
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content?.trim();
-    
-    if (!content) {
-      throw new Error(`No questions generated in batch ${batchNumber}`);
-    }
-
-    // Parse and validate questions
-    const rawQuestions = content
-      .split('\n')
-      .map((line: string) => line.trim())
-      .filter((line: string) => line.length > 0 && !line.match(/^\d+[\.\)]/));
-    
-    const validQuestions: string[] = [];
-    const invalidQuestions: Array<{ question: string; reason: string }> = [];
-    const existingQuestionsArray = Array.from(existingQuestions);
-    
-    for (const rawQ of rawQuestions) {
-      // Validate and clean
-      const validation = validateAndCleanQuestion(rawQ, brand, model, generation);
-      
-      if (!validation.valid) {
-        invalidQuestions.push({ question: rawQ, reason: validation.reason || 'Invalid' });
-        continue;
-      }
-      
-      const cleaned = validation.cleaned;
-      const normalized = cleaned.toLowerCase().trim();
-      
-      // Check exact duplicate
-      if (existingQuestions.has(normalized)) {
-        invalidQuestions.push({ question: cleaned, reason: 'Exact duplicate' });
-        continue;
-      }
-      
-      // Check similarity (only check against recent questions for performance)
-      const recentQuestions = existingQuestionsArray.slice(-100);
-      if (isTooSimilar(cleaned, recentQuestions, 0.85)) {
-        invalidQuestions.push({ question: cleaned, reason: 'Too similar to existing question' });
-        continue;
-      }
-      
-      validQuestions.push(cleaned);
-      existingQuestions.add(normalized);
-    }
     
     // Report validation results
     sendUpdate({
@@ -623,10 +973,9 @@ IMPORTANT:
       batchNumber,
       valid: validQuestions.length,
       invalid: invalidQuestions.length,
+      rawQuestions: rawQuestions.length,
       invalidReasons: invalidQuestions.slice(0, 10).map(iq => `${iq.question.substring(0, 50)}... (${iq.reason})`),
     });
-    
-    allQuestions.push(...validQuestions);
 
     sendUpdate({
       type: 'api_call_complete',
@@ -635,28 +984,74 @@ IMPORTANT:
       questionsGenerated: validQuestions.length,
       rawQuestionsGenerated: rawQuestions.length,
       invalidQuestions: invalidQuestions.length,
-      totalQuestionsSoFar: allQuestions.length,
+      totalQuestionsSoFar: allQuestions.length + validQuestions.length,
       responseTime,
       tokensUsed: data.usage?.total_tokens || 0,
       promptTokens: data.usage?.prompt_tokens || 0,
       completionTokens: data.usage?.completion_tokens || 0,
     });
     
-    // If we got too few valid questions, we might need to generate more
-    if (validQuestions.length < batchCount * 0.7 && i < batches - 1) {
-      sendUpdate({
-        type: 'low_quality_batch',
-        batchNumber,
-        validQuestions: validQuestions.length,
-        expected: batchCount,
-        warning: 'Low quality batch - many questions were filtered',
-      });
-    }
+      // If we got too few valid questions, we might need to generate more
+      if (validQuestions.length < batchCount * 0.95 && batchNumber < batches) {
+        sendUpdate({
+          type: 'low_quality_batch',
+          batchNumber,
+          validQuestions: validQuestions.length,
+          expected: batchCount,
+          warning: `Low quality batch - only ${validQuestions.length}/${batchCount} questions passed validation (${batchCount - validQuestions.length} missing)`,
+        });
+      }
 
-    if (i < batches - 1) {
-      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+      return {
+        batchNumber,
+        questions: validQuestions,
+        tokensUsed: data.usage?.total_tokens || 0,
+      };
+    }));
+
+    // Collect results from parallel batches and verify all batches completed
+    let batchesCompleted = 0;
+    let batchesFailed = 0;
+    for (const result of batchResults) {
+      if (result && result.questions) {
+        allQuestions.push(...result.questions);
+        totalApiCalls++;
+        batchesCompleted++;
+      } else {
+        batchesFailed++;
+      }
+    }
+    
+    // Log batch completion status
+    sendUpdate({
+      type: 'batch_group_complete',
+      batchGroup: batchGroups.indexOf(batchGroup) + 1,
+      totalBatchGroups: batchGroups.length,
+      batchesCompleted,
+      batchesFailed,
+      batchesInGroup: batchGroup.length,
+      totalQuestionsSoFar: allQuestions.length,
+    });
+    
+    // Warn if batches failed
+    if (batchesFailed > 0) {
+      console.warn(`[Generate Questions] ${batchesFailed} batches failed in batch group ${batchGroups.indexOf(batchGroup) + 1}`);
     }
   }
+  
+  // Final verification: Check if we got enough questions
+  const expectedTotalQuestions = batches * BATCH_SIZE;
+  const actualTotalQuestions = allQuestions.length;
+  const totalCompletionPercentage = (actualTotalQuestions / expectedTotalQuestions) * 100;
+  
+  sendUpdate({
+    type: 'all_batches_complete',
+    totalBatches: batches,
+    totalQuestions: actualTotalQuestions,
+    expectedQuestions: expectedTotalQuestions,
+    completionPercentage: Math.round(totalCompletionPercentage * 100) / 100,
+    warning: actualTotalQuestions < expectedTotalQuestions * 0.9 ? `Only ${actualTotalQuestions}/${expectedTotalQuestions} questions generated (${Math.round(totalCompletionPercentage)}%)` : undefined,
+  });
 
   // Final deduplication and similarity check
   const uniqueQuestions: string[] = [];
@@ -812,15 +1207,35 @@ Format: Eine Anleitung/Leitfaden pro Zeile, keine Nummerierung, klar und umsetzb
     batchSize: BATCH_SIZE,
     totalQuestions: count,
     prompt: customPrompts.length > 0 
-      ? `Using ${customPrompts.length} custom prompts (rotating every 5 batches)` 
+      ? `Using ${customPrompts.length} custom prompts (rotating every 4 batches)` 
       : (defaultContextPrompt.substring(0, 500) + '...'),
   });
 
-  for (let i = 0; i < batches; i++) {
-    const batchNumber = i + 1;
-    const batchCount = i === batches - 1 ? count - (i * BATCH_SIZE) : BATCH_SIZE;
-    
-    // Get prompt for this batch (rotates every 5 batches)
+  // Process batches in parallel groups (respecting rate limits)
+  // For 5,000 questions = 100 batches, we can process many in parallel
+  // With 10M TPM and ~2500 tokens per request, we can do ~4000 requests/min = ~66 requests/sec
+  // With 10k RPM, we can theoretically do 166 requests/sec, but we'll be conservative
+  // For maximum speed: Process up to 100 batches in parallel per generation
+  // This allows us to utilize the full 10k RPM limit when processing multiple generations
+  const PARALLEL_BATCHES = 100; // Increased from 40 to 100 for maximum speed
+  const batchGroups: number[][] = [];
+  
+  for (let i = 0; i < batches; i += PARALLEL_BATCHES) {
+    const group = Array.from({ length: Math.min(PARALLEL_BATCHES, batches - i) }, (_, j) => i + j + 1);
+    batchGroups.push(group);
+  }
+
+  for (const batchGroup of batchGroups) {
+    // Process batches in this group in parallel
+    const batchResults = await Promise.all(batchGroup.map(async (batchNumber) => {
+      const batchIndex = batchNumber - 1;
+      const batchCount = batchIndex === batches - 1 ? count - (batchIndex * BATCH_SIZE) : BATCH_SIZE;
+      
+      // Wait for rate limit capacity (short timeout - optimistic approach)
+      // Most requests will proceed immediately without waiting
+      await rateLimiter.waitForCapacity(5000);
+      
+      // Get prompt for this batch (rotates every 4 batches)
     let systemPrompt: string;
     let userPrompt: string;
     let modelToUse: string;
@@ -834,12 +1249,37 @@ Format: Eine Anleitung/Leitfaden pro Zeile, keine Nummerierung, klar und umsetzb
       userPrompt = promptData.userPrompt;
       modelToUse = promptData.model;
       temperatureToUse = promptData.temperature;
-      maxTokensToUse = promptData.maxTokens;
+      // Increase max_tokens to ensure we can generate all 50 questions
+      // Each question is ~50-100 tokens, so 50 questions = ~2500-5000 tokens
+      maxTokensToUse = Math.max(promptData.maxTokens || 5000, batchCount * 100); // At least 100 tokens per question
       
-      // Add batch-specific instructions to user prompt
+      // Add batch-specific instructions to user prompt with STRONG emphasis
       userPrompt = `${userPrompt}
 
-Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
+CRITICAL REQUIREMENT - MUST BE FOLLOWED EXACTLY:
+You MUST generate EXACTLY ${batchCount} unique questions - NOT ${batchCount - 1}, NOT ${batchCount + 1}, EXACTLY ${batchCount}.
+This is a HARD REQUIREMENT. Your response is INCOMPLETE and UNUSABLE if you generate fewer than ${batchCount} questions.
+
+BEFORE OUTPUTTING:
+1. Count your questions carefully
+2. Ensure you have EXACTLY ${batchCount} questions
+3. If you have fewer, generate more until you reach ${batchCount}
+4. If you have more, remove the extras until you have exactly ${batchCount}
+
+QUALITY REQUIREMENTS:
+- Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}
+- Do not repeat questions from previous batches or from the existing questions list
+- Use natural, searchable question formats that real users would type
+- Prioritize high-search-volume problems and issues
+- Ensure questions are unique and not too similar to each other
+
+OUTPUT FORMAT:
+- One question per line
+- No numbering, no bullets, no prefixes
+- Just the question text, one per line
+- EXACTLY ${batchCount} lines of questions
+
+OUTPUT EXACTLY ${batchCount} QUESTIONS - THIS IS MANDATORY AND NON-NEGOTIABLE.`;
     } else {
       // Use default prompts
       const batchPrompt = `${defaultContextPrompt} 
@@ -847,27 +1287,41 @@ Generate exactly ${batchCount} unique questions. Do not repeat questions from pr
 Generate exactly ${batchCount} unique questions. Do not repeat questions from previous batches or from the existing questions list. Each question must be distinct and specific to ${brand} ${model} ${generation}${yearRange}.`;
 
       systemPrompt = language === 'de'
-        ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Wartungsverfahren für jedes Automodell. Generiere ${batchCount} hochwertige, einzigartige, präzise, technische Fragen zum Thema: "${batchPrompt}". 
+        ? `Du bist ein Experte für Automobil-Suchanfragen und technische Wissensdatenbanken. Du kennst die am häufigsten gesuchten Wartungsverfahren für jedes Automodell. 
 
-WICHTIG: 
+KRITISCH WICHTIG - MUSS GENAU EINGEHALTEN WERDEN:
+- Du MUSST GENAU ${batchCount} Fragen generieren - NICHT weniger, NICHT mehr
+- Wenn du weniger als ${batchCount} Fragen generierst, ist deine Antwort UNVOLLSTÄNDIG und UNBRAUCHBAR
+- Zähle deine Fragen vor dem Ausgeben - es müssen EXAKT ${batchCount} sein
 - Priorisiere Fragen nach Suchhäufigkeit (meistgesucht zuerst)
 - Verwende natürliche Suchanfrage-Formulierungen
 - Jede Frage muss spezifisch für dieses Modell/Generation sein
 - Keine Wiederholungen oder ähnliche Fragen
-- Gib nur die Fragen aus, eine pro Zeile, mit normalen Leerzeichen und korrekter Formatierung. Keine Nummerierung, keine Antworten, keine Wiederholungen, keine Einleitung, keine doppelten Fragen. Schreibe normale, lesbare Sätze wie Menschen sie suchen würden.`
-        : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched maintenance procedures for each car model. Generate ${batchCount} high-quality, unique, precise, technical questions about: "${batchPrompt}".
+- Gib NUR die Fragen aus, eine pro Zeile, mit normalen Leerzeichen und korrekter Formatierung
+- Keine Nummerierung, keine Antworten, keine Wiederholungen, keine Einleitung, keine doppelten Fragen
+- Schreibe normale, lesbare Sätze wie Menschen sie suchen würden
+- GENERIERE EXAKT ${batchCount} FRAGEN - DIES IST EINE HARTE ANFORDERUNG`
+        : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched maintenance procedures for each car model.
 
-IMPORTANT:
+CRITICALLY IMPORTANT - MUST BE FOLLOWED EXACTLY:
+- You MUST generate EXACTLY ${batchCount} questions - NOT fewer, NOT more
+- If you generate fewer than ${batchCount} questions, your response is INCOMPLETE and UNUSABLE
+- Count your questions before outputting - there must be EXACTLY ${batchCount}
 - Prioritize questions by search frequency (most searched first)
 - Use natural search query formulations
 - Each question must be specific to this model/generation
 - No repetitions or similar questions
-- Output only the questions, one per line, with proper spacing and normal sentence formatting. No numbering, no answers, no introduction, no duplicates. Write normal, readable sentences as people would search for them.`;
+- Output ONLY the questions, one per line, with proper spacing and normal sentence formatting
+- No numbering, no answers, no introduction, no duplicates
+- Write normal, readable sentences as people would search for them
+- GENERATE EXACTLY ${batchCount} QUESTIONS - THIS IS A HARD REQUIREMENT`;
       
       userPrompt = batchPrompt;
       modelToUse = 'gpt-4o-mini';
       temperatureToUse = 0.8;
-      maxTokensToUse = 4000;
+      // Increase max_tokens to ensure we can generate all 50 questions
+      // Each question is ~50-100 tokens, so 50 questions = ~2500-5000 tokens
+      maxTokensToUse = Math.max(5000, batchCount * 100); // At least 100 tokens per question
     }
 
     sendUpdate({
@@ -878,9 +1332,9 @@ IMPORTANT:
       model: modelToUse,
       temperature: temperatureToUse,
       maxTokens: maxTokensToUse,
-      systemPrompt: systemPrompt,
-      userPrompt: userPrompt,
-      fullPrompt: `${systemPrompt}\n\n${userPrompt}`,
+      // Only send truncated prompts for debugging, not full prompts
+      systemPrompt: systemPrompt.length > 500 ? systemPrompt.substring(0, 500) + '... [truncated]' : systemPrompt,
+      userPrompt: userPrompt.length > 500 ? userPrompt.substring(0, 500) + '... [truncated]' : userPrompt,
     });
 
     let response: Response | null = null;
@@ -903,7 +1357,7 @@ IMPORTANT:
               { role: 'system', content: systemPrompt },
             ],
             temperature: 0.8,
-            max_tokens: 4000,
+            max_tokens: 5000,
           }),
         });
 
@@ -917,11 +1371,11 @@ IMPORTANT:
           } catch (e) {
             errorText = `Status ${response.status}`;
           }
-          lastError = new Error(`Failed to generate questions batch ${i + 1} (attempt ${retry + 1}/${maxRetries}): ${response.status} ${errorText.substring(0, 200)}`);
+          lastError = new Error(`Failed to generate questions batch ${batchNumber} (attempt ${retry + 1}/${maxRetries}): ${response.status} ${errorText.substring(0, 200)}`);
           
           sendUpdate({
             type: 'api_call_retry',
-            batchNumber: i + 1,
+            batchNumber,
             attempt: retry + 1,
             maxRetries,
             error: errorText.substring(0, 200),
@@ -940,7 +1394,7 @@ IMPORTANT:
           } catch (e) {
             errorText = `Status ${response.status}`;
           }
-          throw new Error(`Failed to generate questions batch ${i + 1}: ${response.status} ${errorText.substring(0, 200)}`);
+          throw new Error(`Failed to generate questions batch ${batchNumber}: ${response.status} ${errorText.substring(0, 200)}`);
         } else {
           break;
         }
@@ -962,7 +1416,7 @@ IMPORTANT:
           const delay = retryDelay * Math.pow(2, retry);
           sendUpdate({
             type: 'api_call_retry',
-            batchNumber: i + 1,
+            batchNumber,
             attempt: retry + 1,
             maxRetries,
             error: errorMsg.substring(0, 200),
@@ -971,13 +1425,27 @@ IMPORTANT:
           continue;
         }
         if (retry === maxRetries - 1) {
-          throw lastError || err;
+          // After max retries, return empty questions instead of throwing to allow other batches to continue
+          sendUpdate({
+            type: 'batch_failed',
+            batchNumber,
+            error: `Failed after ${maxRetries} attempts: ${lastError?.message || err.message}`,
+            warning: 'Batch failed, but continuing with other batches',
+          });
+          return { batchNumber, questions: [], tokensUsed: 0 };
         }
       }
     }
 
     if (!response || !response.ok) {
-      throw lastError || new Error(`Failed to generate questions batch ${i + 1} after ${maxRetries} attempts`);
+      // After all retries failed, return empty questions instead of throwing
+      sendUpdate({
+        type: 'batch_failed',
+        batchNumber,
+        error: `Failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`,
+        warning: 'Batch failed, but continuing with other batches',
+      });
+      return { batchNumber, questions: [], tokensUsed: 0 };
     }
 
     const responseTime = Date.now() - startTime;
@@ -985,8 +1453,12 @@ IMPORTANT:
     const content = data.choices?.[0]?.message?.content?.trim();
     
     if (!content) {
-      throw new Error(`No questions generated in batch ${i + 1}`);
+      throw new Error(`No questions generated in batch ${batchNumber}`);
     }
+    
+    // Record successful API call in rate limiter (only after successful response)
+    const actualTokens = data.usage?.total_tokens || ESTIMATED_TOKENS_PER_REQUEST;
+    rateLimiter.recordSuccess(actualTokens);
 
     // Parse and validate questions (same as fault questions)
     const rawQuestions = content
@@ -1027,46 +1499,94 @@ IMPORTANT:
       existingQuestions.add(normalized);
     }
     
-    // Report validation results
-    sendUpdate({
-      type: 'validation_results',
-      batchNumber: i + 1,
-      valid: validQuestions.length,
-      invalid: invalidQuestions.length,
-      invalidReasons: invalidQuestions.slice(0, 10).map(iq => `${iq.question.substring(0, 50)}... (${iq.reason})`),
-    });
-    
-    allQuestions.push(...validQuestions);
-
-    sendUpdate({
-      type: 'api_call_complete',
-      batchNumber: i + 1,
-      totalBatches: batches,
-      questionsGenerated: validQuestions.length,
-      rawQuestionsGenerated: rawQuestions.length,
-      invalidQuestions: invalidQuestions.length,
-      totalQuestionsSoFar: allQuestions.length,
-      responseTime,
-      tokensUsed: data.usage?.total_tokens || 0,
-      promptTokens: data.usage?.prompt_tokens || 0,
-      completionTokens: data.usage?.completion_tokens || 0,
-    });
-    
-    // If we got too few valid questions, we might need to generate more
-    if (validQuestions.length < batchCount * 0.7 && i < batches - 1) {
+      // Report validation results
       sendUpdate({
-        type: 'low_quality_batch',
-        batchNumber: i + 1,
-        validQuestions: validQuestions.length,
-        expected: batchCount,
-        warning: 'Low quality batch - many questions were filtered',
+        type: 'validation_results',
+        batchNumber,
+        valid: validQuestions.length,
+        invalid: invalidQuestions.length,
+        invalidReasons: invalidQuestions.slice(0, 10).map(iq => `${iq.question.substring(0, 50)}... (${iq.reason})`),
       });
-    }
 
-    if (i < batches - 1) {
-      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+      sendUpdate({
+        type: 'api_call_complete',
+        batchNumber,
+        totalBatches: batches,
+        questionsGenerated: validQuestions.length,
+        rawQuestionsGenerated: rawQuestions.length,
+        invalidQuestions: invalidQuestions.length,
+        totalQuestionsSoFar: allQuestions.length + validQuestions.length,
+        responseTime,
+        tokensUsed: data.usage?.total_tokens || 0,
+        promptTokens: data.usage?.prompt_tokens || 0,
+        completionTokens: data.usage?.completion_tokens || 0,
+      });
+      
+      // If we got too few valid questions, we might need to generate more
+      if (validQuestions.length < batchCount * 0.95 && batchNumber < batches) {
+        sendUpdate({
+          type: 'low_quality_batch',
+          batchNumber,
+          validQuestions: validQuestions.length,
+          expected: batchCount,
+          warning: `Low quality batch - only ${validQuestions.length}/${batchCount} questions passed validation (${batchCount - validQuestions.length} missing)`,
+        });
+      }
+
+      return {
+        batchNumber,
+        questions: validQuestions,
+        tokensUsed: data.usage?.total_tokens || 0,
+      };
+    }));
+
+    // Collect results from parallel batches and update shared state
+    let batchesCompleted = 0;
+    let batchesFailed = 0;
+    for (const result of batchResults) {
+      if (result && result.questions) {
+        allQuestions.push(...result.questions);
+        // Add to existingQuestions set for deduplication
+        result.questions.forEach((q: string) => {
+          existingQuestions.add(q.toLowerCase().trim());
+        });
+        totalApiCalls++;
+        batchesCompleted++;
+      } else {
+        batchesFailed++;
+      }
+    }
+    
+    // Log batch completion status
+    sendUpdate({
+      type: 'batch_group_complete',
+      batchGroup: batchGroups.indexOf(batchGroup) + 1,
+      totalBatchGroups: batchGroups.length,
+      batchesCompleted,
+      batchesFailed,
+      batchesInGroup: batchGroup.length,
+      totalQuestionsSoFar: allQuestions.length,
+    });
+    
+    // Warn if batches failed
+    if (batchesFailed > 0) {
+      console.warn(`[Generate Questions] ${batchesFailed} batches failed in batch group ${batchGroups.indexOf(batchGroup) + 1}`);
     }
   }
+  
+  // Final verification: Check if we got enough questions
+  const expectedTotalQuestions = batches * BATCH_SIZE;
+  const actualTotalQuestions = allQuestions.length;
+  const totalCompletionPercentage = (actualTotalQuestions / expectedTotalQuestions) * 100;
+  
+  sendUpdate({
+    type: 'all_batches_complete',
+    totalBatches: batches,
+    totalQuestions: actualTotalQuestions,
+    expectedQuestions: expectedTotalQuestions,
+    completionPercentage: Math.round(totalCompletionPercentage * 100) / 100,
+    warning: actualTotalQuestions < expectedTotalQuestions * 0.9 ? `Only ${actualTotalQuestions}/${expectedTotalQuestions} questions generated (${Math.round(totalCompletionPercentage)}%)` : undefined,
+  });
 
   // Final deduplication and similarity check
   const uniqueQuestions: string[] = [];
@@ -1163,35 +1683,57 @@ export async function POST(req: Request) {
   
   const stream = new ReadableStream({
     async start(controller) {
+      let isClosed = false;
+      
       const sendUpdate = (data: any) => {
-        controller.enqueue(encoder.encode(sendProgress(data)));
+        // Don't send updates if controller is already closed
+        if (isClosed) {
+          return;
+        }
+        try {
+          controller.enqueue(encoder.encode(sendProgress(data)));
+        } catch (error) {
+          // Controller might be closed, ignore silently
+          isClosed = true;
+        }
+      };
+      
+      const closeController = () => {
+        if (!isClosed) {
+          isClosed = true;
+          try {
+            closeController();
+          } catch (error) {
+            // Already closed, ignore
+          }
+        }
       };
 
       try {
         const { brandIds, generationIds, contentType, questionsPerGeneration, language } = await req.json();
 
         if (!brandIds || !Array.isArray(brandIds) || brandIds.length === 0) {
-          controller.enqueue(encoder.encode(sendProgress({ type: 'error', error: 'Missing required parameters: brandIds array' })));
-          controller.close();
+          sendUpdate({ type: 'error', error: 'Missing required parameters: brandIds array' });
+          closeController();
           return;
         }
 
         if (!generationIds || !Array.isArray(generationIds) || generationIds.length === 0) {
-          controller.enqueue(encoder.encode(sendProgress({ type: 'error', error: 'Missing required parameters: generationIds array' })));
-          controller.close();
+          sendUpdate({ type: 'error', error: 'Missing required parameters: generationIds array' });
+          closeController();
           return;
         }
 
         if (!contentType || !questionsPerGeneration) {
-          controller.enqueue(encoder.encode(sendProgress({ type: 'error', error: 'Missing contentType or questionsPerGeneration' })));
-          controller.close();
+          sendUpdate({ type: 'error', error: 'Missing contentType or questionsPerGeneration' });
+          closeController();
           return;
         }
 
         const totalCount = generationIds.length * questionsPerGeneration;
         if (totalCount > 50000) {
-          controller.enqueue(encoder.encode(sendProgress({ type: 'error', error: 'Total questions cannot exceed 50,000' })));
-          controller.close();
+          sendUpdate({ type: 'error', error: 'Total questions cannot exceed 50,000' });
+          closeController();
           return;
         }
 
@@ -1214,8 +1756,8 @@ export async function POST(req: Request) {
           .in('id', brandIds);
 
         if (brandsError || !brandsData || brandsData.length !== brandIds.length) {
-          controller.enqueue(encoder.encode(sendProgress({ type: 'error', error: 'One or more brands not found' })));
-          controller.close();
+          sendUpdate({ type: 'error', error: 'One or more brands not found' });
+          closeController();
           return;
         }
 
@@ -1226,8 +1768,8 @@ export async function POST(req: Request) {
           .in('id', generationIds);
 
         if (generationsError || !generationsData || generationsData.length === 0) {
-          controller.enqueue(encoder.encode(sendProgress({ type: 'error', error: 'One or more generations not found' })));
-          controller.close();
+          sendUpdate({ type: 'error', error: 'One or more generations not found' });
+          closeController();
           return;
         }
 
@@ -1391,10 +1933,11 @@ Format your response with clear headings and structured steps. Include sections 
         }
 
         // Debug: Log how many questions we have
-        console.log(`[Generate Questions] Total questions collected: ${allQuestions.length}, expected: ${totalCount}`);
+        const completionPercentage = (allQuestions.length / totalCount) * 100;
+        console.log(`[Generate Questions] Total questions collected: ${allQuestions.length}, expected: ${totalCount} (${Math.round(completionPercentage * 100) / 100}%)`);
         console.log(`[Generate Questions] Processed ${totalProcessedGenerations} of ${generationsData.length} generations`);
         
-        // Verify we processed all generations
+        // Verify we processed all generations AND got enough questions
         if (totalProcessedGenerations < generationsData.length) {
           console.warn(`[Generate Questions] Only ${totalProcessedGenerations} of ${generationsData.length} generations were successfully processed`);
           sendUpdate({
@@ -1405,22 +1948,42 @@ Format your response with clear headings and structured steps. Include sections 
           });
         }
         
+        // Check if we got enough questions (at least 90% of expected)
+        if (allQuestions.length < totalCount * 0.9) {
+          console.warn(`[Generate Questions] Only ${allQuestions.length}/${totalCount} questions generated (${Math.round(completionPercentage * 100) / 100}%). Some batches may have failed or are still running.`);
+          sendUpdate({
+            type: 'questions_warning',
+            warning: `Only ${allQuestions.length}/${totalCount} questions generated (${Math.round(completionPercentage * 100) / 100}%). Some batches may have failed or are still running.`,
+            actual: allQuestions.length,
+            expected: totalCount,
+            completionPercentage: Math.round(completionPercentage * 100) / 100,
+          });
+          
+          // Wait a bit longer to see if more batches complete
+          console.log(`[Generate Questions] Waiting 5 seconds for any remaining batches to complete...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Log again after waiting
+          console.log(`[Generate Questions] After waiting: ${allQuestions.length}/${totalCount} questions (${Math.round((allQuestions.length / totalCount) * 100 * 100) / 100}%)`);
+        }
+        
         sendUpdate({
           type: 'file_save_start',
           questionsCount: allQuestions.length,
           totalExpected: totalCount,
           processedGenerations: totalProcessedGenerations,
           totalGenerations: generationsData.length,
+          completionPercentage: Math.round(completionPercentage * 100) / 100,
         });
         
         if (allQuestions.length === 0) {
           console.error('[Generate Questions] No questions in allQuestions array after processing all generations');
           console.error(`[Generate Questions] Debug info: totalCount=${totalCount}, generationsData.length=${generationsData.length}`);
-          controller.enqueue(encoder.encode(sendProgress({
+          sendUpdate({
             type: 'error',
             error: 'No questions were generated. This might be due to strict validation filtering all questions. Try reducing questionsPerGeneration or check validation settings.'
-          })));
-          controller.close();
+          });
+          closeController();
           return;
         }
         
@@ -1460,14 +2023,16 @@ Format your response with clear headings and structured steps. Include sections 
           totalApiCalls,
         });
 
-        controller.close();
+        // Small delay to ensure all updates are sent before closing
+        await new Promise(resolve => setTimeout(resolve, 100));
+        closeController();
       } catch (error) {
         console.error('Generate questions error:', error);
-        controller.enqueue(encoder.encode(sendProgress({
+        sendUpdate({
           type: 'error',
           error: error instanceof Error ? error.message : 'Unknown error'
-        })));
-        controller.close();
+        });
+        closeController();
       }
     }
   });

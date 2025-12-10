@@ -159,7 +159,7 @@ export async function POST(req: Request) {
               
               // Map results to Q&A pairs
               qaPairs = batch1Results
-                .map((result: any) => {
+                .map((result: any): { question: string; answer: string } | null => {
                   if (result.error || result.response?.status_code !== 200) {
                     return null;
                   }
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
                   const answer = result.response?.body?.choices?.[0]?.message?.content;
                   return question && answer ? { question, answer } : null;
                 })
-                .filter((pair: any) => pair !== null);
+                .filter((pair): pair is { question: string; answer: string } => pair !== null);
 
               console.log(`[Recovery] Job ${job.id}: Batch 1 completed, ${qaPairs.length} Q&A pairs extracted`);
             } else if (['validating', 'in_progress', 'finalizing'].includes(batch1Status.status)) {

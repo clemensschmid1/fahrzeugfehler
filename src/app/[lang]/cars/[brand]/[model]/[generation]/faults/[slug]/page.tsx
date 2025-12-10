@@ -198,17 +198,102 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
 
   const faultData = faultResult.data;
 
-  // Fetch related faults for the same generation
-  const relatedFaultsResult = await supabase
-    .from('car_faults')
-    .select('id, slug, title')
-    .eq('model_generation_id', generationData.id)
-    .eq('language_path', lang)
-    .eq('status', 'live')
-    .neq('id', faultData.id)
-    .limit(6);
+  // Fetch related faults using vector similarity (generation-specific)
+  // First, get the embedding for the current fault
+  const { data: currentEmbedding } = await supabase
+    .from('car_fault_embeddings')
+    .select('embedding')
+    .eq('car_fault_id', faultData.id)
+    .single();
 
-  const relatedFaults = relatedFaultsResult.data || [];
+  let relatedFaults: Array<{ id: string; slug: string; title: string; similarity?: number }> = [];
+  let globalRelatedFaults: Array<{ id: string; slug: string; title: string; similarity?: number; brandName?: string; modelName?: string; generationName?: string }> = [];
+
+  if (currentEmbedding?.embedding) {
+    // Convert embedding to proper format for Supabase RPC
+    // Supabase vector type expects the embedding directly, not as a string
+    let embeddingVector: any = currentEmbedding.embedding;
+    
+    // If it's stored as a string array, parse it
+    if (typeof embeddingVector === 'string') {
+      try {
+        embeddingVector = JSON.parse(embeddingVector);
+      } catch {
+        // If parsing fails, try to extract numbers from string
+        const numbers = embeddingVector.match(/[\d.]+/g);
+        if (numbers) {
+          embeddingVector = numbers.map(Number);
+        }
+      }
+    }
+    
+    // Use vector similarity search within the same generation
+    const { data: similarFaults, error: similarityError } = await supabase.rpc(
+      'match_car_faults',
+      {
+        query_embedding: embeddingVector,
+        match_threshold: 0.7, // Minimum similarity threshold (0-1)
+        match_count: 6, // Number of results
+        filter_generation_id: generationData.id,
+        filter_language: lang,
+        exclude_fault_id: faultData.id,
+      }
+    );
+
+    if (!similarityError && similarFaults && similarFaults.length > 0) {
+      relatedFaults = similarFaults.map((f: any) => ({
+        id: f.id,
+        slug: f.slug,
+        title: f.title,
+        similarity: typeof f.similarity === 'number' ? f.similarity : parseFloat(f.similarity || '0'),
+      }));
+    } else if (similarityError) {
+      console.error('[Related Faults] Generation similarity error:', similarityError);
+    }
+
+    // Also fetch global related faults (but don't block page load - will be loaded on demand)
+    // We'll fetch a smaller set here for initial display
+    const { data: globalSimilarFaults, error: globalError } = await supabase.rpc(
+      'match_car_faults_global',
+      {
+        query_embedding: embeddingVector,
+        match_threshold: 0.7, // Lower threshold for global to get more results
+        match_count: 6,
+        filter_language: lang,
+        exclude_fault_id: faultData.id,
+      }
+    );
+
+    if (!globalError && globalSimilarFaults && globalSimilarFaults.length > 0) {
+      globalRelatedFaults = globalSimilarFaults.map((f: any) => ({
+        id: f.id,
+        slug: f.slug,
+        title: f.title,
+        similarity: typeof f.similarity === 'number' ? f.similarity : parseFloat(f.similarity || '0'),
+        brandName: f.brand_name,
+        modelName: f.model_name,
+        generationName: f.generation_name,
+      }));
+    } else if (globalError) {
+      console.error('[Related Faults] Global similarity error:', globalError);
+    }
+  } else {
+    console.warn('[Related Faults] No embedding found for fault:', faultData.id);
+  }
+
+  // Fallback: If no embeddings or similarity search fails, use simple query
+  if (relatedFaults.length === 0) {
+    const relatedFaultsResult = await supabase
+      .from('car_faults')
+      .select('id, slug, title')
+      .eq('model_generation_id', generationData.id)
+      .eq('language_path', lang)
+      .eq('status', 'live')
+      .neq('id', faultData.id)
+      .limit(6);
+
+    relatedFaults = relatedFaultsResult.data || [];
+  }
 
   // Fetch user for comments
   const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null }, error: null }));
@@ -246,6 +331,25 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
   // Generate JSON-LD structured data for SEO
   const baseUrl = 'https://faultbase.com';
   const pageUrl = `${baseUrl}/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`;
+  
+  // Build related faults list for structured data
+  const relatedFaultsList = relatedFaults.length > 0 ? relatedFaults.map((fault, index) => ({
+    "@type": "ListItem",
+    "position": index + 1,
+    "item": {
+      "@type": "Article",
+      "name": fault.title,
+      "url": `${baseUrl}/${lang}/cars/${brand}/${model}/${generation}/faults/${fault.slug}`,
+      ...(fault.similarity ? {
+        "additionalProperty": {
+          "@type": "PropertyValue",
+          "name": "Similarity Score",
+          "value": (fault.similarity * 100).toFixed(2)
+        }
+      } : {})
+    }
+  })) : [];
+  
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "HowTo",
@@ -302,7 +406,13 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
       "category": faultData.affected_component
     } : {}),
     "inLanguage": lang,
-    "keywords": `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car repair, automotive troubleshooting, fault diagnosis${faultData.error_code ? `, ${faultData.error_code}` : ''}`
+    "keywords": `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car repair, automotive troubleshooting, fault diagnosis${faultData.error_code ? `, ${faultData.error_code}` : ''}`,
+    ...(relatedFaultsList.length > 0 ? {
+      "relatedLink": {
+        "@type": "ItemList",
+        "itemListElement": relatedFaultsList
+      }
+    } : {})
   };
 
   return (
@@ -341,6 +451,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
           generation={generationData}
           fault={faultData}
           relatedFaults={relatedFaults}
+          globalRelatedFaults={globalRelatedFaults}
           lang={lang}
           initialComments={comments}
           user={user}

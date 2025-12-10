@@ -40,6 +40,7 @@ type CarFault = {
   error_code?: string;
   affected_component?: string;
   estimated_repair_time?: string;
+  parts_required?: string[];
   created_at: string;
 };
 
@@ -140,7 +141,7 @@ export default function GenerationDetailClient({
           {currentPage > 1 && (
             <button
               onClick={() => updatePage(currentPage - 1, type)}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:border-red-500 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400 hover:shadow-lg transition-all"
+              className="px-4 py-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-md transition-all"
             >
               <svg className="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -153,10 +154,10 @@ export default function GenerationDetailClient({
             <>
               <button
                 onClick={() => updatePage(1, type)}
-                className={`px-4 py-2.5 rounded-xl font-bold transition-all ${
+                className={`px-4 py-2.5 rounded-lg font-semibold transition-all ${
                   1 === currentPage
-                    ? 'bg-red-600 dark:bg-red-500 text-white border-2 border-red-600 dark:border-red-500 shadow-lg'
-                    : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-red-500 dark:hover:border-red-500 hover:shadow-md'
+                    ? 'bg-slate-900 dark:bg-slate-700 text-white border border-slate-900 dark:border-slate-700 shadow-md'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md'
                 }`}
               >
                 1
@@ -169,10 +170,10 @@ export default function GenerationDetailClient({
             <button
               key={page}
               onClick={() => updatePage(page, type)}
-              className={`px-4 py-2.5 rounded-xl font-bold transition-all min-w-[44px] ${
+              className={`px-4 py-2.5 rounded-lg font-semibold transition-all min-w-[44px] ${
                 page === currentPage
-                  ? 'bg-red-600 dark:bg-red-500 text-white border-2 border-red-600 dark:border-red-500 shadow-lg scale-105'
-                  : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-red-500 dark:hover:border-red-500 hover:shadow-md'
+                  ? 'bg-slate-900 dark:bg-slate-700 text-white border border-slate-900 dark:border-slate-700 shadow-md'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md'
               }`}
             >
               {page}
@@ -184,10 +185,10 @@ export default function GenerationDetailClient({
               {endPage < totalPages - 1 && <span className="px-2 text-slate-500 dark:text-slate-400 font-bold">...</span>}
               <button
                 onClick={() => updatePage(totalPages, type)}
-                className={`px-4 py-2.5 rounded-xl font-bold transition-all ${
+                className={`px-4 py-2.5 rounded-lg font-semibold transition-all ${
                   totalPages === currentPage
-                    ? 'bg-red-600 dark:bg-red-500 text-white border-2 border-red-600 dark:border-red-500 shadow-lg'
-                    : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-red-500 dark:hover:border-red-500 hover:shadow-md'
+                    ? 'bg-slate-900 dark:bg-slate-700 text-white border border-slate-900 dark:border-slate-700 shadow-md'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md'
                 }`}
               >
                 {totalPages}
@@ -198,7 +199,7 @@ export default function GenerationDetailClient({
           {currentPage < totalPages && (
             <button
               onClick={() => updatePage(currentPage + 1, type)}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:border-red-500 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400 hover:shadow-lg transition-all"
+              className="px-4 py-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-md transition-all"
             >
               {t('Next', 'Weiter')}
               <svg className="w-5 h-5 inline-block ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,20 +286,20 @@ export default function GenerationDetailClient({
 
   const getSeverityColor = (severity?: string) => {
     switch (severity?.toLowerCase()) {
-      case 'high': return 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30';
-      case 'medium': return 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-900/30';
-      case 'low': return 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/30';
-      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      case 'high': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      case 'medium': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      case 'low': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
     }
   };
 
   const getDifficultyColor = (difficulty?: string) => {
     switch (difficulty?.toLowerCase()) {
-      case 'expert': return 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30';
-      case 'hard': return 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-900/30';
-      case 'medium': return 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/30';
-      case 'easy': return 'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/30';
-      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      case 'expert': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      case 'hard': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      case 'medium': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      case 'easy': return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
     }
   };
 
@@ -400,45 +401,45 @@ export default function GenerationDetailClient({
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Stats Bar - Enhanced */}
+        {/* Stats Bar - Professional & Subtle */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-red-50 via-red-100 to-red-50 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-950/40 rounded-2xl p-5 sm:p-6 border-2 border-red-200 dark:border-red-900/30 shadow-lg hover:shadow-xl transition-shadow"
+            className="bg-white dark:bg-slate-900 rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all hover:border-slate-300 dark:hover:border-slate-700"
           >
-            <div className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 mb-2">{totalFaults.toLocaleString()}</div>
-            <div className="text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-wide">{t('Faults', 'Fehler')}</div>
-            <div className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">{t('Total', 'Gesamt')}</div>
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">{totalFaults.toLocaleString()}</div>
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">{t('Faults', 'Fehler')}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">{t('Total', 'Gesamt')}</div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-2xl p-5 sm:p-6 border-2 border-blue-200 dark:border-blue-900/30 shadow-lg hover:shadow-xl transition-shadow"
+            className="bg-white dark:bg-slate-900 rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all hover:border-slate-300 dark:hover:border-slate-700"
           >
-            <div className="text-4xl sm:text-5xl font-black text-blue-600 dark:text-blue-400 mb-2">{totalManuals.toLocaleString()}</div>
-            <div className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{t('Manuals', 'Anleitungen')}</div>
-            <div className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">{t('Total', 'Gesamt')}</div>
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">{totalManuals.toLocaleString()}</div>
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">{t('Manuals', 'Anleitungen')}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">{t('Total', 'Gesamt')}</div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 dark:from-orange-950/40 dark:via-orange-900/30 dark:to-orange-950/40 rounded-2xl p-5 sm:p-6 border-2 border-orange-200 dark:border-orange-900/30 shadow-lg hover:shadow-xl transition-shadow"
+            className="bg-white dark:bg-slate-900 rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all hover:border-slate-300 dark:hover:border-slate-700"
           >
-            <div className="text-4xl sm:text-5xl font-black text-orange-600 dark:text-orange-400 mb-2">{faultStats.bySeverity.high + faultStats.bySeverity.critical}</div>
-            <div className="text-sm font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wide">{t('High Priority', 'Hohe Priorität')}</div>
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">{faultStats.bySeverity.high + faultStats.bySeverity.critical}</div>
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">{t('High Priority', 'Hohe Priorität')}</div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-green-50 via-green-100 to-green-50 dark:from-green-950/40 dark:via-green-900/30 dark:to-green-950/40 rounded-2xl p-5 sm:p-6 border-2 border-green-200 dark:border-green-900/30 shadow-lg hover:shadow-xl transition-shadow"
+            className="bg-white dark:bg-slate-900 rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all hover:border-slate-300 dark:hover:border-slate-700"
           >
-            <div className="text-4xl sm:text-5xl font-black text-green-600 dark:text-green-400 mb-2">{faultStats.byDifficulty.easy + faultStats.byDifficulty.medium}</div>
-            <div className="text-sm font-bold text-green-700 dark:text-green-300 uppercase tracking-wide">{t('Easy Fixes', 'Einfache Reparaturen')}</div>
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">{faultStats.byDifficulty.easy + faultStats.byDifficulty.medium}</div>
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">{t('Easy Fixes', 'Einfache Reparaturen')}</div>
           </motion.div>
         </div>
 
@@ -446,13 +447,12 @@ export default function GenerationDetailClient({
         <div className="mb-10 space-y-6">
           {/* Search Bar */}
           <div className="relative max-w-3xl mx-auto">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/10 rounded-2xl blur-xl"></div>
             <input
               type="text"
               placeholder={t('Search faults and manuals...', 'Fehler und Anleitungen suchen...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="relative w-full px-6 py-4 sm:py-5 text-lg border-2 border-slate-300 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-lg"
+              className="w-full px-6 py-4 sm:py-5 text-lg border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 focus:border-slate-400 dark:focus:border-slate-600 transition-all shadow-sm hover:shadow-md"
             />
             {searchQuery && (
               <button
@@ -482,7 +482,7 @@ export default function GenerationDetailClient({
                   <select
                     value={severityFilter}
                     onChange={(e) => setSeverityFilter(e.target.value)}
-                    className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
+                    className="px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 focus:border-slate-400 dark:focus:border-slate-600 transition-all shadow-sm hover:shadow-md"
                   >
                     <option value="all">{t('All Severities', 'Alle Schweregrade')}</option>
                     {uniqueSeverities.map(severity => (
@@ -494,7 +494,7 @@ export default function GenerationDetailClient({
                   <select
                     value={componentFilter}
                     onChange={(e) => setComponentFilter(e.target.value)}
-                    className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
+                    className="px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 focus:border-slate-400 dark:focus:border-slate-600 transition-all shadow-sm hover:shadow-md"
                   >
                     <option value="all">{t('All Components', 'Alle Komponenten')}</option>
                     {uniqueComponents.map(component => (
@@ -508,7 +508,7 @@ export default function GenerationDetailClient({
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
+                className="px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 focus:border-slate-400 dark:focus:border-slate-600 transition-all shadow-sm hover:shadow-md"
               >
                 <option value="all">{t('All Difficulties', 'Alle Schwierigkeiten')}</option>
                 {uniqueDifficulties.map(difficulty => (
@@ -519,7 +519,7 @@ export default function GenerationDetailClient({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'recent' | 'title' | 'severity')}
-              className="px-4 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-red-500/20 dark:focus:ring-red-600/20 focus:border-red-500 dark:focus:border-red-600 transition-all shadow-sm hover:shadow-md"
+              className="px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 focus:border-slate-400 dark:focus:border-slate-600 transition-all shadow-sm hover:shadow-md"
             >
               <option value="recent">{t('Most Recent', 'Neueste')}</option>
               <option value="title">{t('Alphabetical', 'Alphabetisch')}</option>
@@ -540,28 +540,28 @@ export default function GenerationDetailClient({
           </div>
         </div>
 
-        {/* Tabs - Enhanced */}
+        {/* Tabs - Professional */}
         <div className="mb-10 flex justify-center">
-          <div className="inline-flex bg-slate-100 dark:bg-slate-900 rounded-2xl p-1.5 border-2 border-slate-200 dark:border-slate-800 shadow-lg">
+          <div className="inline-flex bg-slate-100 dark:bg-slate-900 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm">
             <button
               onClick={() => setActiveTab('faults')}
-              className={`px-8 py-3.5 rounded-xl font-black text-sm transition-all ${
+              className={`px-8 py-3.5 rounded-lg font-semibold text-sm transition-all ${
                 activeTab === 'faults'
-                  ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-lg border-2 border-red-200 dark:border-red-900/30'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              {t('Faults', 'Fehler')} <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 rounded-full text-xs font-bold">{totalFaults.toLocaleString()}</span>
+              {t('Faults', 'Fehler')} <span className="ml-2 px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full text-xs font-semibold">{totalFaults.toLocaleString()}</span>
             </button>
             <button
               onClick={() => setActiveTab('manuals')}
-              className={`px-8 py-3.5 rounded-xl font-black text-sm transition-all ${
+              className={`px-8 py-3.5 rounded-lg font-semibold text-sm transition-all ${
                 activeTab === 'manuals'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-lg border-2 border-blue-200 dark:border-blue-900/30'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              {t('Manuals', 'Anleitungen')} <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">{totalManuals.toLocaleString()}</span>
+              {t('Manuals', 'Anleitungen')} <span className="ml-2 px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full text-xs font-semibold">{totalManuals.toLocaleString()}</span>
             </button>
           </div>
         </div>
@@ -581,7 +581,7 @@ export default function GenerationDetailClient({
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredFaults.map((fault, index) => (
                   <motion.div
                     key={fault.id}
@@ -593,75 +593,84 @@ export default function GenerationDetailClient({
                       href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${fault.slug}`}
                       className="group block h-full"
                     >
-                      <div className="group relative bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-7 shadow-lg dark:shadow-xl hover:shadow-2xl dark:hover:shadow-red-900/20 transition-all duration-300 border-2 border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-500/50 h-full flex flex-col overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/5 to-transparent rounded-full blur-2xl group-hover:from-red-500/10 dark:group-hover:from-red-500/20 transition-opacity z-0"></div>
+                      <div className="group relative bg-white dark:bg-slate-900 rounded-lg p-6 shadow-sm dark:shadow-md hover:shadow-md dark:hover:shadow-lg transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 h-full flex flex-col">
                         
-                        <div className="flex items-start justify-between mb-4 relative z-10">
-                          <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors flex-1 leading-tight pr-2">
+                        <div className="flex items-start justify-between mb-4">
+                          <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors flex-1 leading-tight pr-2">
                             {fault.title}
                           </h3>
                         </div>
 
                         {fault.description && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 mb-5 leading-relaxed relative z-10">
+                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 mb-5 leading-relaxed">
                             {fault.description}
                           </p>
                         )}
 
-                        <div className="flex flex-wrap gap-2 mb-5 relative z-10">
+                        <div className="flex flex-wrap gap-2 mb-5">
                           {fault.severity && (
-                            <span className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 uppercase tracking-wide ${getSeverityColor(fault.severity)}`}>
+                            <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border uppercase tracking-wide ${getSeverityColor(fault.severity)}`}>
                               {fault.severity}
                             </span>
                           )}
                           {fault.difficulty_level && (
-                            <span className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 uppercase tracking-wide ${getDifficultyColor(fault.difficulty_level)}`}>
+                            <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border uppercase tracking-wide ${getDifficultyColor(fault.difficulty_level)}`}>
                               {fault.difficulty_level}
                             </span>
                           )}
                           {fault.error_code && (
-                            <span className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-700">
+                            <span className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                               {fault.error_code}
                             </span>
                           )}
                           {fault.affected_component && (
-                            <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-700">
+                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                               {fault.affected_component}
                             </span>
                           )}
                         </div>
 
-                        {/* Additional Info */}
-                        <div className="mb-4 space-y-2 relative z-10">
+                        {/* Additional Info - Professional & Subtle */}
+                        <div className="mb-4 space-y-2">
                           {fault.estimated_repair_time && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                               <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{fault.estimated_repair_time}</span>
-                              <span className="text-xs text-slate-500 dark:text-slate-400">{t('estimated', 'geschätzt')}</span>
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{fault.estimated_repair_time}</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">{t('repair time', 'Reparaturzeit')}</span>
                             </div>
                           )}
                           {fault.affected_component && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                               <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                               </svg>
                               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{fault.affected_component}</span>
                             </div>
                           )}
+                          {fault.parts_required && fault.parts_required.length > 0 && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                {fault.parts_required.length} {t('parts', 'Teile')}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
-                        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 relative z-10">
+                        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center text-red-600 dark:text-red-400/90 font-bold text-sm group-hover:translate-x-1 transition-transform">
+                            <div className="flex items-center text-slate-700 dark:text-slate-300 font-semibold text-sm group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all">
                               {t('View Solution', 'Lösung ansehen')}
                               <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </div>
                             {fault.error_code && (
-                              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700">
+                              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-mono font-semibold rounded-lg border border-slate-200 dark:border-slate-700">
                                 {fault.error_code}
                               </span>
                             )}
@@ -693,7 +702,7 @@ export default function GenerationDetailClient({
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredManuals.map((manual, index) => (
                   <motion.div
                     key={manual.id}
@@ -705,34 +714,33 @@ export default function GenerationDetailClient({
                       href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/manuals/${manual.slug}`}
                       className="group block h-full"
                     >
-                      <div className="group relative bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-7 shadow-lg dark:shadow-xl hover:shadow-2xl dark:hover:shadow-blue-900/20 transition-all duration-300 border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 h-full flex flex-col overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-transparent rounded-full blur-2xl group-hover:from-blue-500/10 dark:group-hover:from-blue-500/20 transition-opacity z-0"></div>
+                      <div className="group relative bg-white dark:bg-slate-900 rounded-lg p-6 shadow-sm dark:shadow-md hover:shadow-md dark:hover:shadow-lg transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 h-full flex flex-col">
                         
-                        <div className="flex items-start justify-between mb-4 relative z-10">
-                          <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400/90 transition-colors flex-1 leading-tight pr-2">
+                        <div className="flex items-start justify-between mb-4">
+                          <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors flex-1 leading-tight pr-2">
                             {manual.title}
                           </h3>
                         </div>
 
                         {manual.description && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 mb-5 leading-relaxed relative z-10">
+                          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 mb-5 leading-relaxed">
                             {manual.description}
                           </p>
                         )}
 
-                        <div className="flex flex-wrap gap-2 mb-5 relative z-10">
+                        <div className="flex flex-wrap gap-2 mb-5">
                           {manual.manual_type && (
-                            <span className="px-3 py-1.5 rounded-xl text-xs font-black bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-2 border-blue-200 dark:border-blue-900/30 uppercase tracking-wide">
+                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 uppercase tracking-wide">
                               {manual.manual_type}
                             </span>
                           )}
                           {manual.difficulty_level && (
-                            <span className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 uppercase tracking-wide ${getDifficultyColor(manual.difficulty_level)}`}>
+                            <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border uppercase tracking-wide ${getDifficultyColor(manual.difficulty_level)}`}>
                               {manual.difficulty_level}
                             </span>
                           )}
                           {manual.estimated_time && (
-                            <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-700">
+                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                               {manual.estimated_time}
                             </span>
                           )}
@@ -740,25 +748,25 @@ export default function GenerationDetailClient({
 
                         {/* Additional Info */}
                         {manual.estimated_time && (
-                          <div className="mb-4 flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 relative z-10">
+                          <div className="mb-4 flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                             <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{manual.estimated_time}</span>
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{manual.estimated_time}</span>
                             <span className="text-xs text-slate-500 dark:text-slate-400">{t('estimated', 'geschätzt')}</span>
                           </div>
                         )}
 
-                        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 relative z-10">
+                        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center text-blue-600 dark:text-blue-400/90 font-bold text-sm group-hover:translate-x-1 transition-transform">
+                            <div className="flex items-center text-slate-700 dark:text-slate-300 font-semibold text-sm group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all">
                               {t('View Manual', 'Anleitung ansehen')}
                               <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </div>
                             {manual.manual_type && (
-                              <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-lg border border-blue-200 dark:border-blue-900/30">
+                              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700">
                                 {manual.manual_type}
                               </span>
                             )}

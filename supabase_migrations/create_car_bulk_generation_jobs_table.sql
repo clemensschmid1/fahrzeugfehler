@@ -39,3 +39,5 @@ COMMENT ON COLUMN car_bulk_generation_jobs.batch1_id IS 'OpenAI Batch API ID for
 COMMENT ON COLUMN car_bulk_generation_jobs.batch2_id IS 'OpenAI Batch API ID for metadata generation';
 
 
+
+

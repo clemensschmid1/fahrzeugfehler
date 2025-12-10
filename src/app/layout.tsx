@@ -85,6 +85,21 @@ export default async function RootLayout({
             gtag('config', 'G-HQBPXZ8LHX');
           `}
         </Script>
+        {/* Google Ads Conversion Tracking */}
+        <Script
+          id="google-ads-gtag-src"
+          src="https://www.googletagmanager.com/gtag/js?id=AW-17794505631"
+          strategy="afterInteractive"
+          async
+        />
+        <Script id="google-ads-gtag-inline" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-17794505631');
+          `}
+        </Script>
         {/* Bing Clarity tracking code */}
         <Script id="bing-clarity-inline" strategy="afterInteractive">
           {`

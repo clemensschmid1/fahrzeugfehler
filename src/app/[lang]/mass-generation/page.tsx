@@ -28,6 +28,7 @@ type ModelGeneration = {
   generation_code?: string;
   year_start?: number;
   year_end?: number;
+  hasFaults?: boolean; // Whether this generation already has faults
 };
 
 type BatchStatus = {
@@ -69,10 +70,10 @@ type GenerationProgressDetail = {
 };
 
 type StepCardProps = {
-  step: number | 1.5 | 4.5;
+  step: number | 1.5 | 1.75 | 1.8 | 4.5 | 6;
   title: string;
   description: string;
-  status: 'idle' | 'generating' | 'uploading' | 'importing' | 'building' | 'complete' | 'error';
+  status: 'idle' | 'generating' | 'uploading' | 'importing' | 'building' | 'transforming' | 'converting' | 'splitting' | 'complete' | 'error';
   error?: string | null;
   progress?: { current: number; total: number } | null;
   onAction: () => void;
@@ -85,7 +86,21 @@ type StepCardProps = {
   batchStatus?: BatchStatus | null;
   autoRefresh?: boolean;
   onAutoRefreshChange?: (value: boolean) => void;
-  results?: { success: number; failed: number } | null;
+  results?: { 
+    success: number; 
+    failed: number;
+    embeddings?: { 
+      batchId?: string; 
+      fileId?: string; 
+      filename?: string; 
+      entriesCount?: number; 
+      total: number; 
+      note?: string;
+      successful?: number; 
+      failed?: number;
+    };
+    indexNow?: { successful: number; failed: number; total: number };
+  } | null;
   details?: {
     currentGeneration?: string;
     currentBatch?: number;
@@ -115,11 +130,29 @@ type StepCardProps = {
   onStep5QuestionsFileChange?: (file: File | null) => void;
   onStep5AnswersFileChange?: (file: File | null) => void;
   onStep5MetadataFileChange?: (file: File | null) => void;
+  // Step 5 multiple files support
+  step5QuestionsFiles?: File[];
+  step5AnswersFiles?: File[];
+  step5MetadataFiles?: File[];
+  useMultipleFiles?: boolean;
+  setUseMultipleFiles?: (value: boolean) => void;
+  setStep5QuestionsFiles?: (files: File[]) => void;
+  setStep5AnswersFiles?: (files: File[]) => void;
+  setStep5MetadataFiles?: (files: File[]) => void;
   // Step 2 file upload
   step2File?: File | null;
   onStep2FileChange?: (file: File | null) => void;
   step1_5JsonlFileUrl?: string | null;
   step1FileUrl?: string | null;
+  // Step 1.5 file upload
+  questionsFileUrlInput?: {
+    accept?: string;
+    onChange?: (file: File | null) => void;
+    file?: File | null;
+  };
+  // Step 1.8 split JSONL
+  step1_8NumParts?: number;
+  setStep1_8NumParts?: (value: number) => void;
   // Step 4.5 file upload
   step4_5MetadataFile?: File | null;
   onStep4_5MetadataFileChange?: (file: File | null) => void;
@@ -141,6 +174,15 @@ type StepCardProps = {
     maxTokens: number;
     responseFormat: string;
     generationContext: { brand: string; model: string; generation: string } | null;
+  } | null;
+  step4Statistics?: {
+    totalQuestions: number;
+    totalAnswers: number;
+    successfulPairs: number;
+    failedCount: number;
+    missingCount: number;
+    unmatchedQuestions: number;
+    successRate: string;
   } | null;
   // Step 3 batches list
   batches?: Array<{
@@ -192,6 +234,17 @@ function MassGenerationContent() {
   const [step1Progress, setStep1Progress] = useState<{ current: number; total: number } | null>(null);
   const [step1FileUrl, setStep1FileUrl] = useState<string | null>(null);
   const [step1Error, setStep1Error] = useState<string | null>(null);
+  
+  // Step 1 Transform: Transform Prompts to JSON-L
+  const [step1TransformStatus, setStep1TransformStatus] = useState<'idle' | 'transforming' | 'complete' | 'error'>('idle');
+  const [step1TransformFileUrl, setStep1TransformFileUrl] = useState<string | null>(null);
+  const [step1TransformError, setStep1TransformError] = useState<string | null>(null);
+  const [step1TransformDetails, setStep1TransformDetails] = useState<{
+    totalBatches?: number;
+    totalGenerations?: number;
+    questionsPerGeneration?: number;
+    batchesPerGeneration?: number;
+  } | null>(null);
   const [step1Details, setStep1Details] = useState<{
     currentGeneration?: string;
     currentBatch?: number;
@@ -238,6 +291,7 @@ function MassGenerationContent() {
   const [step1_5Status, setStep1_5Status] = useState<'idle' | 'building' | 'complete' | 'error'>('idle');
   const [step1_5JsonlFileUrl, setStep1_5JsonlFileUrl] = useState<string | null>(null);
   const [step1_5Error, setStep1_5Error] = useState<string | null>(null);
+  const [step1_5TxtFile, setStep1_5TxtFile] = useState<File | null>(null);
   const [step2Prompts, setStep2Prompts] = useState<{
     systemPrompt: string;
     exampleUserPrompt: string;
@@ -246,6 +300,29 @@ function MassGenerationContent() {
     maxTokens: number;
     generationContext: { brand: string; model: string; generation: string; generationCode: string | null } | null;
   } | null>(null);
+
+  // Step 1.75: Convert Questions Output to Answers JSONL
+  const [step1_75Status, setStep1_75Status] = useState<'idle' | 'converting' | 'complete' | 'error'>('idle');
+  const [step1_75AnswersJsonlFileUrl, setStep1_75AnswersJsonlFileUrl] = useState<string | null>(null);
+  const [step1_75Error, setStep1_75Error] = useState<string | null>(null);
+  const [step1_75QuestionsOutputFile, setStep1_75QuestionsOutputFile] = useState<File | null>(null);
+  const [step1_75Details, setStep1_75Details] = useState<{
+    totalQuestions?: number;
+    totalEntries?: number;
+  } | null>(null);
+
+  // Step 1.8: Split Large JSONL File
+  const [step1_8Status, setStep1_8Status] = useState<'idle' | 'splitting' | 'complete' | 'error'>('idle');
+  const [step1_8Error, setStep1_8Error] = useState<string | null>(null);
+  const [step1_8File, setStep1_8File] = useState<File | null>(null);
+  const [step1_8NumParts, setStep1_8NumParts] = useState<number>(2);
+  const [step1_8Parts, setStep1_8Parts] = useState<Array<{
+    filename: string;
+    fileUrl: string;
+    sizeMB: number;
+    lineCount: number;
+  }>>([]);
+  const [step1_8OriginalSize, setStep1_8OriginalSize] = useState<number | null>(null);
 
   // Step 2: Submit Batch
   const [step2Status, setStep2Status] = useState<'idle' | 'uploading' | 'complete' | 'error'>('idle');
@@ -273,6 +350,15 @@ function MassGenerationContent() {
     responseFormat: string;
     generationContext: { brand: string; model: string; generation: string } | null;
   } | null>(null);
+  const [step4Statistics, setStep4Statistics] = useState<{
+    totalQuestions: number;
+    totalAnswers: number;
+    successfulPairs: number;
+    failedCount: number;
+    missingCount: number;
+    unmatchedQuestions: number;
+    successRate: string;
+  } | null>(null);
 
   // Step 4.5: Submit Metadata Batch
   const [step4_5Status, setStep4_5Status] = useState<'idle' | 'uploading' | 'complete' | 'error'>('idle');
@@ -297,11 +383,35 @@ function MassGenerationContent() {
   // Step 5: Import
   const [step5Status, setStep5Status] = useState<'idle' | 'importing' | 'complete' | 'error'>('idle');
   const [step5Progress, setStep5Progress] = useState<{ current: number; total: number } | null>(null);
-  const [step5Results, setStep5Results] = useState<{ success: number; failed: number } | null>(null);
+  const [step5AbortController, setStep5AbortController] = useState<AbortController | null>(null);
+
+  // Step 6: Import Embedding Results
+  const [step6Status, setStep6Status] = useState<'idle' | 'importing' | 'complete' | 'error'>('idle');
+  const [step6Error, setStep6Error] = useState<string | null>(null);
+  const [step5Results, setStep5Results] = useState<{ 
+    success: number; 
+    failed: number;
+    embeddings?: { 
+      batchId?: string; 
+      fileId?: string; 
+      filename?: string; 
+      entriesCount?: number; 
+      total: number; 
+      note?: string;
+      successful?: number; 
+      failed?: number;
+    };
+    indexNow?: { successful: number; failed: number; total: number };
+  } | null>(null);
   const [step5Error, setStep5Error] = useState<string | null>(null);
   const [step5QuestionsFile, setStep5QuestionsFile] = useState<File | null>(null);
   const [step5AnswersFile, setStep5AnswersFile] = useState<File | null>(null);
   const [step5MetadataFile, setStep5MetadataFile] = useState<File | null>(null);
+  // Support for multiple file groups (for split files)
+  const [step5QuestionsFiles, setStep5QuestionsFiles] = useState<File[]>([]);
+  const [step5AnswersFiles, setStep5AnswersFiles] = useState<File[]>([]);
+  const [step5MetadataFiles, setStep5MetadataFiles] = useState<File[]>([]);
+  const [useMultipleFiles, setUseMultipleFiles] = useState(false);
 
   const supabase = useMemo(() => {
     try {
@@ -387,14 +497,38 @@ function MassGenerationContent() {
     }
     
     try {
-      const { data, error } = await supabase
+      // Load generations
+      const { data: gensData, error: gensError } = await supabase
         .from('model_generations')
         .select('id, name, slug, car_model_id, generation_code, year_start, year_end')
         .eq('car_model_id', modelId)
         .order('year_start', { ascending: false });
       
-      if (error) throw error;
-      setGenerations(data || []);
+      if (gensError) throw gensError;
+      
+      // Check which generations already have faults
+      const generationIds = (gensData || []).map(g => g.id);
+      let generationsWithFaults = new Set<string>();
+      
+      if (generationIds.length > 0) {
+        const { data: faultsData } = await supabase
+          .from('car_faults')
+          .select('model_generation_id')
+          .in('model_generation_id', generationIds)
+          .eq('status', 'live');
+        
+        if (faultsData) {
+          generationsWithFaults = new Set(faultsData.map(f => f.model_generation_id).filter(Boolean));
+        }
+      }
+      
+      // Mark generations without faults
+      const enrichedGenerations = (gensData || []).map(gen => ({
+        ...gen,
+        hasFaults: generationsWithFaults.has(gen.id),
+      }));
+      
+      setGenerations(enrichedGenerations);
     } catch (err) {
       console.error('Error loading generations:', err);
       setGenerations([]);
@@ -410,14 +544,38 @@ function MassGenerationContent() {
     }
     
     try {
-      const { data, error } = await supabase
+      // Load generations
+      const { data: gensData, error: gensError } = await supabase
         .from('model_generations')
         .select('id, name, slug, car_model_id, generation_code, year_start, year_end')
         .in('car_model_id', modelIds)
         .order('year_start', { ascending: false });
       
-      if (error) throw error;
-      setGenerations(data || []);
+      if (gensError) throw gensError;
+      
+      // Check which generations already have faults
+      const generationIds = (gensData || []).map(g => g.id);
+      let generationsWithFaults = new Set<string>();
+      
+      if (generationIds.length > 0) {
+        const { data: faultsData } = await supabase
+          .from('car_faults')
+          .select('model_generation_id')
+          .in('model_generation_id', generationIds)
+          .eq('status', 'live');
+        
+        if (faultsData) {
+          generationsWithFaults = new Set(faultsData.map(f => f.model_generation_id).filter(Boolean));
+        }
+      }
+      
+      // Mark generations without faults
+      const enrichedGenerations = (gensData || []).map(gen => ({
+        ...gen,
+        hasFaults: generationsWithFaults.has(gen.id),
+      }));
+      
+      setGenerations(enrichedGenerations);
     } catch (err) {
       console.error('Error loading generations:', err);
       setGenerations([]);
@@ -568,7 +726,19 @@ function MassGenerationContent() {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(6));
+              const jsonStr = line.slice(6);
+              // Skip empty lines or malformed JSON
+              if (!jsonStr || jsonStr.trim() === '') continue;
+              
+              // Try to parse JSON, skip if it fails (malformed data)
+              let data;
+              try {
+                data = JSON.parse(jsonStr);
+              } catch (parseError) {
+                // Skip malformed JSON lines silently - don't log to avoid console spam
+                // These are usually caused by truncated prompts in progress updates
+                continue;
+              }
               
               switch (data.type) {
                 case 'init':
@@ -785,10 +955,145 @@ function MassGenerationContent() {
     }
   };
 
+  // Step 1 Transform: Transform Prompts to JSON-L
+  const handleTransformToJsonl = async () => {
+    const brandIdsToUse = selectedBrands.length > 0 ? selectedBrands : (selectedBrand ? [selectedBrand] : []);
+    
+    if (brandIdsToUse.length === 0) {
+      setStep1TransformError(t('Please select at least one brand', 'Bitte wählen Sie mindestens eine Marke'));
+      return;
+    }
+
+    if (selectedGenerations.length === 0) {
+      setStep1TransformError(t('Please select at least one generation', 'Bitte wählen Sie mindestens eine Generation'));
+      return;
+    }
+
+    setStep1TransformStatus('transforming');
+    setStep1TransformError(null);
+    setStep1TransformDetails(null);
+
+    try {
+      const response = await fetch('/api/mass-generation/transform-to-jsonl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandIds: brandIdsToUse,
+          generationIds: selectedGenerations,
+          contentType,
+          language: lang,
+          questionsPerGeneration: typeof questionsPerGeneration === 'string' ? parseInt(questionsPerGeneration) || 5000 : questionsPerGeneration || 5000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to transform prompts to JSON-L');
+      }
+
+      const data = await response.json();
+      setStep1TransformFileUrl(data.fileUrl);
+      setStep1TransformDetails({
+        totalBatches: data.totalBatches,
+        totalGenerations: data.totalGenerations,
+        questionsPerGeneration: data.questionsPerGeneration,
+        batchesPerGeneration: data.batchesPerGeneration,
+      });
+      setStep1TransformStatus('complete');
+    } catch (error) {
+      console.error('Transform to JSONL error:', error);
+      setStep1TransformError(error instanceof Error ? error.message : 'Unknown error');
+      setStep1TransformStatus('error');
+    }
+  };
+
+  // Step 1.75: Convert Questions Output to Answers JSONL
+  const handleConvertQuestionsToAnswers = async () => {
+    if (!step1_75QuestionsOutputFile) {
+      setStep1_75Error(t('Please upload the questions output file from OpenAI Batch API', 'Bitte laden Sie die Fragen-Output-Datei von OpenAI Batch API hoch'));
+      return;
+    }
+
+    setStep1_75Status('converting');
+    setStep1_75Error(null);
+    setStep1_75Details(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('questionsOutputFile', step1_75QuestionsOutputFile);
+      formData.append('contentType', contentType);
+      formData.append('brandIds', JSON.stringify(selectedBrands.length > 0 ? selectedBrands : (selectedBrand ? [selectedBrand] : [])));
+      formData.append('generationIds', JSON.stringify(selectedGenerations));
+
+      const response = await fetch('/api/mass-generation/convert-questions-to-answers-jsonl', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to convert questions output to answers JSONL');
+      }
+
+      const data = await response.json();
+      setStep1_75AnswersJsonlFileUrl(data.fileUrl);
+      setStep1_75Details({
+        totalQuestions: data.totalQuestions,
+        totalEntries: data.totalEntries,
+      });
+      setStep1_75Status('complete');
+    } catch (error) {
+      console.error('Convert questions to answers error:', error);
+      setStep1_75Error(error instanceof Error ? error.message : 'Unknown error');
+      setStep1_75Status('error');
+    }
+  };
+
+  // Step 1.8: Split Large JSONL File
+  const handleSplitJsonl = async () => {
+    if (!step1_8File) {
+      setStep1_8Error(t('Please upload a JSONL file to split', 'Bitte laden Sie eine JSONL-Datei zum Aufteilen hoch'));
+      return;
+    }
+
+    setStep1_8Status('splitting');
+    setStep1_8Error(null);
+    setStep1_8Parts([]);
+    setStep1_8OriginalSize(null);
+
+    try {
+      const formData = new FormData();
+      
+      // Always use the uploaded file
+      formData.append('file', step1_8File);
+      formData.append('numParts', step1_8NumParts.toString());
+
+      const response = await fetch('/api/mass-generation/split-jsonl', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to split JSONL file');
+      }
+
+      const data = await response.json();
+      setStep1_8Parts(data.parts || []);
+      setStep1_8OriginalSize(data.originalSizeMB);
+      setStep1_8Status('complete');
+    } catch (error) {
+      console.error('Split JSONL error:', error);
+      setStep1_8Error(error instanceof Error ? error.message : 'Unknown error');
+      setStep1_8Status('error');
+    }
+  };
+
   // Step 1.5: Build JSONL from TXT
   const handleBuildJsonl = async () => {
-    if (!step1FileUrl || !step1FileUrl.endsWith('.txt')) {
-      setStep1_5Error(t('Please complete Step 1 first and ensure it generated a TXT file', 'Bitte vervollständigen Sie zuerst Schritt 1 und stellen Sie sicher, dass eine TXT-Datei generiert wurde'));
+    // Check if we have a file upload or a fileUrl from Step 1
+    if (!step1_5TxtFile && (!step1FileUrl || !step1FileUrl.endsWith('.txt'))) {
+      setStep1_5Error(t('Please upload a TXT file or complete Step 1 first', 'Bitte laden Sie eine TXT-Datei hoch oder vervollständigen Sie zuerst Schritt 1'));
       return;
     }
 
@@ -796,17 +1101,37 @@ function MassGenerationContent() {
     setStep1_5Error(null);
 
     try {
-      const response = await fetch('/api/mass-generation/build-jsonl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionsFileUrl: step1FileUrl,
-          contentType,
-          brandIds: selectedBrands.length > 0 ? selectedBrands : (selectedBrand ? [selectedBrand] : []),
-          generationIds: selectedGenerations,
-          questionsPerGeneration,
-        }),
-      });
+      // Get current contentType value
+      const currentContentType = contentType || 'fault';
+      let response: Response;
+      
+      if (step1_5TxtFile) {
+        // Use uploaded file
+        const formData = new FormData();
+        formData.append('questionsFile', step1_5TxtFile);
+        formData.append('contentType', currentContentType);
+        formData.append('brandIds', JSON.stringify(selectedBrands.length > 0 ? selectedBrands : (selectedBrand ? [selectedBrand] : [])));
+        formData.append('generationIds', JSON.stringify(selectedGenerations));
+        formData.append('questionsPerGeneration', questionsPerGeneration.toString());
+
+        response = await fetch('/api/mass-generation/build-jsonl', {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        // Use fileUrl from Step 1
+        response = await fetch('/api/mass-generation/build-jsonl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionsFileUrl: step1FileUrl,
+            contentType: currentContentType,
+            brandIds: selectedBrands.length > 0 ? selectedBrands : (selectedBrand ? [selectedBrand] : []),
+            generationIds: selectedGenerations,
+            questionsPerGeneration,
+          }),
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -828,9 +1153,9 @@ function MassGenerationContent() {
 
   // Step 2: Submit Batch
   const handleSubmitBatch = async () => {
-    // Require manual file upload
-    if (!step2File) {
-      setStep2Error(t('Please upload a JSONL file', 'Bitte laden Sie eine JSONL-Datei hoch'));
+    // Use file from Step 1.75 if available, otherwise require manual file upload or use Step 1.5 file
+    if (!step2File && !step1_75AnswersJsonlFileUrl && !step1_5JsonlFileUrl && !step1FileUrl) {
+      setStep2Error(t('Please upload a JSONL file or complete Step 1.75 or Step 1.5 first', 'Bitte laden Sie eine JSONL-Datei hoch oder vervollständigen Sie zuerst Schritt 1.75 oder Schritt 1.5'));
       return;
     }
 
@@ -839,17 +1164,55 @@ function MassGenerationContent() {
 
     try {
       const formData = new FormData();
-      formData.append('file', step2File);
+      
+      // Use file from Step 1.75 if available, otherwise use manually uploaded file or fileUrl
+      if (step2File) {
+        formData.append('file', step2File);
+        formData.append('batchName', `Answers Batch ${step2File.name.replace('.jsonl', '')}`);
+      } else if (step1_75AnswersJsonlFileUrl) {
+        // Use file from Step 1.75
+        const response = await fetch(step1_75AnswersJsonlFileUrl);
+        const blob = await response.blob();
+        const fileName = step1_75AnswersJsonlFileUrl.split('/').pop() || 'answers.jsonl';
+        formData.append('file', new File([blob], fileName));
+        formData.append('batchName', `Answers Batch ${fileName.replace('.jsonl', '')}`);
+      } else if (step1_5JsonlFileUrl) {
+        // Use file from Step 1.5
+        const response = await fetch(step1_5JsonlFileUrl);
+        const blob = await response.blob();
+        const fileName = step1_5JsonlFileUrl.split('/').pop() || 'questions.jsonl';
+        formData.append('file', new File([blob], fileName));
+        formData.append('batchName', `Answers Batch ${fileName.replace('.jsonl', '')}`);
+      } else if (step1FileUrl) {
+        // Use fileUrl
+        formData.append('fileUrl', step1FileUrl);
+        formData.append('batchName', `Answers Batch ${step1FileUrl.split('/').pop()?.replace('.jsonl', '') || 'questions'}`);
+      }
+      
       formData.append('contentType', contentType);
-      formData.append('batchName', `Answers Batch ${step2File.name.replace('.jsonl', '')}`);
       if (selectedBrand) formData.append('brandId', selectedBrand);
       if (selectedModel) formData.append('modelId', selectedModel);
       if (selectedGeneration) formData.append('generationId', selectedGeneration);
 
-      const response = await fetch('/api/mass-generation/submit-batch', {
-        method: 'POST',
-        body: formData,
-      });
+      // Set timeout for large file uploads (15 minutes)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15 * 60 * 1000); // 15 minutes
+
+      let response;
+      try {
+        response = await fetch('/api/mass-generation/submit-batch', {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError' || controller.signal.aborted) {
+          throw new Error(t('Upload timeout. The file is very large. Please wait or try splitting into smaller batches.', 'Upload-Timeout. Die Datei ist sehr groß. Bitte warten Sie oder teilen Sie sie in kleinere Batches auf.'));
+        }
+        throw error;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -862,9 +1225,10 @@ function MassGenerationContent() {
       setStep2Status('complete');
       
       // Add to batches list
+      const batchFileName = step2File?.name || step1_75AnswersJsonlFileUrl?.split('/').pop() || step1_5JsonlFileUrl?.split('/').pop() || step1FileUrl?.split('/').pop() || 'batch';
       setBatches(prev => [...prev, {
         id: data.batchId,
-        name: data.batchName || `Answers Batch ${step2File.name}`,
+        name: data.batchName || `Answers Batch ${batchFileName}`,
         status: data.status,
         type: 'answers',
         createdAt: new Date().toISOString(),
@@ -934,6 +1298,14 @@ function MassGenerationContent() {
       if (data.prompts) {
         setStep4Prompts(data.prompts);
       }
+      
+      // Store statistics
+      if (data.statistics) {
+        setStep4Statistics(data.statistics);
+      } else {
+        setStep4Statistics(null);
+      }
+      
       setStep4Status('complete');
     } catch (error: any) {
       console.error('Error building metadata JSONL:', error);
@@ -1015,18 +1387,32 @@ function MassGenerationContent() {
 
   // Step 5: Import
   const handleImport = async () => {
-    if (!step5QuestionsFile) {
-      setStep5Error(t('Please upload a questions JSONL file', 'Bitte laden Sie eine Fragen-JSONL-Datei hoch'));
+    // Note: Generation selection is optional - the system will auto-detect from questions if not provided
+    // But we still send empty array if none selected, so backend can attempt auto-detection
+
+    // Check if using multiple files or single files
+    const questionsFiles = useMultipleFiles ? (step5QuestionsFiles || []) : (step5QuestionsFile ? [step5QuestionsFile] : []);
+    const answersFiles = useMultipleFiles ? (step5AnswersFiles || []) : (step5AnswersFile ? [step5AnswersFile] : []);
+    const metadataFiles = useMultipleFiles ? (step5MetadataFiles || []) : (step5MetadataFile ? [step5MetadataFile] : []);
+
+    if (questionsFiles.length === 0) {
+      setStep5Error(t('Please upload at least one questions JSONL file', 'Bitte laden Sie mindestens eine Fragen-JSONL-Datei hoch'));
       return;
     }
 
-    if (!step5AnswersFile) {
-      setStep5Error(t('Please upload an answers JSONL file', 'Bitte laden Sie eine Antworten-JSONL-Datei hoch'));
+    if (answersFiles.length === 0) {
+      setStep5Error(t('Please upload at least one answers JSONL file', 'Bitte laden Sie mindestens eine Antworten-JSONL-Datei hoch'));
       return;
     }
 
-    if (!step5MetadataFile) {
-      setStep5Error(t('Please upload a metadata JSONL file', 'Bitte laden Sie eine Metadaten-JSONL-Datei hoch'));
+    if (metadataFiles.length === 0) {
+      setStep5Error(t('Please upload at least one metadata JSONL file', 'Bitte laden Sie mindestens eine Metadaten-JSONL-Datei hoch'));
+      return;
+    }
+
+    // Validate that we have matching counts
+    if (questionsFiles.length !== metadataFiles.length || answersFiles.length !== metadataFiles.length) {
+      setStep5Error(t('Number of questions, answers, and metadata files must match. Please ensure you have the same number of files for each type.', 'Die Anzahl der Fragen-, Antworten- und Metadaten-Dateien muss übereinstimmen. Bitte stellen Sie sicher, dass Sie die gleiche Anzahl von Dateien für jeden Typ haben.'));
       return;
     }
 
@@ -1034,19 +1420,44 @@ function MassGenerationContent() {
     setStep5Error(null);
     setStep5Progress({ current: 0, total: 0 });
 
+    // Create AbortController for cancellation
+    const abortController = new AbortController();
+    setStep5AbortController(abortController);
+
     try {
       const formData = new FormData();
-      formData.append('questionsFile', step5QuestionsFile);
-      formData.append('answersFile', step5AnswersFile);
-      formData.append('metadataFile', step5MetadataFile);
+      
+      // Append files based on mode
+      if (useMultipleFiles) {
+        // Multiple files mode
+        questionsFiles.forEach((file) => {
+          formData.append('questionsFiles', file);
+        });
+        answersFiles.forEach((file) => {
+          formData.append('answersFiles', file);
+        });
+        metadataFiles.forEach((file) => {
+          formData.append('metadataFiles', file);
+        });
+      } else {
+        // Single file mode (backward compatible)
+        formData.append('questionsFile', questionsFiles[0]);
+        formData.append('answersFile', answersFiles[0]);
+        if (metadataFiles.length > 0) {
+          formData.append('metadataFile', metadataFiles[0]);
+        }
+      }
+      
       formData.append('contentType', contentType);
       formData.append('generationIds', JSON.stringify(selectedGenerations));
       formData.append('questionsPerGeneration', questionsPerGeneration.toString());
       formData.append('language', language);
+      formData.append('useMultipleFiles', useMultipleFiles.toString());
 
       const response = await fetch('/api/mass-generation/import', {
         method: 'POST',
         body: formData,
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -1055,13 +1466,36 @@ function MassGenerationContent() {
       }
 
       const data = await response.json();
-      setStep5Results({ success: data.success, failed: data.failed });
+      setStep5Results({ 
+        success: data.success, 
+        failed: data.failed,
+        embeddings: data.embeddings,
+        indexNow: data.indexNow,
+      });
       setStep5Progress({ current: data.success + data.failed, total: data.success + data.failed });
       setStep5Status('complete');
+      setStep5AbortController(null);
     } catch (error: any) {
-      console.error('Error importing:', error);
-      setStep5Error(error.message || t('Unknown error', 'Unbekannter Fehler'));
+      // Don't show error if it was cancelled
+      if (error.name === 'AbortError' || abortController.signal.aborted) {
+        setStep5Error(t('Import cancelled', 'Import abgebrochen'));
+        setStep5Status('error');
+      } else {
+        console.error('Error importing:', error);
+        setStep5Error(error.message || t('Unknown error', 'Unbekannter Fehler'));
+        setStep5Status('error');
+      }
+      setStep5AbortController(null);
+    }
+  };
+
+  // Cancel import handler
+  const handleCancelImport = () => {
+    if (step5AbortController) {
+      step5AbortController.abort();
+      setStep5AbortController(null);
       setStep5Status('error');
+      setStep5Error(t('Import cancelled by user', 'Import vom Benutzer abgebrochen'));
     }
   };
 
@@ -1247,12 +1681,24 @@ function MassGenerationContent() {
                             className="w-5 h-5 text-red-600 border-slate-300 rounded focus:ring-red-500"
                           />
                           <div className="flex-1">
-                            <div className="font-medium text-slate-900 dark:text-white">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900 dark:text-white">
                               {brand?.name} {model?.name} {gen.name}
+                              </span>
+                              {gen.hasFaults === false && (
+                                <span className="text-yellow-500 dark:text-yellow-400 font-bold text-lg" title={t('New generation - no faults yet', 'Neue Generation - noch keine Faults')}>
+                                  *
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
                               {gen.generation_code && `${gen.generation_code} • `}
-                              {gen.year_start && gen.year_end ? `${gen.year_start}-${gen.year_end}` : ''}
+                              {gen.year_start && gen.year_end ? `${gen.year_start}-${gen.year_end}` : gen.year_start ? `${gen.year_start}-Present` : ''}
+                              {gen.hasFaults === false && (
+                                <span className="ml-2 text-yellow-600 dark:text-yellow-400 font-medium">
+                                  {t('(New)', '(Neu)')}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </label>
@@ -1291,45 +1737,177 @@ function MassGenerationContent() {
         </div>
 
         {/* Step 1: Generate Questions */}
+        <div className="space-y-4">
+          <StepCard
+            step={1}
+            title={t('Step 1: Generate Questions', 'Schritt 1: Fragen generieren')}
+            description={t('Generate questions and save as JSON-L file', 'Fragen generieren und als JSON-L-Datei speichern')}
+            status={step1Status}
+            error={step1Error}
+            progress={step1Progress}
+            onAction={handleGenerateQuestions}
+            actionLabel={t('Generate Questions', 'Fragen generieren')}
+            disabled={(selectedBrands.length === 0 && !selectedBrand) || selectedGenerations.length === 0}
+            onCancel={handleCancelGeneration}
+            canCancel={step1Status === 'generating'}
+            fileUrl={step1FileUrl}
+            details={step1Details}
+            generationProgress={generationProgress}
+            t={t}
+          />
+          
+          {/* Step 1 Transform: Transform Prompts to JSON-L */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <StepCard
+              step={1}
+              title={t('Step 1 Transform: Transform Prompts to JSON-L', 'Schritt 1 Transform: Prompts zu JSON-L konvertieren')}
+              description={t('Convert all prompts for selected generations to JSON-L format for OpenAI Batch API. This is faster and more cost-effective than direct API calls.', 'Konvertieren Sie alle Prompts für ausgewählte Generationen in JSON-L-Format für OpenAI Batch API. Dies ist schneller und kostengünstiger als direkte API-Aufrufe.')}
+              status={step1TransformStatus}
+              error={step1TransformError}
+              onAction={handleTransformToJsonl}
+              actionLabel={t('Transform To JSON-L', 'Zu JSON-L konvertieren')}
+              disabled={(selectedBrands.length === 0 && !selectedBrand) || selectedGenerations.length === 0 || step1TransformStatus === 'transforming'}
+              fileUrl={step1TransformFileUrl}
+              details={step1TransformDetails ? {
+                currentGeneration: `${step1TransformDetails.totalGenerations} generations`,
+                totalBatches: step1TransformDetails.totalBatches,
+                questionsGenerated: (step1TransformDetails.totalBatches || 0) * 50,
+              } : null}
+              t={t}
+            />
+            {step1TransformDetails && (
+              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 px-4">
+                {t('Total batches', 'Gesamt Batches')}: {step1TransformDetails.totalBatches} | 
+                {t('Generations', 'Generationen')}: {step1TransformDetails.totalGenerations} | 
+                {t('Questions per generation', 'Fragen pro Generation')}: {step1TransformDetails.questionsPerGeneration} | 
+                {t('Batches per generation', 'Batches pro Generation')}: {step1TransformDetails.batchesPerGeneration}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Step 1.5: Build JSONL from TXT - Always visible */}
         <StepCard
-          step={1}
-          title={t('Step 1: Generate Questions', 'Schritt 1: Fragen generieren')}
-          description={t('Generate questions and save as JSON-L file', 'Fragen generieren und als JSON-L-Datei speichern')}
-          status={step1Status}
-          error={step1Error}
-          progress={step1Progress}
-          onAction={handleGenerateQuestions}
-          actionLabel={t('Generate Questions', 'Fragen generieren')}
-          disabled={(selectedBrands.length === 0 && !selectedBrand) || selectedGenerations.length === 0}
-          onCancel={handleCancelGeneration}
-          canCancel={step1Status === 'generating'}
-          fileUrl={step1FileUrl}
-          details={step1Details}
-          generationProgress={generationProgress}
+          step={1.5}
+          title={t('Step 1.5: Build JSONL from TXT', 'Schritt 1.5: JSONL aus TXT erstellen')}
+          description={t('Convert TXT questions file to JSONL format for batch processing. Upload a TXT file or use the file from Step 1.', 'TXT-Fragendatei in JSONL-Format für Batch-Verarbeitung konvertieren. Laden Sie eine TXT-Datei hoch oder verwenden Sie die Datei aus Schritt 1.')}
+          status={step1_5Status}
+          error={step1_5Error}
+          onAction={handleBuildJsonl}
+          actionLabel={t('Build JSONL', 'JSONL erstellen')}
+          disabled={step1_5Status === 'building' || (!step1_5TxtFile && (!step1FileUrl || !step1FileUrl.endsWith('.txt')))}
+          fileUrl={step1_5JsonlFileUrl}
+          questionsFileUrlInput={{
+            accept: '.txt',
+            onChange: setStep1_5TxtFile,
+            file: step1_5TxtFile,
+          }}
+          step1FileUrl={step1FileUrl}
           t={t}
         />
 
-        {/* Step 1.5: Build JSONL from TXT */}
-        {step1FileUrl && step1FileUrl.endsWith('.txt') && (
-          <StepCard
-            step={1.5}
-            title={t('Step 1.5: Build JSONL from TXT', 'Schritt 1.5: JSONL aus TXT erstellen')}
-            description={t('Convert TXT questions file to JSONL format for batch processing', 'TXT-Fragendatei in JSONL-Format für Batch-Verarbeitung konvertieren')}
-            status={step1_5Status}
-            error={step1_5Error}
-            onAction={handleBuildJsonl}
-            actionLabel={t('Build JSONL', 'JSONL erstellen')}
-            disabled={step1Status !== 'complete'}
-            fileUrl={step1_5JsonlFileUrl}
-            t={t}
-          />
+        {/* Step 1.75: Convert Questions Output to Answers JSONL */}
+        <StepCard
+          step={1.75}
+          title={t('Step 1.75: Convert Questions Output to Answers JSONL', 'Schritt 1.75: Fragen-Output zu Antworten-JSONL konvertieren')}
+          description={t('Convert the questions output file from OpenAI Batch API into the correct format for answer generation. Upload the downloaded questions output file.', 'Konvertieren Sie die Fragen-Output-Datei von OpenAI Batch API in das richtige Format für die Antwort-Generierung. Laden Sie die heruntergeladene Fragen-Output-Datei hoch.')}
+          status={step1_75Status}
+          error={step1_75Error}
+          onAction={handleConvertQuestionsToAnswers}
+          actionLabel={t('Convert to Answers JSONL', 'Zu Antworten-JSONL konvertieren')}
+          disabled={step1_75Status === 'converting' || !step1_75QuestionsOutputFile}
+          fileUrl={step1_75AnswersJsonlFileUrl}
+          details={step1_75Details ? {
+            questionsGenerated: step1_75Details.totalQuestions,
+            totalBatches: step1_75Details.totalEntries,
+          } : null}
+          questionsFileUrlInput={{
+            accept: '.jsonl',
+            onChange: (file) => setStep1_75QuestionsOutputFile(file),
+            file: step1_75QuestionsOutputFile,
+          }}
+          t={t}
+        />
+
+        {/* Step 1.8: Split Large JSONL File */}
+        <StepCard
+          step={1.8}
+          title={t('Step 1.8: Split Large JSONL File', 'Schritt 1.8: Große JSONL-Datei aufteilen')}
+          description={t('Split large JSONL files (>200MB) into smaller parts for OpenAI Batch API. Each part must be under 200MB.', 'Teilen Sie große JSONL-Dateien (>200MB) in kleinere Teile für OpenAI Batch API auf. Jeder Teil muss unter 200MB sein.')}
+          status={step1_8Status}
+          error={step1_8Error}
+          onAction={handleSplitJsonl}
+          actionLabel={t('Split File', 'Datei aufteilen')}
+          disabled={step1_8Status === 'splitting' || !step1_8File}
+          fileUrl={step1_8Parts.length > 0 ? step1_8Parts[0].fileUrl : null}
+          details={step1_8Parts.length > 0 ? {
+            totalBatches: step1_8Parts.length,
+            questionsGenerated: step1_8Parts.reduce((sum, part) => sum + part.lineCount, 0),
+          } : null}
+          questionsFileUrlInput={{
+            accept: '.jsonl',
+            onChange: (file) => setStep1_8File(file),
+            file: step1_8File,
+          }}
+          step1_8NumParts={step1_8NumParts}
+          setStep1_8NumParts={setStep1_8NumParts}
+          t={t}
+        />
+        
+        {/* Info: Split Parts Available */}
+        {step1_8Parts.length > 0 && (
+          <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <h3 className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">
+              {step1_8Parts.length === 1 
+                ? t('✅ File Ready', '✅ Datei bereit')
+                : t('✅ File Split into Multiple Parts', '✅ Datei in mehrere Teile aufgeteilt')}
+            </h3>
+            {step1_8OriginalSize && (
+              <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                {t('Original file size', 'Ursprüngliche Dateigröße')}: {step1_8OriginalSize.toFixed(2)} MB → {t('Split into', 'Aufgeteilt in')} {step1_8Parts.length} {t('parts', 'Teile')}
+              </p>
+            )}
+            {step1_8Parts.length > 1 && (
+              <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                {t('You need to submit each part separately in Step 2.', 'Sie müssen jeden Teil separat in Schritt 2 einreichen.')}
+              </p>
+            )}
+            <div className="space-y-2">
+              {step1_8Parts.map((part, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-green-200 dark:border-green-700 shadow-sm">
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 dark:text-white text-sm">
+                      {t('Part', 'Teil')} {index + 1} {step1_8Parts.length > 1 ? `of ${step1_8Parts.length}` : ''}: {part.filename}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {part.sizeMB.toFixed(2)} MB • {part.lineCount.toLocaleString()} {t('lines', 'Zeilen')}
+                    </div>
+                  </div>
+                  <a
+                    href={part.fileUrl}
+                    download
+                    className="ml-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+                  >
+                    {t('Download', 'Herunterladen')}
+                  </a>
+                </div>
+              ))}
+            </div>
+            {step1_8Parts.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700">
+                <p className="text-xs text-green-700 dark:text-green-300">
+                  {t('💡 Tip', '💡 Tipp')}: {t('You can now use these files in Step 2. The first part will be automatically selected.', 'Sie können diese Dateien jetzt in Schritt 2 verwenden. Der erste Teil wird automatisch ausgewählt.')}
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Step 2: Submit Batch */}
         <StepCard
           step={2}
           title={t('Step 2: Submit Batch to OpenAI', 'Schritt 2: Batch an OpenAI senden')}
-          description={t('Upload JSON-L file and create batch job', 'JSON-L-Datei hochladen und Batch-Job erstellen')}
+          description={t('Upload JSON-L file and create batch job. For large files (>100MB), consider uploading directly to OpenAI Batch API.', 'JSON-L-Datei hochladen und Batch-Job erstellen. Für große Dateien (>100MB) sollten Sie direkt zur OpenAI Batch API hochladen.')}
           status={step2Status}
           error={step2Error}
           onAction={handleSubmitBatch}
@@ -1338,11 +1916,59 @@ function MassGenerationContent() {
           batchId={step2BatchId}
           step2File={step2File}
           onStep2FileChange={setStep2File}
-          step1_5JsonlFileUrl={step1_5JsonlFileUrl}
+          step1_5JsonlFileUrl={step1_8Parts.length > 0 ? step1_8Parts[0].fileUrl : (step1_75AnswersJsonlFileUrl || step1_5JsonlFileUrl)}
           step1FileUrl={step1FileUrl}
           step2Prompts={step2Prompts}
           t={t}
         />
+        
+        {/* Direct Upload Instructions for Large Files */}
+        {(step1_75AnswersJsonlFileUrl || step1_5JsonlFileUrl) && (
+          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+              {t('💡 Tip: For Large Files (>100MB)', '💡 Tipp: Für große Dateien (>100MB)')}
+            </h3>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+              {t('Upload directly to OpenAI Batch API for faster and more reliable uploads:', 'Laden Sie direkt zur OpenAI Batch API hoch für schnellere und zuverlässigere Uploads:')}
+            </p>
+            <ol className="text-sm text-yellow-700 dark:text-yellow-300 list-decimal list-inside space-y-1 mb-3">
+              <li>{t('Download your JSONL file from Step 1.75 or Step 1.5', 'Laden Sie Ihre JSONL-Datei aus Schritt 1.75 oder Schritt 1.5 herunter')}</li>
+              <li>
+                {t('Go to', 'Gehen Sie zu')}{' '}
+                <a 
+                  href="https://platform.openai.com/batch" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                >
+                  OpenAI Batch API
+                </a>
+              </li>
+              <li>{t('Click "Create batch" and upload your JSONL file', 'Klicken Sie auf "Create batch" und laden Sie Ihre JSONL-Datei hoch')}</li>
+              <li>{t('Copy the Batch ID and File ID', 'Kopieren Sie die Batch ID und File ID')}</li>
+              <li>{t('Paste them in Step 3 (Check Batch Status)', 'Fügen Sie sie in Schritt 3 (Batch-Status überprüfen) ein')}</li>
+            </ol>
+            {(step1_75AnswersJsonlFileUrl || step1_5JsonlFileUrl) && (
+              <div className="mt-3">
+                <a
+                  href={step1_75AnswersJsonlFileUrl || step1_5JsonlFileUrl || ''}
+                  download
+                  className="inline-block px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                >
+                  {t('Download JSONL File', 'JSONL-Datei herunterladen')}
+                </a>
+                <a
+                  href="https://platform.openai.com/batch"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                >
+                  {t('Open OpenAI Batch API', 'OpenAI Batch API öffnen')}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Step 3: Check Status */}
         <StepCard
@@ -1380,6 +2006,7 @@ function MassGenerationContent() {
           onStep4QuestionsFileChange={setStep4QuestionsFile}
           onStep4AnswersFileChange={setStep4AnswersFile}
           step4Prompts={step4Prompts}
+          step4Statistics={step4Statistics}
           t={t}
         />
 
@@ -1412,14 +2039,172 @@ function MassGenerationContent() {
           actionLabel={t('Import Data', 'Daten importieren')}
           disabled={false}
           results={step5Results}
+          onCancel={handleCancelImport}
+          canCancel={step5Status === 'importing'}
           step5QuestionsFile={step5QuestionsFile}
           step5AnswersFile={step5AnswersFile}
           step5MetadataFile={step5MetadataFile}
           onStep5QuestionsFileChange={setStep5QuestionsFile}
           onStep5AnswersFileChange={setStep5AnswersFile}
           onStep5MetadataFileChange={setStep5MetadataFile}
+          step5QuestionsFiles={step5QuestionsFiles}
+          step5AnswersFiles={step5AnswersFiles}
+          step5MetadataFiles={step5MetadataFiles}
+          useMultipleFiles={useMultipleFiles}
+          setUseMultipleFiles={setUseMultipleFiles}
+          setStep5QuestionsFiles={setStep5QuestionsFiles}
+          setStep5AnswersFiles={setStep5AnswersFiles}
+          setStep5MetadataFiles={setStep5MetadataFiles}
           t={t}
         />
+
+        {/* Step 6: Import Embedding Results */}
+        <StepCard
+          step={6}
+          title={t('Step 6: Import Embedding Results', 'Schritt 6: Embedding-Ergebnisse importieren')}
+          description={t('Import completed embedding batch results from OpenAI. Upload the output file or use Batch ID.', 'Fertige Embedding-Batch-Ergebnisse von OpenAI importieren. Laden Sie die Output-Datei hoch oder verwenden Sie die Batch-ID.')}
+          status={step6Status}
+          error={step6Error}
+          onAction={() => {}}
+          actionLabel=""
+          disabled={false}
+          t={t}
+        />
+        <div className="mb-4 space-y-4">
+          <div className="bg-gradient-to-br from-blue-50 via-blue-100/50 to-blue-50 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-xl p-4 sm:p-5 border border-blue-200 dark:border-blue-800">
+            <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-200 mb-3">
+              {t('Import Embedding Batch Results', 'Embedding Batch-Ergebnisse importieren')}
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Option 1: Upload from Batch ID */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  {t('Option 1: Import from Batch ID', 'Option 1: Von Batch-ID importieren')}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    id="batchIdInput"
+                    placeholder={t('Enter Batch ID (e.g., batch_xxx)', 'Batch-ID eingeben (z.B. batch_xxx)')}
+                    className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+                  />
+                  <button
+                    onClick={async () => {
+                      const batchId = (document.getElementById('batchIdInput') as HTMLInputElement)?.value;
+                      if (!batchId) {
+                        setStep6Error(t('Please enter a Batch ID', 'Bitte geben Sie eine Batch-ID ein'));
+                        setStep6Status('error');
+                        return;
+                      }
+
+                      setStep6Status('importing');
+                      setStep6Error(null);
+
+                      try {
+                        const response = await fetch('/api/embeddings/import-batch-results', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ batchId })
+                        });
+
+                        const data = await response.json();
+                        if (response.ok) {
+                          setStep6Status('complete');
+                          alert(t(`Successfully imported ${data.inserted} embeddings`, `Erfolgreich ${data.inserted} Embeddings importiert`));
+                        } else {
+                          setStep6Error(data.error || t('Import failed', 'Import fehlgeschlagen'));
+                          setStep6Status('error');
+                        }
+                      } catch (error) {
+                        setStep6Error(error instanceof Error ? error.message : t('Unknown error', 'Unbekannter Fehler'));
+                        setStep6Status('error');
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                  >
+                    {t('Import', 'Importieren')}
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t('Automatically downloads and imports results from OpenAI using the Batch ID', 'Lädt automatisch Ergebnisse von OpenAI herunter und importiert sie mit der Batch-ID')}
+                </div>
+              </div>
+
+              {/* Option 2: Upload File */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  {t('Option 2: Upload Batch Output File', 'Option 2: Batch-Output-Datei hochladen')}
+                </label>
+                <div className="bg-white/80 dark:bg-slate-800/80 rounded-lg p-3 mb-3 border border-blue-200 dark:border-blue-700">
+                  <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                    <p className="font-semibold">{t('How to get the output file:', 'So erhalten Sie die Output-Datei:')}</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                      <li>{t('Go to OpenAI Dashboard → Batches', 'Gehen Sie zu OpenAI Dashboard → Batches')}</li>
+                      <li>{t('Find your batch and wait until status is "completed"', 'Finden Sie Ihren Batch und warten Sie, bis der Status "completed" ist')}</li>
+                      <li>{t('Click "Download" to get the output JSONL file', 'Klicken Sie auf "Download", um die Output JSONL-Datei zu erhalten')}</li>
+                      <li>{t('Upload it below', 'Laden Sie sie unten hoch')}</li>
+                    </ol>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  accept=".jsonl"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    setStep6Status('importing');
+                    setStep6Error(null);
+
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+
+                      const response = await fetch('/api/embeddings/import-batch-results', {
+                        method: 'POST',
+                        body: formData
+                      });
+
+                      const data = await response.json();
+                      if (response.ok) {
+                        setStep6Status('complete');
+                        alert(t(`Successfully imported ${data.inserted} embeddings`, `Erfolgreich ${data.inserted} Embeddings importiert`));
+                      } else {
+                        setStep6Error(data.error || t('Import failed', 'Import fehlgeschlagen'));
+                        setStep6Status('error');
+                      }
+                    } catch (error) {
+                      setStep6Error(error instanceof Error ? error.message : t('Unknown error', 'Unbekannter Fehler'));
+                      setStep6Status('error');
+                    }
+
+                    // Reset input
+                    e.target.value = '';
+                  }}
+                  className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer cursor-pointer border-2 border-dashed border-blue-300 dark:border-blue-600 rounded-lg p-4 bg-white/50 dark:bg-slate-800/50"
+                />
+                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+                  {t('Upload the completed batch output file (.jsonl) from OpenAI', 'Laden Sie die fertige Batch-Output-Datei (.jsonl) von OpenAI hoch')}
+                </div>
+              </div>
+
+              {step6Error && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="text-sm text-red-800 dark:text-red-200">{step6Error}</div>
+                </div>
+              )}
+
+              {step6Status === 'complete' && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="text-sm text-green-800 dark:text-green-200">
+                    {t('Embeddings imported successfully!', 'Embeddings erfolgreich importiert!')}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1453,19 +2238,31 @@ function StepCard({
   onStep5QuestionsFileChange,
   onStep5AnswersFileChange,
   onStep5MetadataFileChange,
+  step5QuestionsFiles,
+  step5AnswersFiles,
+  step5MetadataFiles,
+  useMultipleFiles,
+  setUseMultipleFiles,
+  setStep5QuestionsFiles,
+  setStep5AnswersFiles,
+  setStep5MetadataFiles,
   step2File,
   onStep2FileChange,
   step1_5JsonlFileUrl,
   step1FileUrl,
+  questionsFileUrlInput,
   step4_5MetadataFile,
   onStep4_5MetadataFileChange,
   step4MetadataFileUrl,
   step2Prompts,
   step4Prompts,
+  step4Statistics,
   batches,
   onDownloadBatch,
   onCancel,
   canCancel,
+  step1_8NumParts,
+  setStep1_8NumParts,
   t,
 }: StepCardProps) {
   const statusColors = {
@@ -1474,6 +2271,9 @@ function StepCard({
     uploading: 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
     importing: 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
     building: 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300',
+    transforming: 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300',
+    converting: 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300',
+    splitting: 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300',
     complete: 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300',
     error: 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300',
   };
@@ -1498,6 +2298,9 @@ function StepCard({
                status === 'uploading' ? t('Uploading...', 'Lade hoch...') :
                status === 'importing' ? t('Importing...', 'Importiere...') :
                status === 'building' ? t('Building...', 'Erstelle...') :
+               status === 'transforming' ? t('Transforming...', 'Konvertiere...') :
+               status === 'converting' ? t('Converting...', 'Konvertiere...') :
+               status === 'splitting' ? t('Splitting...', 'Teile auf...') :
                status === 'complete' ? t('Complete', 'Abgeschlossen') :
                t('Error', 'Fehler')}
             </span>
@@ -1570,6 +2373,103 @@ function StepCard({
         </div>
       )}
 
+      {/* Step 1.5: File Upload for TXT Questions */}
+      {step === 1.5 && questionsFileUrlInput && (
+        <div className="mb-4 space-y-4">
+          <FileUpload
+            label={t('TXT Questions File', 'TXT-Fragendatei')}
+            accept={questionsFileUrlInput.accept || '.txt'}
+            file={questionsFileUrlInput.file || null}
+            onFileChange={questionsFileUrlInput.onChange || (() => {})}
+            required={false}
+            t={t}
+          />
+          {step1FileUrl && step1FileUrl.endsWith('.txt') && !questionsFileUrlInput.file && (
+            <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              {t('Or use the file from Step 1', 'Oder verwenden Sie die Datei aus Schritt 1')}: <a href={step1FileUrl} download className="text-blue-600 dark:text-blue-400 hover:underline">{step1FileUrl.split('/').pop()}</a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {step === 1.75 && questionsFileUrlInput && (
+        <div className="mb-4 space-y-4">
+          <FileUpload
+            label={t('Questions Output JSONL File (from OpenAI Batch API)', 'Fragen-Output-JSONL-Datei (von OpenAI Batch API)')}
+            accept={questionsFileUrlInput.accept || '.jsonl'}
+            file={questionsFileUrlInput.file || null}
+            onFileChange={questionsFileUrlInput.onChange || (() => {})}
+            required={true}
+            t={t}
+          />
+          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            {t('Upload the downloaded questions output file from Step 3 (Check Batch Status)', 'Laden Sie die heruntergeladene Fragen-Output-Datei aus Schritt 3 (Batch-Status überprüfen) hoch')}
+          </div>
+        </div>
+      )}
+
+      {step === 1.8 && questionsFileUrlInput && (
+        <div className="mb-4 space-y-4">
+          <FileUpload
+            label={t('Large JSONL File to Split', 'Große JSONL-Datei zum Aufteilen')}
+            accept={questionsFileUrlInput.accept || '.jsonl'}
+            file={questionsFileUrlInput.file || null}
+            onFileChange={questionsFileUrlInput.onChange || (() => {})}
+            required={false}
+            t={t}
+          />
+          
+          {/* Number of Parts Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              {t('Number of Parts', 'Anzahl der Teile')}
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="2"
+                max="20"
+                value={step1_8NumParts || 2}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 2;
+                  setStep1_8NumParts?.(Math.max(2, Math.min(20, value)));
+                }}
+                className="w-24 px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+              />
+              <div className="flex gap-2">
+                {[2, 3, 4, 5, 6].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setStep1_8NumParts?.(num)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      (step1_8NumParts || 2) === num
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {t('Select how many parts to split the file into. Each part must be under 200MB.', 'Wählen Sie aus, in wie viele Teile die Datei aufgeteilt werden soll. Jeder Teil muss unter 200MB sein.')}
+            </div>
+            <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-200">
+              <strong>⚠️ {t('Important', 'Wichtig')}:</strong> {t('Files are split evenly by line count (not file size) to maintain alignment. When splitting multiple files (Questions, Answers, Metadata), use the SAME number of parts for all files to ensure lines match correctly.', 'Dateien werden gleichmäßig nach Zeilenanzahl (nicht Dateigröße) aufgeteilt, um die Ausrichtung zu gewährleisten. Wenn Sie mehrere Dateien (Questions, Answers, Metadata) aufteilen, verwenden Sie die GLEICHE Anzahl von Teilen für alle Dateien, damit die Zeilen korrekt übereinstimmen.')}
+            </div>
+          </div>
+          
+          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 space-y-2">
+            <p>{t('Upload any large JSONL file (>200MB) to split it into smaller parts for OpenAI Batch API.', 'Laden Sie eine große JSONL-Datei (>200MB) hoch, um sie in kleinere Teile für OpenAI Batch API aufzuteilen.')}</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2">
+              <strong className="text-blue-800 dark:text-blue-200">💡 {t('Tip', 'Tipp')}:</strong> {t('If you split a Metadata file, you must also split the corresponding Questions file with the same number of parts. Use this tool for both files.', 'Wenn Sie eine Metadata-Datei teilen, müssen Sie auch die entsprechende Questions-Datei mit der gleichen Anzahl von Teilen teilen. Verwenden Sie dieses Tool für beide Dateien.')}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Step 4: File Uploads for Questions and Answers */}
       {step === 4 && step4QuestionsFile !== undefined && (
         <div className="mb-4 space-y-4">
@@ -1630,6 +2530,60 @@ function StepCard({
         </div>
       )}
 
+      {/* Step 4: Show Statistics */}
+      {step === 4 && step4Statistics && (
+        <div className={`mb-4 border-t border-slate-200 dark:border-slate-700 pt-4 ${
+          parseFloat(step4Statistics.successRate) < 95 
+            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 rounded-lg p-4' 
+            : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 rounded-lg p-4'
+        }`}>
+          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+            {t('Matching Statistics', 'Matching-Statistiken')}
+          </h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-slate-600 dark:text-slate-400">{t('Total Questions', 'Gesamt Fragen')}:</span>
+              <span className="ml-2 font-semibold text-slate-900 dark:text-white">{step4Statistics.totalQuestions.toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-slate-600 dark:text-slate-400">{t('Total Answers', 'Gesamt Antworten')}:</span>
+              <span className="ml-2 font-semibold text-slate-900 dark:text-white">{step4Statistics.totalAnswers.toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-slate-600 dark:text-slate-400">{t('Successful Pairs', 'Erfolgreiche Paare')}:</span>
+              <span className="ml-2 font-semibold text-green-600 dark:text-green-400">{step4Statistics.successfulPairs.toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-slate-600 dark:text-slate-400">{t('Success Rate', 'Erfolgsrate')}:</span>
+              <span className={`ml-2 font-semibold ${
+                parseFloat(step4Statistics.successRate) >= 95 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-amber-600 dark:text-amber-400'
+              }`}>
+                {step4Statistics.successRate}
+              </span>
+            </div>
+            {step4Statistics.failedCount > 0 && (
+              <div>
+                <span className="text-slate-600 dark:text-slate-400">{t('Failed Answers', 'Fehlgeschlagene Antworten')}:</span>
+                <span className="ml-2 font-semibold text-red-600 dark:text-red-400">{step4Statistics.failedCount.toLocaleString()}</span>
+              </div>
+            )}
+            {step4Statistics.unmatchedQuestions > 0 && (
+              <div>
+                <span className="text-slate-600 dark:text-slate-400">{t('Questions Without Answers', 'Fragen ohne Antworten')}:</span>
+                <span className="ml-2 font-semibold text-amber-600 dark:text-amber-400">{step4Statistics.unmatchedQuestions.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+          {parseFloat(step4Statistics.successRate) < 95 && (
+            <div className="mt-3 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded text-sm text-amber-800 dark:text-amber-200">
+              <strong>⚠️ {t('Warning', 'Warnung')}:</strong> {t('Some questions do not have matching answers. When splitting files, make sure to use the same custom_ids in corresponding parts. The system automatically matches by custom_id, not by line position, so missing answers are safely skipped.', 'Einige Fragen haben keine passenden Antworten. Beim Aufteilen von Dateien müssen die gleichen custom_ids in entsprechenden Teilen verwendet werden. Das System matched automatisch über custom_id, nicht über Zeilenposition, sodass fehlende Antworten sicher übersprungen werden.')}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Step 4.5: File Upload for Metadata */}
       {step === 4.5 && step4_5MetadataFile !== undefined && (
         <div className="mb-4">
@@ -1652,30 +2606,141 @@ function StepCard({
       {/* Step 5: File Uploads for Questions, Answers, and Metadata */}
       {step === 5 && step5QuestionsFile !== undefined && (
         <div className="mb-4 space-y-4">
-          <FileUpload
-            label={t('Questions JSONL File', 'Fragen-JSONL-Datei')}
-            accept=".jsonl"
-            file={step5QuestionsFile || null}
-            onFileChange={onStep5QuestionsFileChange || (() => {})}
-            required
-            t={t}
-          />
-          <FileUpload
-            label={t('Answers JSONL File (from OpenAI Batch)', 'Antworten-JSONL-Datei (von OpenAI Batch)')}
-            accept=".jsonl"
-            file={step5AnswersFile || null}
-            onFileChange={onStep5AnswersFileChange || (() => {})}
-            required
-            t={t}
-          />
-          <FileUpload
-            label={t('Metadata JSONL File (from Metadata Batch)', 'Metadaten-JSONL-Datei (von Metadaten-Batch)')}
-            accept=".jsonl"
-            file={step5MetadataFile || null}
-            onFileChange={onStep5MetadataFileChange || (() => {})}
-            required
-            t={t}
-          />
+          {/* Toggle for multiple files */}
+          <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <input
+              type="checkbox"
+              id="useMultipleFiles"
+              checked={useMultipleFiles || false}
+              onChange={(e) => setUseMultipleFiles?.(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="useMultipleFiles" className="text-sm font-semibold text-blue-900 dark:text-blue-200 cursor-pointer">
+              {t('Import Multiple Files (up to 10 per type - will be merged automatically)', 'Mehrere Dateien importieren (bis zu 10 pro Typ - werden automatisch zusammengeführt)')}
+            </label>
+          </div>
+
+          {!useMultipleFiles ? (
+            <>
+              <FileUpload
+                label={t('Questions JSONL File', 'Fragen-JSONL-Datei')}
+                accept=".jsonl"
+                file={step5QuestionsFile || null}
+                onFileChange={onStep5QuestionsFileChange || (() => {})}
+                required
+                t={t}
+              />
+              <FileUpload
+                label={t('Answers JSONL File (from OpenAI Batch)', 'Antworten-JSONL-Datei (von OpenAI Batch)')}
+                accept=".jsonl"
+                file={step5AnswersFile || null}
+                onFileChange={onStep5AnswersFileChange || (() => {})}
+                required
+                t={t}
+              />
+              <FileUpload
+                label={t('Metadata JSONL File (from Metadata Batch)', 'Metadaten-JSONL-Datei (von Metadaten-Batch)')}
+                accept=".jsonl"
+                file={step5MetadataFile || null}
+                onFileChange={onStep5MetadataFileChange || (() => {})}
+                required
+                t={t}
+              />
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  {t('Questions JSONL Files', 'Fragen-JSONL-Dateien')} ({(step5QuestionsFiles?.length || 0)}/10 {t('selected', 'ausgewählt')})
+                </label>
+                <input
+                  type="file"
+                  accept=".jsonl"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 10); // Limit to 10 files
+                    setStep5QuestionsFiles?.(files);
+                  }}
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                />
+                {(step5QuestionsFiles?.length || 0) >= 10 && (
+                  <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    {t('Maximum 10 files allowed', 'Maximal 10 Dateien erlaubt')}
+                  </div>
+                )}
+                {(step5QuestionsFiles?.length || 0) > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {step5QuestionsFiles?.map((file, index) => (
+                      <div key={index} className="text-xs text-slate-600 dark:text-slate-400">
+                        • {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  {t('Answers JSONL Files', 'Antworten-JSONL-Dateien')} ({(step5AnswersFiles?.length || 0)}/10 {t('selected', 'ausgewählt')})
+                </label>
+                <input
+                  type="file"
+                  accept=".jsonl"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 10); // Limit to 10 files
+                    setStep5AnswersFiles?.(files);
+                  }}
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                />
+                {(step5AnswersFiles?.length || 0) >= 10 && (
+                  <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    {t('Maximum 10 files allowed', 'Maximal 10 Dateien erlaubt')}
+                  </div>
+                )}
+                {(step5AnswersFiles?.length || 0) > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {step5AnswersFiles?.map((file, index) => (
+                      <div key={index} className="text-xs text-slate-600 dark:text-slate-400">
+                        • {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  {t('Metadata JSONL Files', 'Metadaten-JSONL-Dateien')} ({(step5MetadataFiles?.length || 0)}/10 {t('selected', 'ausgewählt')})
+                </label>
+                <input
+                  type="file"
+                  accept=".jsonl"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 10); // Limit to 10 files
+                    setStep5MetadataFiles?.(files);
+                  }}
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                />
+                {(step5MetadataFiles?.length || 0) >= 10 && (
+                  <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    {t('Maximum 10 files allowed', 'Maximal 10 Dateien erlaubt')}
+                  </div>
+                )}
+                {(step5MetadataFiles?.length || 0) > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {step5MetadataFiles?.map((file, index) => (
+                      <div key={index} className="text-xs text-slate-600 dark:text-slate-400">
+                        • {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2">
+            <strong className="text-blue-800 dark:text-blue-200">ℹ️ {t('Info', 'Info')}:</strong> {t('All uploaded files will be automatically merged together. You can upload up to 10 files per type (questions, answers, metadata). The number of files per type does not need to match - all files will be combined into one large dataset for processing.', 'Alle hochgeladenen Dateien werden automatisch zusammengeführt. Sie können bis zu 10 Dateien pro Typ hochladen (Fragen, Antworten, Metadaten). Die Anzahl der Dateien pro Typ muss nicht übereinstimmen - alle Dateien werden zu einem großen Datensatz zusammengeführt und verarbeitet.')}
+          </div>
         </div>
       )}
 
@@ -2018,6 +3083,177 @@ function StepCard({
           <div className="text-xs text-green-700 dark:text-green-300 space-y-1">
             <div><strong>{t('Success', 'Erfolgreich')}:</strong> {results.success}</div>
             <div><strong>{t('Failed', 'Fehlgeschlagen')}:</strong> {results.failed}</div>
+            {results.embeddings && (
+              <>
+                <div className="mt-3 pt-3 border-t border-slate-300 dark:border-slate-600">
+                  <div className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t('Embeddings', 'Embeddings')}
+          </div>
+                  <div className="text-xs space-y-1">
+                    {results.embeddings.batchId ? (
+                      <>
+                        <div><strong className="text-blue-600 dark:text-blue-400">{t('Batch ID', 'Batch-ID')}:</strong> {results.embeddings.batchId}</div>
+                        <div><strong className="text-slate-600 dark:text-slate-400">{t('Entries', 'Einträge')}:</strong> {results.embeddings.entriesCount?.toLocaleString() || 0} / {results.embeddings.total.toLocaleString()}</div>
+                        {results.embeddings.filename && (
+                          <div><strong className="text-slate-600 dark:text-slate-400">{t('File', 'Datei')}:</strong> {results.embeddings.filename}</div>
+                        )}
+                        {results.embeddings.note && (
+                          <div className="text-slate-500 dark:text-slate-400 italic mt-1">{results.embeddings.note}</div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {results.embeddings.successful !== undefined && (
+                          <div><strong className="text-green-600 dark:text-green-400">{t('Successful', 'Erfolgreich')}:</strong> {results.embeddings.successful.toLocaleString()} / {results.embeddings.total.toLocaleString()}</div>
+                        )}
+                        {results.embeddings.failed !== undefined && results.embeddings.failed > 0 && (
+                          <div><strong className="text-red-600 dark:text-red-400">{t('Failed', 'Fehlgeschlagen')}:</strong> {results.embeddings.failed.toLocaleString()}</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {/* Batch Embedding Management Section */}
+                  <div className="mt-4 pt-4 border-t-2 border-slate-300 dark:border-slate-600">
+                    <div className="bg-gradient-to-br from-blue-50 via-blue-100/50 to-blue-50 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-xl p-4 sm:p-5 border border-blue-200 dark:border-blue-800">
+                      <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-200 mb-3">
+                        {t('Embedding Batch Results', 'Embedding Batch-Ergebnisse')}
+                      </h3>
+                      
+                      {results.embeddings.batchId && (
+                        <div className="mb-4 space-y-3">
+                          <div className="bg-white/60 dark:bg-slate-800/60 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                            <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                              {t('Batch ID', 'Batch-ID')}:
+                            </div>
+                            <div className="text-sm font-mono text-slate-800 dark:text-slate-200 break-all">
+                              {results.embeddings.batchId}
+                            </div>
+                          </div>
+                          
+                          {results.embeddings.filename && (
+                            <div>
+                              <a
+                                href={results.embeddings.filename.startsWith('/') ? results.embeddings.filename : `/generated/${results.embeddings.filename}`}
+                                download
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                {t('Download Input JSONL', 'Input JSONL herunterladen')}
+                              </a>
+                              <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                                {t('Download the JSONL file that was uploaded to OpenAI Batch API', 'Laden Sie die JSONL-Datei herunter, die zu OpenAI Batch API hochgeladen wurde')}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch('/api/embeddings/import-batch-results', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    batchId: results.embeddings?.batchId
+                                  })
+                                });
+                                const data = await response.json();
+                                if (response.ok) {
+                                  alert(t(`Successfully imported ${data.inserted} embeddings`, `Erfolgreich ${data.inserted} Embeddings importiert`));
+                                } else {
+                                  alert(t('Error', 'Fehler') + ': ' + (data.error || 'Unknown error'));
+                                }
+                              } catch (error) {
+                                alert(t('Error', 'Fehler') + ': ' + (error instanceof Error ? error.message : 'Unknown error'));
+                              }
+                            }}
+                            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                          >
+                            {t('Import from Batch ID (Auto)', 'Von Batch-ID importieren (Auto)')}
+                          </button>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            {t('Automatically downloads and imports results from OpenAI using the Batch ID', 'Lädt automatisch Ergebnisse von OpenAI herunter und importiert sie mit der Batch-ID')}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Manual File Upload Section - Always visible */}
+                      <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-700">
+                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                          {t('Manual Upload: OpenAI Batch Output File', 'Manueller Upload: OpenAI Batch Output-Datei')}
+                        </div>
+                        <div className="bg-white/80 dark:bg-slate-800/80 rounded-lg p-3 mb-3 border border-blue-200 dark:border-blue-700">
+                          <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                            <p className="font-semibold">{t('How to get the output file:', 'So erhalten Sie die Output-Datei:')}</p>
+                            <ol className="list-decimal list-inside space-y-1 ml-2">
+                              <li>{t('Go to OpenAI Dashboard → Batches', 'Gehen Sie zu OpenAI Dashboard → Batches')}</li>
+                              <li>{t('Find your batch (ID shown above if available)', 'Finden Sie Ihren Batch (ID oben angezeigt, falls verfügbar)')}</li>
+                              <li>{t('Wait until status is "completed"', 'Warten Sie, bis der Status "completed" ist')}</li>
+                              <li>{t('Click "Download" or copy the output_file_id', 'Klicken Sie auf "Download" oder kopieren Sie die output_file_id')}</li>
+                              <li>{t('Download the JSONL file from OpenAI', 'Laden Sie die JSONL-Datei von OpenAI herunter')}</li>
+                              <li>{t('Upload it below', 'Laden Sie sie unten hoch')}</li>
+                            </ol>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept=".jsonl"
+                            id="embedding-batch-output-upload"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              
+                              try {
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                
+                                const response = await fetch('/api/embeddings/import-batch-results', {
+                                  method: 'POST',
+                                  body: formData
+                                });
+                                
+                                const data = await response.json();
+                                if (response.ok) {
+                                  alert(t(`Successfully imported ${data.inserted} embeddings`, `Erfolgreich ${data.inserted} Embeddings importiert`));
+                                } else {
+                                  alert(t('Error', 'Fehler') + ': ' + (data.error || 'Unknown error'));
+                                }
+                              } catch (error) {
+                                alert(t('Error', 'Fehler') + ': ' + (error instanceof Error ? error.message : 'Unknown error'));
+                              }
+                              
+                              // Reset input
+                              e.target.value = '';
+                            }}
+                            className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer cursor-pointer border-2 border-dashed border-blue-300 dark:border-blue-600 rounded-lg p-4 bg-white/50 dark:bg-slate-800/50"
+                          />
+                          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+                            {t('Upload the completed batch output file (.jsonl) from OpenAI', 'Laden Sie die fertige Batch-Output-Datei (.jsonl) von OpenAI hoch')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            {results.indexNow && (
+              <>
+                <div className="mt-3 pt-3 border-t border-slate-300 dark:border-slate-600">
+                  <div className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t('IndexNow', 'IndexNow')}
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <div><strong className="text-green-600 dark:text-green-400">{t('Successful', 'Erfolgreich')}:</strong> {results.indexNow.successful.toLocaleString()} / {results.indexNow.total.toLocaleString()}</div>
+                    {results.indexNow.failed > 0 && (
+                      <div><strong className="text-red-600 dark:text-red-400">{t('Failed', 'Fehlgeschlagen')}:</strong> {results.indexNow.failed.toLocaleString()}</div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

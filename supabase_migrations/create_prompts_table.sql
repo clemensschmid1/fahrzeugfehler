@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS generation_prompts (
   user_prompt_template TEXT NOT NULL, -- Template with {brand}, {model}, {generation}, {generationCode} placeholders
   model VARCHAR(50) DEFAULT 'gpt-4o-mini',
   temperature DECIMAL(3,2) DEFAULT 0.7,
-  max_tokens INTEGER DEFAULT 4000,
+  max_tokens INTEGER DEFAULT 5000,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300; // 5 minutes
+export const maxDuration = 600; // 10 minutes for large file uploads
 
 const OPENAI_API_URL = 'https://api.openai.com/v1';
 
@@ -131,25 +131,60 @@ export async function POST(req: Request) {
     const cleanedJsonlContent = validLines.join('\n');
     const apiKey = getOpenAIApiKey();
 
-    // Upload file to OpenAI
-    const fileRes = await fetch(`${OPENAI_API_URL}/files`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-      body: createFormData(cleanedJsonlContent, filename)
-    });
+    // Calculate file size for timeout estimation
+    const fileSizeMB = (cleanedJsonlContent.length / (1024 * 1024)).toFixed(2);
+    console.log(`[Submit Batch] Uploading file: ${filename}, size: ${fileSizeMB} MB, lines: ${validLines.length}`);
 
-    if (!fileRes.ok) {
-      const errorText = await fileRes.text();
-      return NextResponse.json({ error: `File upload failed: ${errorText}` }, { status: 500 });
+    // Set timeout based on file size (1 minute per 10 MB, minimum 5 minutes, maximum 10 minutes)
+    const uploadTimeout = Math.min(Math.max(parseFloat(fileSizeMB) * 6 * 1000, 5 * 60 * 1000), 10 * 60 * 1000);
+    const uploadController = new AbortController();
+    const uploadTimeoutId = setTimeout(() => uploadController.abort(), uploadTimeout);
+
+    try {
+      // Upload file to OpenAI with extended timeout
+      const fileRes = await fetch(`${OPENAI_API_URL}/files`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        body: createFormData(cleanedJsonlContent, filename),
+        signal: uploadController.signal,
+      });
+
+      clearTimeout(uploadTimeoutId);
+
+      if (!fileRes.ok) {
+        const errorText = await fileRes.text();
+        return NextResponse.json({ error: `File upload failed: ${errorText}` }, { status: 500 });
+      }
+    } catch (error: any) {
+      clearTimeout(uploadTimeoutId);
+      if (error.name === 'AbortError' || uploadController.signal.aborted) {
+        return NextResponse.json({ 
+          error: `Upload timeout after ${Math.round(uploadTimeout / 1000 / 60)} minutes. File is too large (${fileSizeMB} MB). Consider splitting into smaller batches.` 
+        }, { status: 408 });
+      }
+      throw error;
     }
 
     const fileData = await fileRes.json();
     const inputFileId = fileData.id;
 
     // Check for concurrent batch limit (OpenAI allows max 50 concurrent batches)
-    const activeBatchesRes = await fetch(`${OPENAI_API_URL}/batches?limit=100`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    });
+    const batchesController = new AbortController();
+    const batchesTimeoutId = setTimeout(() => batchesController.abort(), 30000); // 30 seconds
+    
+    let activeBatchesRes;
+    try {
+      activeBatchesRes = await fetch(`${OPENAI_API_URL}/batches?limit=100`, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        signal: batchesController.signal,
+      });
+      clearTimeout(batchesTimeoutId);
+    } catch (error: any) {
+      clearTimeout(batchesTimeoutId);
+      // Non-critical, continue anyway
+      console.warn('[Submit Batch] Failed to check active batches:', error.message);
+      activeBatchesRes = null;
+    }
     
     if (activeBatchesRes.ok) {
       const batchesData = await activeBatchesRes.json();
@@ -166,27 +201,43 @@ export async function POST(req: Request) {
       console.log(`[Batch Limit] Active batches: ${activeBatches.length}/50`);
     }
 
-    // Create batch job
-    const batchRes = await fetch(`${OPENAI_API_URL}/batches`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        input_file_id: inputFileId,
-        endpoint: '/v1/chat/completions',
-        completion_window: '24h',
-        metadata: {
-          type: 'answers',
-          contentType,
-          brandId,
-          modelId,
-          generationId,
-          batchName: batchName || filename,
-        }
-      })
-    });
+    // Create batch job with timeout
+    const batchController = new AbortController();
+    const batchTimeoutId = setTimeout(() => batchController.abort(), 60000); // 60 seconds
+    
+    let batchRes;
+    try {
+      batchRes = await fetch(`${OPENAI_API_URL}/batches`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          input_file_id: inputFileId,
+          endpoint: '/v1/chat/completions',
+          completion_window: '24h',
+          metadata: {
+            type: 'answers',
+            contentType,
+            brandId,
+            modelId,
+            generationId,
+            batchName: batchName || filename,
+          }
+        }),
+        signal: batchController.signal,
+      });
+      clearTimeout(batchTimeoutId);
+    } catch (error: any) {
+      clearTimeout(batchTimeoutId);
+      if (error.name === 'AbortError' || batchController.signal.aborted) {
+        return NextResponse.json({ 
+          error: 'Batch creation timeout. The file was uploaded successfully. Please check OpenAI dashboard for batch status.' 
+        }, { status: 408 });
+      }
+      throw error;
+    }
 
     if (!batchRes.ok) {
       const errorText = await batchRes.text();
