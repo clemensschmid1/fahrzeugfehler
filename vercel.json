@@ -8,7 +8,7 @@
       "maxDuration": 30
     },
     "src/app/api/cars/bulk-generate/route.ts": {
-      "maxDuration": 900
+      "maxDuration": 800
     },
     "app/api/cars/bulk-generate-continue/route.ts": {
       "maxDuration": 300
