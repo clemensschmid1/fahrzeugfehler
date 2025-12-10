@@ -149,10 +149,10 @@ async function generateSitemaps() {
       
       while (true) {
         const { data: brands, error: brandsError } = await supabase
-          .from('car_brands')
+        .from('car_brands')
           .select('slug, updated_at, created_at')
           .range(brandsFrom, brandsFrom + brandsBatchSize - 1);
-        
+      
         if (brandsError) {
           console.error('⚠️  Error fetching brands:', brandsError);
           break;
@@ -215,10 +215,10 @@ async function generateSitemaps() {
         
         while (true) {
           const { data: models, error: modelsError } = await supabase
-            .from('car_models')
+          .from('car_models')
             .select('slug, updated_at, created_at, car_brands(slug)')
             .range(modelsFrom, modelsFrom + modelsBatchSize - 1);
-          
+        
           if (modelsError) {
             console.error('⚠️  Error fetching models:', modelsError);
             break;
@@ -286,10 +286,10 @@ async function generateSitemaps() {
         
         while (true) {
           const { data: generations, error: generationsError } = await supabase
-            .from('model_generations')
+          .from('model_generations')
             .select('slug, updated_at, created_at, car_models(slug, car_brands(slug))')
             .range(generationsFrom, generationsFrom + generationsBatchSize - 1);
-          
+        
           if (generationsError) {
             console.error('⚠️  Error fetching generations:', generationsError);
             break;
@@ -355,34 +355,137 @@ async function generateSitemaps() {
         }
         
         // Fetch all car faults with pagination
-        const allFaults: Array<{ slug: string; language_path: string; updated_at?: string; created_at?: string; model_generations: any }> = [];
+        // First, get total count to ensure we fetch all records
+        const { count: totalFaultsCount, error: countError } = await supabase
+          .from('car_faults')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'live');
+        
+        if (countError) {
+          console.error('⚠️  Error counting faults:', countError);
+        } else {
+          console.log(`📊 Total live faults in database: ${totalFaultsCount || 0}`);
+        }
+        
+        const allFaults: Array<{ slug: string; language_path: string; updated_at?: string; created_at?: string; model_generation_id: string; model_generations?: any }> = [];
         let faultsFrom = 0;
         const faultsBatchSize = 1000;
+        let consecutiveEmptyBatches = 0;
+        const maxConsecutiveEmptyBatches = 3;
+        let useSimplifiedQuery = false;
         
+        // Try with full join query first, fallback to simplified if needed
         while (true) {
-          const { data: faults, error: faultsError } = await supabase
-            .from('car_faults')
-            .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
-            .eq('status', 'live')
-            .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
+          let faults: any[] | null = null;
+          let faultsError: any = null;
           
+          if (!useSimplifiedQuery) {
+            // Try full query with joins
+            const result = await supabase
+              .from('car_faults')
+              .select('slug, language_path, updated_at, created_at, model_generation_id, model_generations(slug, car_models(slug, car_brands(slug)))')
+              .eq('status', 'live')
+              .order('id', { ascending: true })
+              .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
+            
+            faults = result.data;
+            faultsError = result.error;
+            
+            // If we get a complex query error, switch to simplified query
+            if (faultsError && (faultsError.message?.includes('timeout') || faultsError.message?.includes('too complex') || faultsError.code === 'PGRST116')) {
+              console.log('⚠️  Complex query failed, switching to simplified query method...');
+              useSimplifiedQuery = true;
+              faultsFrom = 0; // Reset to start over with simplified query
+              continue;
+            }
+          } else {
+            // Simplified query: fetch faults first, then fetch generation data separately
+            const result = await supabase
+              .from('car_faults')
+              .select('slug, language_path, updated_at, created_at, model_generation_id')
+              .eq('status', 'live')
+              .order('id', { ascending: true })
+              .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
+            
+            faults = result.data;
+            faultsError = result.error;
+            
+            // If we have faults, fetch their generation data in a separate query
+            if (faults && faults.length > 0) {
+              const generationIds = [...new Set(faults.map(f => f.model_generation_id).filter(Boolean))];
+              
+              if (generationIds.length > 0) {
+                const { data: generationsData } = await supabase
+                  .from('model_generations')
+                  .select('id, slug, car_models(slug, car_brands(slug))')
+                  .in('id', generationIds);
+                
+                // Create a map for quick lookup
+                const generationMap = new Map();
+                if (generationsData) {
+                  for (const gen of generationsData) {
+                    generationMap.set(gen.id, gen);
+                  }
+                }
+                
+                // Attach generation data to faults
+                for (const fault of faults) {
+                  if (fault.model_generation_id && generationMap.has(fault.model_generation_id)) {
+                    fault.model_generations = generationMap.get(fault.model_generation_id);
+                  }
+                }
+              }
+            }
+          }
+        
           if (faultsError) {
             console.error('⚠️  Error fetching faults:', faultsError);
-            break;
+            consecutiveEmptyBatches++;
+            if (consecutiveEmptyBatches >= maxConsecutiveEmptyBatches) {
+              console.log('⚠️  Too many consecutive errors, stopping fault fetch');
+              break;
+            }
+            faultsFrom += faultsBatchSize;
+            continue;
           }
           
           if (!faults || faults.length === 0) {
-            break;
+            consecutiveEmptyBatches++;
+            if (consecutiveEmptyBatches >= maxConsecutiveEmptyBatches) {
+              console.log('✅ Reached end of faults data');
+              break;
+            }
+            faultsFrom += faultsBatchSize;
+            continue;
           }
           
+          consecutiveEmptyBatches = 0; // Reset counter on successful fetch
           allFaults.push(...faults);
-          console.log(`📊 Fetched ${faults.length} faults (total: ${allFaults.length})`);
+          console.log(`📊 Fetched ${faults.length} faults (total: ${allFaults.length}${totalFaultsCount ? ` / ${totalFaultsCount}` : ''})`);
           
           if (faults.length < faultsBatchSize) {
+            console.log('✅ Reached end of faults data');
             break;
           }
           
           faultsFrom += faultsBatchSize;
+          
+          // Safety check: if we've fetched more than expected, log a warning
+          if (totalFaultsCount && allFaults.length > totalFaultsCount * 1.1) {
+            console.warn(`⚠️  Fetched more faults (${allFaults.length}) than expected (${totalFaultsCount}), stopping to prevent infinite loop`);
+            break;
+          }
+        }
+        
+        // Log final count comparison
+        if (totalFaultsCount) {
+          if (allFaults.length < totalFaultsCount) {
+            console.warn(`⚠️  WARNING: Fetched ${allFaults.length} faults but database has ${totalFaultsCount} live faults. Missing ${totalFaultsCount - allFaults.length} faults from sitemap.`);
+          } else if (allFaults.length === totalFaultsCount) {
+            console.log(`✅ Successfully fetched all ${allFaults.length} live faults`);
+          } else {
+            console.warn(`⚠️  WARNING: Fetched ${allFaults.length} faults but database has ${totalFaultsCount} live faults. There may be duplicates.`);
+          }
         }
         
         if (allFaults.length > 0) {
@@ -427,11 +530,11 @@ async function generateSitemaps() {
         
         while (true) {
           const { data: manuals, error: manualsError } = await supabase
-            .from('car_manuals')
-            .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
+          .from('car_manuals')
+          .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
             .eq('status', 'live')
             .range(manualsFrom, manualsFrom + manualsBatchSize - 1);
-          
+        
           if (manualsError) {
             console.error('⚠️  Error fetching manuals:', manualsError);
             break;
