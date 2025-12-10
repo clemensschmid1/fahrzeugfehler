@@ -4,7 +4,7 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 
 export const runtime = 'nodejs';
-export const maxDuration = 3600; // 60 minutes for large imports (20,000+ entries)
+export const maxDuration = 800; // ~13 minutes - Vercel maximum limit (for large imports, consider splitting into smaller batches)
 
 const OPENAI_API_URL = 'https://api.openai.com/v1';
 

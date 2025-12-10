@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { POST as bulkGeneratePOST } from '../bulk-generate/route';
 
 export const runtime = 'nodejs';
-export const maxDuration = 3600; // 60 minutes - process all jobs
+export const maxDuration = 800; // ~13 minutes - Vercel maximum limit
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

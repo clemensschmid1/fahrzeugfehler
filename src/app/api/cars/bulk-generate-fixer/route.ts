@@ -4,7 +4,7 @@ import { POST as bulkGeneratePOST } from '../bulk-generate/route';
 import { POST as bulkGenerateContinuePOST } from '../bulk-generate-continue/route';
 
 export const runtime = 'nodejs';
-export const maxDuration = 3600; // 60 minutes
+export const maxDuration = 800; // ~13 minutes - Vercel maximum limit
 
 const OPENAI_API_URL = 'https://api.openai.com/v1';
 

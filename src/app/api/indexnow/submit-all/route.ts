@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
-export const maxDuration = 3600; // 60 minutes for large submissions
+export const maxDuration = 800; // ~13 minutes - Vercel maximum limit (for large submissions, consider splitting into smaller batches)
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

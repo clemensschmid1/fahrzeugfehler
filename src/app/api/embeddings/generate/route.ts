@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
-export const maxDuration = 3600; // 60 minutes for large batches
+export const maxDuration = 800; // ~13 minutes - Vercel maximum limit (for large batches, consider using Batch API instead)
 
 const OPENAI_API_URL = 'https://api.openai.com/v1';
 
