@@ -72,6 +72,24 @@ export const BRAND_LOGOS: Record<string, string> = {
   'skoda': 'https://www.carlogos.org/car-logos/skoda-logo.png',
   'škoda': 'https://www.carlogos.org/car-logos/skoda-logo.png',
   'seat': 'https://www.carlogos.org/car-logos/seat-logo.png',
+  
+  // Additional American Brands
+  'ram': 'https://www.carlogos.org/car-logos/ram-logo.png',
+  'gmc': 'https://www.carlogos.org/car-logos/gmc-logo.png',
+  'lincoln': 'https://www.carlogos.org/car-logos/lincoln-logo.png',
+  'buick': 'https://www.carlogos.org/car-logos/buick-logo.png',
+  
+  // Luxury & Premium Brands
+  'genesis': 'https://www.carlogos.org/car-logos/genesis-logo.png',
+  'polestar': 'https://www.carlogos.org/car-logos/polestar-logo.png',
+  'bentley': 'https://www.carlogos.org/car-logos/bentley-logo.png',
+  'aston-martin': 'https://www.carlogos.org/car-logos/aston-martin-logo.png',
+  'mclaren': 'https://www.carlogos.org/car-logos/mclaren-logo.png',
+  
+  // Additional European Brands
+  'smart': 'https://www.carlogos.org/car-logos/smart-logo.png',
+  'ds': 'https://www.carlogos.org/car-logos/ds-automobiles-logo.png',
+  'ds-automobiles': 'https://www.carlogos.org/car-logos/ds-automobiles-logo.png',
 };
 
 /**
@@ -107,6 +125,12 @@ export function getBrandLogoUrl(brandSlug: string, brandName?: string, dbLogoUrl
     if (BRAND_LOGOS[nameSpaced]) {
       return BRAND_LOGOS[nameSpaced];
     }
+  }
+  
+  // Final fallback: try to generate URL from carlogos.org
+  const normalizedSlug = brandSlug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  if (normalizedSlug) {
+    return getCarlogosUrl(normalizedSlug);
   }
   
   return null;
