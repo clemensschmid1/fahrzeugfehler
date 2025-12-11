@@ -298,132 +298,109 @@ export default function BrandClient({ brand, models, lang, faultsCount = 0, manu
                     className="group block h-full"
                   >
                     <motion.div 
-                      className={`group relative rounded-2xl overflow-hidden shadow-2xl dark:shadow-2xl hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_20px_60px_rgba(220,38,38,0.2)] transition-all duration-500 border-2 h-full flex flex-col ${
+                      className={`group relative rounded-2xl overflow-hidden shadow-2xl dark:shadow-2xl hover:shadow-[0_20px_60px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_20px_60px_rgba(220,38,38,0.3)] transition-all duration-500 border-2 h-full flex flex-col ${
                         brand.slug === 'bmw' 
-                          ? 'bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 dark:from-slate-950 dark:via-black dark:to-slate-950 border-slate-600/50 dark:border-slate-700/50 hover:border-slate-500 dark:hover:border-slate-600' 
+                          ? 'bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 dark:from-slate-950 dark:via-black dark:to-slate-950 border-slate-600/50 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-500' 
                           : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-500/50'
                       }`}
                       whileHover={{ y: -8, scale: 1.03 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      {/* Metallic shine effect for BMW */}
-                      {brand.slug === 'bmw' && (
-                        <>
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-20"></div>
-                          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.1)_50%,transparent_100%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-20"></div>
-                          <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-slate-700/50 via-slate-800/30 to-transparent z-10"></div>
-                        </>
-                      )}
-                      
-                      {(() => {
-                        const imageUrl = getModelImageUrl(brand.slug, model.slug, model.image_url);
-                        return imageUrl ? (
-                          <div className={`relative h-56 sm:h-64 overflow-hidden ${
-                            brand.slug === 'bmw' 
-                              ? 'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-black dark:to-slate-950' 
-                              : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700'
-                          }`}>
-                            {/* Metallic grille effect overlay for BMW */}
-                            {brand.slug === 'bmw' && (
-                              <div className="absolute inset-0 z-10">
-                                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(0,0,0,0.3)_100%)]"></div>
-                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-20 bg-gradient-to-b from-slate-600/40 via-slate-700/20 to-transparent blur-sm"></div>
-                                <div className="absolute top-0 left-1/4 w-1/6 h-16 bg-gradient-to-b from-white/10 to-transparent blur-[2px]"></div>
-                                <div className="absolute top-0 right-1/4 w-1/6 h-16 bg-gradient-to-b from-white/10 to-transparent blur-[2px]"></div>
-                              </div>
-                            )}
-                            
-                            {/* Gradient overlay for better text readability */}
-                            <div className={`absolute inset-0 z-10 ${
-                              brand.slug === 'bmw' 
-                                ? 'bg-gradient-to-t from-black/70 via-black/30 to-transparent' 
-                                : 'bg-gradient-to-t from-black/40 via-black/10 to-transparent dark:from-black/60 dark:via-black/20 dark:to-transparent'
-                            }`}></div>
-                            
-                            {/* Subtle shine effect */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                            
-                            <img
-                              src={imageUrl}
-                              alt={`${model.name} - ${brand.name}`}
-                              className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
-                                brand.slug === 'bmw' 
-                                  ? 'brightness-110 contrast-110 group-hover:scale-110 group-hover:brightness-120' 
-                                  : 'group-hover:scale-110'
-                              }`}
-                              loading="lazy"
-                              decoding="async"
-                              fetchPriority="low"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = `
-                                    <div class="h-full ${brand.slug === 'bmw' ? 'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950/40 dark:to-red-900/30'} flex items-center justify-center">
-                                      <span class="text-6xl font-black ${brand.slug === 'bmw' ? 'text-slate-300 dark:text-slate-400' : 'text-red-600 dark:text-red-400/90'} drop-shadow-2xl">
-                                        ${model.name.charAt(0)}
-                                      </span>
-                                    </div>
-                                  `;
-                                }
-                              }}
-                            />
-                            
-                            {/* Featured badge overlay - Metallic for BMW */}
-                            {model.is_featured && (
-                              <div className="absolute top-4 right-4 z-20">
-                                <span className={`px-3 py-1 text-white text-xs font-black rounded-full shadow-xl border-2 ${
-                                  brand.slug === 'bmw' 
-                                    ? 'bg-gradient-to-br from-slate-600 to-slate-700 border-slate-500/50 shadow-slate-900/50' 
-                                    : 'bg-red-600 dark:bg-red-500 border-white/50'
-                                }`}>
-                                  {t('Featured', 'Empfohlen')}
-                                </span>
-                              </div>
-                            )}
+                      {/* BMW: Large metallic model name display */}
+                      {brand.slug === 'bmw' ? (
+                        <div className="relative h-64 sm:h-72 flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 dark:from-slate-950 dark:via-black dark:to-slate-950">
+                          {/* Metallic shine effects */}
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10"></div>
+                          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.08)_50%,transparent_100%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10"></div>
+                          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-slate-700/40 via-slate-800/20 to-transparent z-0"></div>
+                          
+                          {/* Large model name in metallic silver */}
+                          <div className="relative z-20 text-center px-4">
+                            <div className="text-8xl sm:text-9xl md:text-[10rem] font-black leading-none mb-2">
+                              <span className="bg-gradient-to-br from-slate-200 via-white to-slate-300 dark:from-slate-300 dark:via-white dark:to-slate-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_0_40px_rgba(255,255,255,0.5)] transition-all duration-500 group-hover:scale-105">
+                                {model.name}
+                              </span>
+                            </div>
+                            {/* Subtle model subtitle */}
+                            <div className="text-sm sm:text-base font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                              {brand.name}
+                            </div>
                           </div>
-                        ) : (
-                          <div className={`h-56 sm:h-64 flex items-center justify-center relative overflow-hidden border-b ${
-                            brand.slug === 'bmw' 
-                              ? 'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-black dark:to-slate-950 border-slate-600/30' 
-                              : 'bg-gradient-to-br from-red-100 via-red-200 to-red-300 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-800/20 border-red-200/50 dark:border-red-900/30'
-                          }`}>
-                            {brand.slug === 'bmw' ? (
-                              <>
-                                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.4)_100%)]"></div>
-                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-gradient-to-b from-slate-600/30 via-slate-700/15 to-transparent blur-md"></div>
-                                <span className="text-7xl sm:text-8xl font-black text-slate-300 dark:text-slate-400 relative z-10 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl">
-                                  {model.name.charAt(0)}
-                                </span>
-                              </>
+                          
+                          {/* Featured badge overlay - Metallic for BMW */}
+                          {model.is_featured && (
+                            <div className="absolute top-4 right-4 z-30">
+                              <span className="px-3 py-1 text-white text-xs font-black rounded-full shadow-xl border-2 bg-gradient-to-br from-slate-600 to-slate-700 border-slate-500/50 shadow-slate-900/50">
+                                {t('Featured', 'Empfohlen')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          {/* Non-BMW: Regular image display */}
+                          {(() => {
+                            const imageUrl = getModelImageUrl(brand.slug, model.slug, model.image_url);
+                            return imageUrl ? (
+                              <div className="relative h-56 sm:h-64 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent dark:from-black/60 dark:via-black/20 dark:to-transparent z-10"></div>
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                                <img
+                                  src={imageUrl}
+                                  alt={`${model.name} - ${brand.name}`}
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                                  loading="lazy"
+                                  decoding="async"
+                                  fetchPriority="low"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `
+                                        <div class="h-full bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950/40 dark:to-red-900/30 flex items-center justify-center">
+                                          <span class="text-6xl font-black text-red-600 dark:text-red-400/90 drop-shadow-lg">
+                                            ${model.name.charAt(0)}
+                                          </span>
+                                        </div>
+                                      `;
+                                    }
+                                  }}
+                                />
+                                {model.is_featured && (
+                                  <div className="absolute top-4 right-4 z-20">
+                                    <span className="px-3 py-1 bg-red-600 dark:bg-red-500 text-white text-xs font-black rounded-full shadow-lg border-2 border-white/50">
+                                      {t('Featured', 'Empfohlen')}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             ) : (
-                              <>
+                              <div className="h-56 sm:h-64 bg-gradient-to-br from-red-100 via-red-200 to-red-300 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-800/20 flex items-center justify-center relative overflow-hidden border-b border-red-200/50 dark:border-red-900/30">
                                 <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-500/20 dark:via-red-500/10 dark:to-transparent"></div>
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.1)_100%)]"></div>
                                 <span className="text-7xl sm:text-8xl font-black text-red-600 dark:text-red-400/90 relative z-10 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl">
                                   {model.name.charAt(0)}
                                 </span>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })()}
+                              </div>
+                            );
+                          })()}
+                        </>
+                      )}
                       
                       <div className={`p-6 flex-grow flex flex-col relative z-10 ${
                         brand.slug === 'bmw' 
                           ? 'bg-gradient-to-b from-transparent to-slate-800/50 dark:to-black/50' 
                           : 'bg-gradient-to-b from-transparent to-white/50 dark:to-slate-900/50'
                       }`}>
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className={`text-2xl sm:text-3xl font-black leading-tight transition-colors ${
-                            brand.slug === 'bmw' 
-                              ? 'text-slate-100 dark:text-slate-200 group-hover:text-white' 
-                              : 'text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400/90'
-                          }`}>
-                            {model.name}
-                          </h3>
-                        </div>
+                        {/* Model name - Hidden for BMW as it's already shown large above */}
+                        {brand.slug !== 'bmw' && (
+                          <div className="flex items-start justify-between mb-3">
+                            <h3 className="text-2xl sm:text-3xl font-black leading-tight transition-colors text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400/90">
+                              {model.name}
+                            </h3>
+                          </div>
+                        )}
                         
                         {(model.year_start || model.year_end) && (
                           <div className="flex items-center gap-1.5 mb-3">
