@@ -4,14 +4,14 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/10 py-8 sm:py-12 mt-auto">
+    <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/10 py-6 sm:py-8 md:py-12 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Tech-focused Footer */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex flex-col items-center md:items-start gap-2">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6">
+          <div className="flex flex-col items-center md:items-start gap-2 text-center md:text-left">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-              <div className="text-sm font-mono font-bold text-slate-900 dark:text-white tracking-wider">
+              <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+              <div className="text-xs sm:text-sm font-mono font-bold text-slate-900 dark:text-white tracking-wider">
                 © 2025 Fahrzeugfehler.de
               </div>
             </div>
@@ -22,28 +22,28 @@ export default function Footer() {
               v2.0.0 • Produktion
             </div>
           </div>
-          <div className="flex flex-col items-center md:items-end gap-4">
-            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+          <div className="flex flex-col items-center md:items-end gap-3 sm:gap-4 w-full md:w-auto">
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-6">
               <Link
                 href="/contact"
-                className="text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium font-mono"
+                className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium font-mono min-h-[44px] flex items-center px-2"
               >
                 Kontakt
               </Link>
               <Link
                 href="/privacy"
-                className="text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium font-mono"
+                className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium font-mono min-h-[44px] flex items-center px-2"
               >
                 Datenschutz
               </Link>
               <Link
                 href="/impressum"
-                className="text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium font-mono"
+                className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium font-mono min-h-[44px] flex items-center px-2"
               >
                 Impressum
               </Link>
             </div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 max-w-md text-center md:text-right">
+            <div className="text-xs text-slate-600 dark:text-slate-400 max-w-md text-center md:text-right px-2">
               ⚠️ Hinweis: Bei komplexen Problemen, Sicherheitsrelevanz oder Unklarheit sollten Sie immer einen qualifizierten Fachmann kontaktieren.
             </div>
           </div>

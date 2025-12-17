@@ -418,6 +418,53 @@ export default function MainPageClient() {
         </div>
       </div>
 
+      {/* Promotional Banner Section */}
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-slate-800 dark:from-blue-800 dark:via-blue-900 dark:to-slate-900 py-8 sm:py-12 md:py-16 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center"
+          >
+            <div className="inline-block px-4 py-2 bg-white/20 dark:bg-white/10 backdrop-blur-sm rounded-full mb-4 sm:mb-6 border border-white/30">
+              <span className="text-sm sm:text-base font-bold text-white">🚗 Professionelle Diagnose-Datenbank</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3 sm:mb-4 md:mb-6 tracking-tight">
+              Technische Lösungen für alle Fahrzeugfehler
+            </h2>
+            <p className="text-base sm:text-lg md:text-xl text-white/90 dark:text-white/80 mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
+              Von Werkstätten empfohlen. Schritt-für-Schritt-Anleitungen, Fehlercode-Analysen und professionelle Diagnoseverfahren für alle Automarken und Modelle.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
+              <Link
+                href="/cars"
+                className="inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-white text-blue-600 rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl hover:scale-105 active:scale-100 text-sm sm:text-base md:text-lg"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Automarken durchsuchen
+              </Link>
+              <Link
+                href="/chat"
+                className="inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-white/10 hover:bg-white/20 backdrop-blur-sm border-2 border-white/30 hover:border-white/50 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-100 text-sm sm:text-base md:text-lg"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Fragen stellen
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
       {/* Stats Section */}
       <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 py-8 sm:py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -551,7 +598,7 @@ export default function MainPageClient() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
             {/* Automarken Kategorie */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -592,25 +639,86 @@ export default function MainPageClient() {
               viewport={{ once: true, margin: "-50px" }}
               transition={{ delay: 0.2, duration: 0.4 }}
             >
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl sm:rounded-2xl p-6 sm:p-8 border-2 border-blue-200 dark:border-blue-800/50 shadow-lg h-full">
+                <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-200 dark:bg-blue-900/50 rounded-xl flex items-center justify-center text-2xl sm:text-3xl">
+                    🔧
+                  </div>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white">
+                    Fehlercodes
+                  </h3>
+                </div>
+                <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 mb-4 sm:mb-6 leading-relaxed font-medium">
+                  Diagnosecodes und Fehlercodes nach Modell. Systematische Übersicht aller Fehlercodes mit technischen Lösungen für jedes Automodell.
+                </p>
+                <div className="space-y-2">
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-semibold">
+                    Verfügbar für alle Modelle:
+                  </p>
+                  <ul className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Gruppiert nach Fehlercode
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Filterbar nach Generation
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Direkte Links zu Lösungen
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-blue-200 dark:border-blue-800/50">
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-3">
+                    Wählen Sie eine Marke und ein Modell, um die Fehlercode-Übersicht zu sehen.
+                  </p>
+                  <Link
+                    href="/cars"
+                    className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 min-h-[44px] bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-bold rounded-lg sm:rounded-xl transition-all shadow-md hover:shadow-lg text-sm sm:text-base"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    Zu Automarken
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Chat/Fragen Kategorie */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+            >
               <Link
-                href="/cars?view=error-codes"
+                href="/chat"
                 className="group block h-full"
               >
-                <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-3xl">
-                      🔧
+                <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-6 sm:p-8 border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
+                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-2xl sm:text-3xl">
+                      💬
                     </div>
-                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      Fehlercodes
+                    <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      Fragen stellen
                     </h3>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
-                    Diagnosecodes und Fehlercodes. Systematische Übersicht aller Fehlercodes mit technischen Lösungen.
+                  <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-4 sm:mb-6 leading-relaxed">
+                    Stellen Sie Fragen zu Fahrzeugproblemen und erhalten Sie strukturierte Antworten.
                   </p>
-                  <div className="flex items-center text-blue-600 dark:text-blue-400 font-bold group-hover:translate-x-2 transition-transform">
-                    Fehlercodes ansehen
-                    <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center text-blue-600 dark:text-blue-400 font-bold group-hover:translate-x-2 transition-transform text-sm sm:text-base">
+                    Fragen stellen
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>

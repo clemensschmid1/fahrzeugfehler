@@ -253,6 +253,55 @@ export default function CarsClient({ brands, stats, brandCounts }: CarsClientPro
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+        {/* Error Codes Feature Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mb-8 sm:mb-12"
+        >
+          <div className="bg-gradient-to-br from-blue-50 via-blue-100/50 to-slate-50 dark:from-blue-950/30 dark:via-blue-900/20 dark:to-slate-900 rounded-xl sm:rounded-2xl p-6 sm:p-8 md:p-10 border-2 border-blue-200 dark:border-blue-800/50 shadow-xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-6 md:gap-8">
+              <div className="flex-shrink-0">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-blue-600 dark:bg-blue-700 rounded-xl flex items-center justify-center text-2xl sm:text-3xl md:text-4xl shadow-lg">
+                  🔧
+                </div>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-2 sm:mb-3">
+                  Fehlercode-Übersicht für jedes Modell
+                </h2>
+                <p className="text-sm sm:text-base md:text-lg text-slate-700 dark:text-slate-300 mb-3 sm:mb-4 md:mb-6 leading-relaxed">
+                  Für jedes Automodell finden Sie eine umfassende Übersicht aller Fehlercodes, gruppiert nach Diagnosecode. Filtern Sie nach Generation und finden Sie direkt die passende Lösung.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm md:text-base text-slate-700 dark:text-slate-300">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Gruppiert nach Code</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs sm:text-sm md:text-base text-slate-700 dark:text-slate-300">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Filterbar nach Generation</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs sm:text-sm md:text-base text-slate-700 dark:text-slate-300">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Direkte Links zu Lösungen</span>
+                  </div>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                  Wählen Sie eine Marke und ein Modell, um die Fehlercode-Übersicht zu sehen.
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Recently Viewed Section */}
         {recentlyViewed.length > 0 && (
           <div className="mb-8 sm:mb-12">
@@ -736,13 +785,13 @@ export default function CarsClient({ brands, stats, brandCounts }: CarsClientPro
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
-                  href="/cars"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-100"
+                  href="/"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-100 min-h-[44px]"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                   </svg>
-                  Datenbank durchsuchen
+                  Zur Startseite
                 </Link>
                 <Link
                   href="/contact"

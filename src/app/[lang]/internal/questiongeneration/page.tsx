@@ -2,6 +2,10 @@
 import InternalAuth from '@/components/InternalAuth';
 import { useState } from 'react';
 
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
+
 function parseTxtFile(content: string): string[] {
   return content
     .split(/\r?\n/)

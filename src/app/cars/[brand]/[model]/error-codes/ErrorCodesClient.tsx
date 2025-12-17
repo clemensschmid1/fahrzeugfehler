@@ -111,25 +111,25 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            {/* Breadcrumb */}
-            <nav className="mb-6 flex items-center justify-center space-x-2 text-sm text-slate-400">
-              <Link href="/" className="hover:text-white transition-colors">
+            {/* Breadcrumb - Mobile optimized */}
+            <nav className="mb-4 sm:mb-6 flex items-center justify-center flex-wrap space-x-1 sm:space-x-2 text-xs sm:text-sm text-slate-400 px-2 overflow-x-auto pb-2">
+              <Link href="/" className="hover:text-white transition-colors whitespace-nowrap">
                 Startseite
               </Link>
-              <span>/</span>
-              <Link href="/cars" className="hover:text-white transition-colors">
+              <span className="flex-shrink-0">/</span>
+              <Link href="/cars" className="hover:text-white transition-colors whitespace-nowrap">
                 Autos
               </Link>
-              <span>/</span>
-              <Link href={`/cars/${brand.slug}`} className="hover:text-white transition-colors">
+              <span className="flex-shrink-0">/</span>
+              <Link href={`/cars/${brand.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {brand.name}
               </Link>
-              <span>/</span>
-              <Link href={`/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors">
+              <span className="flex-shrink-0">/</span>
+              <Link href={`/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {model.name}
               </Link>
-              <span>/</span>
-              <span className="text-white font-semibold">Fehlercodes</span>
+              <span className="flex-shrink-0">/</span>
+              <span className="text-white font-semibold whitespace-nowrap">Fehlercodes</span>
             </nav>
 
             {/* Brand Logo */}
@@ -167,29 +167,30 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
               ) : null;
             })()}
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-4 tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-3 sm:mb-4 tracking-tight px-2">
               Fehlercodes
             </h1>
             
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-300 dark:text-slate-400 mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-300 dark:text-slate-400 mb-4 sm:mb-6 px-2">
               {brand.name} {model.name}
             </h2>
 
-            <p className="text-lg text-slate-300 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-300 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed px-2">
               Übersicht aller Diagnosecodes und Fehlercodes für {brand.name} {model.name}
             </p>
 
-            {/* Stats */}
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400 mt-8">
+            {/* Stats - Mobile optimized */}
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-slate-400 mt-6 sm:mt-8 px-2">
               <div className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <span className="font-semibold text-white">{errorCodes.length.toLocaleString()}</span>
-                <span>verschiedene Fehlercodes</span>
+                <span className="hidden sm:inline">verschiedene Fehlercodes</span>
+                <span className="sm:hidden">Codes</span>
               </div>
               <div className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <span className="font-semibold text-white">{errorCodes.reduce((sum, group) => sum + group.count, 0).toLocaleString()}</span>
@@ -201,9 +202,9 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Search and Filter */}
-        <div className="mb-10 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+        {/* Search and Filter - Mobile optimized */}
+        <div className="mb-8 sm:mb-10 space-y-4 sm:space-y-6">
           {/* Search Bar */}
           <div className="relative max-w-3xl mx-auto">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-blue-500/10 rounded-xl blur-xl"></div>
@@ -212,10 +213,10 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
               placeholder="Fehlercode oder Beschreibung suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="relative w-full px-6 py-4 sm:py-5 text-lg border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent transition-all shadow-lg"
+              className="relative w-full px-4 sm:px-6 py-3 sm:py-4 md:py-5 text-base sm:text-lg border-2 border-slate-300 dark:border-slate-700 rounded-lg sm:rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent transition-all shadow-lg min-h-[44px]"
             />
             <svg
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-slate-400 dark:text-slate-500 z-10"
+              className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-slate-400 dark:text-slate-500 z-10"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -224,19 +225,21 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
             </svg>
           </div>
 
-          {/* Generation Filter */}
+          {/* Generation Filter - Mobile optimized */}
           {generations.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-2">
+              <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 w-full sm:w-auto text-center sm:text-left mb-2 sm:mb-0">
                 Nach Generation filtern:
               </span>
               <button
                 onClick={() => setSelectedGeneration('all')}
-                className={`px-4 py-2 rounded-lg font-bold text-sm border-2 transition-all duration-200 ${
+                className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm border-2 transition-all duration-200 min-h-[44px] ${
                   selectedGeneration === 'all'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-blue-500 dark:hover:border-blue-500'
                 }`}
+                aria-pressed={selectedGeneration === 'all'}
+                aria-label="Alle Generationen anzeigen"
               >
                 Alle Generationen
               </button>
@@ -244,11 +247,13 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
                 <button
                   key={gen.id}
                   onClick={() => setSelectedGeneration(gen.id)}
-                  className={`px-4 py-2 rounded-lg font-bold text-sm border-2 transition-all duration-200 ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm border-2 transition-all duration-200 min-h-[44px] ${
                     selectedGeneration === gen.id
                       ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-blue-500 dark:hover:border-blue-500'
                   }`}
+                  aria-pressed={selectedGeneration === gen.id}
+                  aria-label={`Nur ${gen.generation_code || gen.name} anzeigen`}
                 >
                   {gen.generation_code || gen.name}
                 </button>
@@ -259,52 +264,73 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
 
         {/* Error Codes Grid */}
         {filteredErrorCodes.length === 0 ? (
-          <div className="text-center py-16">
-            <svg className="w-24 h-24 mx-auto text-slate-300 dark:text-slate-700 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center py-12 sm:py-16">
+            <svg className="w-20 h-20 sm:w-24 sm:h-24 mx-auto text-slate-300 dark:text-slate-700 mb-4 sm:mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-              Keine Fehlercodes gefunden
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 px-4">
+              {errorCodes.length === 0 
+                ? 'Keine Fehlercodes verfügbar'
+                : 'Keine Fehlercodes gefunden'}
             </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              Versuchen Sie, Ihre Suche anzupassen.
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-4 sm:mb-6 px-4">
+              {errorCodes.length === 0
+                ? `Für ${brand.name} ${model.name} sind noch keine Fehlercodes in der Datenbank vorhanden.`
+                : searchQuery || selectedGeneration !== 'all'
+                ? 'Versuchen Sie, Ihre Suche oder Filter anzupassen.'
+                : 'Keine Fehlercodes gefunden.'}
             </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Suche zurücksetzen
-              </button>
+            {(searchQuery || selectedGeneration !== 'all') && (
+              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-sm sm:text-base"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Suche zurücksetzen
+                  </button>
+                )}
+                {selectedGeneration !== 'all' && (
+                  <button
+                    onClick={() => setSelectedGeneration('all')}
+                    className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 min-h-[44px] bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl transition-colors text-sm sm:text-base"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Filter zurücksetzen
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredErrorCodes.map((group, index) => (
               <motion.div
                 key={group.code}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
-                className="bg-white dark:bg-slate-900 rounded-xl p-6 border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 hover:shadow-xl transition-all duration-300"
+                className="bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl p-4 sm:p-6 border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 hover:shadow-xl transition-all duration-300"
               >
-                {/* Error Code Header */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {/* Error Code Header - Mobile optimized */}
+                <div className="mb-3 sm:mb-4">
+                  <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono break-all">
                       {group.code}
                     </h3>
-                    <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-full border border-blue-200 dark:border-blue-800">
+                    <span className="px-2 sm:px-3 py-1 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-full border border-blue-200 dark:border-blue-800 flex-shrink-0">
                       {group.count} {group.count === 1 ? 'Fehler' : 'Fehler'}
                     </span>
                   </div>
                 </div>
 
-                {/* Faults List */}
-                <div className="space-y-3">
+                {/* Faults List - Mobile optimized */}
+                <div className="space-y-2 sm:space-y-3">
                   {group.faults
                     .filter(f => selectedGeneration === 'all' || f.model_generation_id === selectedGeneration)
                     .map((fault) => {
@@ -314,12 +340,12 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
                         : null;
 
                       return (
-                        <div key={fault.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+                        <div key={fault.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 sm:p-3 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
                           {faultUrl ? (
                             <Link href={faultUrl} className="group block">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 mb-1">
+                                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 mb-1">
                                     {fault.title}
                                   </h4>
                                   {generation && (
@@ -332,19 +358,19 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
                               </div>
-                              <div className="flex flex-wrap gap-1.5 mt-2">
+                              <div className="flex flex-wrap gap-1 sm:gap-1.5 mt-2">
                                 {fault.severity && (
-                                  <span className={`px-2 py-0.5 rounded text-xs font-semibold border uppercase ${getSeverityColor(fault.severity)}`}>
+                                  <span className={`px-1.5 sm:px-2 py-0.5 rounded text-xs font-semibold border uppercase ${getSeverityColor(fault.severity)}`}>
                                     {fault.severity}
                                   </span>
                                 )}
                                 {fault.difficulty_level && (
-                                  <span className={`px-2 py-0.5 rounded text-xs font-semibold border uppercase ${getDifficultyColor(fault.difficulty_level)}`}>
+                                  <span className={`px-1.5 sm:px-2 py-0.5 rounded text-xs font-semibold border uppercase ${getDifficultyColor(fault.difficulty_level)}`}>
                                     {fault.difficulty_level}
                                   </span>
                                 )}
                                 {fault.affected_component && (
-                                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  <span className="px-1.5 sm:px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 line-clamp-1">
                                     {fault.affected_component}
                                   </span>
                                 )}
@@ -352,7 +378,7 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
                             </Link>
                           ) : (
                             <div>
-                              <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-1">
                                 {fault.title}
                               </h4>
                               {generation && (

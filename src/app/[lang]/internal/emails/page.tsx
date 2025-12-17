@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import InternalAuth from '@/components/InternalAuth';
 
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
+
 interface Metadata {
   source?: string;
   user_agent?: string;
