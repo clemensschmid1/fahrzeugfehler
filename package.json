@@ -1,9 +1,15 @@
 {
-  "name": "industrial-ai",
+  "name": "fahrzeugfehler-de",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=2048 --max-semi-space-size=64 --expose-gc\" next dev",
+    "dev:turbo": "cross-env NODE_OPTIONS=\"--max-old-space-size=2048 --max-semi-space-size=64\" next dev --turbopack",
+    "dev:no-turbo": "cross-env NODE_OPTIONS=\"--max-old-space-size=1536 --max-semi-space-size=64\" next dev",
+    "dev:memory": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096 --expose-gc --max-semi-space-size=128\" next dev",
+    "clean": "rm -rf .next && rm -rf node_modules/.cache",
+    "clean:cache": "rm -rf .next/cache",
+    "clean:turbo": "rm -rf .next/cache/turbo && rm -rf node_modules/.cache/turbo",
     "build": "next build",
     "sitemap:generate": "tsx scripts/generateSitemaps.ts",
     "sitemap:split": "tsx scripts/splitSitemapIndexes.ts",
@@ -15,7 +21,11 @@
     "verify-indexnow": "npx tsx scripts/verifyIndexNow.ts",
     "bulk-generate": "npx tsx scripts/bulkPageGeneration.ts",
     "bulk-generate:resume": "npx tsx scripts/bulkPageGeneration.ts --resume",
-    "bulk-generate:limit": "npx tsx scripts/bulkPageGeneration.ts --limit=50"
+    "bulk-generate:limit": "npx tsx scripts/bulkPageGeneration.ts --limit=50",
+    "clean:cache": "node scripts/clean-cache.js",
+    "clean:cache:all": "node scripts/clean-cache.js --all",
+    "clean:cache:win": "powershell -ExecutionPolicy Bypass -File scripts/clean-cache.ps1",
+    "clean:cache:win:all": "powershell -ExecutionPolicy Bypass -File scripts/clean-cache.ps1 -All"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.821.0",

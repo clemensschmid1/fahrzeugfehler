@@ -56,7 +56,7 @@ async function submitToIndexNowBatch(urls: string[]): Promise<number> {
   
   try {
     const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
-    const HOST = process.env.INDEXNOW_HOST || 'faultbase.com';
+    const HOST = process.env.INDEXNOW_HOST || 'fahrzeugfehler.de';
     const KEY_LOCATION = `https://${HOST}/${INDEXNOW_KEY}.txt`;
 
     if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
@@ -248,7 +248,8 @@ export async function POST(req: Request) {
             const gen = fault.model_generations as any;
             if (gen && gen.car_models && gen.car_models.car_brands) {
               const langPath = fault.language_path || 'en';
-              url = `https://faultbase.com/${langPath}/cars/${gen.car_models.car_brands.slug}/${gen.car_models.slug}/${gen.slug}/faults/${fault.slug}`;
+              // Nur deutsche URLs (kein lang-Parameter mehr)
+              url = `https://fahrzeugfehler.de/cars/${gen.car_models.car_brands.slug}/${gen.car_models.slug}/${gen.slug}/faults/${fault.slug}`;
             }
           } catch (error) {
             // Ignore

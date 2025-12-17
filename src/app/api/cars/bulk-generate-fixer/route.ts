@@ -158,7 +158,9 @@ async function fixJob(job: any, analysis: { fixAction?: string }, supabase: any,
       // Restart the entire job
       console.log(`[Fixer] Restarting job ${job.id}...`);
       
-      const request = new Request('http://localhost:3000/api/cars/bulk-generate', {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      const request = new Request(`${baseUrl}/api/cars/bulk-generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,7 +196,9 @@ async function fixJob(job: any, analysis: { fixAction?: string }, supabase: any,
       // Continue from current state
       console.log(`[Fixer] Continuing job ${job.id}...`);
       
-      const request = new Request('http://localhost:3000/api/cars/bulk-generate-continue', {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      const request = new Request(`${baseUrl}/api/cars/bulk-generate-continue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job.id }),

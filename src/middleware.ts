@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// List of supported languages
-const supportedLanguages = ['en', 'de'];
-
-// List of static files that should not be redirected
+// List of static files that should not be processed
 const staticFiles = [
   'sitemap.xml',
   'robots.txt',
@@ -41,82 +38,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if the pathname starts with a supported language
-  const pathnameHasLanguage = supportedLanguages.some(
-    (lang) => pathname === `/${lang}` || pathname.startsWith(`/${lang}/`)
-  );
-
-  // If the pathname already has a language prefix, continue
-  if (pathnameHasLanguage) {
-    return NextResponse.next();
+  // Redirect old language-prefixed URLs to new structure (remove /en or /de)
+  if (pathname.startsWith('/en/') || pathname.startsWith('/de/')) {
+    const newPath = pathname.replace(/^\/(en|de)/, '');
+    return NextResponse.redirect(new URL(newPath || '/', request.url));
+  }
+  
+  if (pathname === '/en' || pathname === '/de') {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Special handling for /login, /signup, and /internal routes
-  if (pathname === '/login' || pathname === '/signup' || pathname.startsWith('/internal')) {
-    // Get the preferred language from the request headers
-    const acceptLanguage = request.headers.get('accept-language');
-    let preferredLanguage = 'en'; // Default to English
-
-    if (acceptLanguage) {
-      // Parse the Accept-Language header
-      const languages = acceptLanguage.split(',').map((lang) => {
-        const [language, quality = '1'] = lang.trim().split(';q=');
-        return {
-          language: language.split('-')[0], // Get the primary language code
-          quality: parseFloat(quality),
-        };
-      });
-
-      // Sort languages by quality
-      languages.sort((a, b) => b.quality - a.quality);
-
-      // Find the first supported language
-      const matchedLanguage = languages.find((lang) =>
-        supportedLanguages.includes(lang.language)
-      );
-
-      if (matchedLanguage) {
-        preferredLanguage = matchedLanguage.language;
-      }
-    }
-
-    // Redirect to the language-prefixed path
-    return NextResponse.redirect(
-      new URL(`/${preferredLanguage}${pathname}`, request.url)
-    );
-  }
-
-  // Get the preferred language from the request headers
-  const acceptLanguage = request.headers.get('accept-language');
-  let preferredLanguage = 'en'; // Default to English
-
-  if (acceptLanguage) {
-    // Parse the Accept-Language header
-    const languages = acceptLanguage.split(',').map((lang) => {
-      const [language, quality = '1'] = lang.trim().split(';q=');
-      return {
-        language: language.split('-')[0], // Get the primary language code
-        quality: parseFloat(quality),
-      };
-    });
-
-    // Sort languages by quality
-    languages.sort((a, b) => b.quality - a.quality);
-
-    // Find the first supported language
-    const matchedLanguage = languages.find((lang) =>
-      supportedLanguages.includes(lang.language)
-    );
-
-    if (matchedLanguage) {
-      preferredLanguage = matchedLanguage.language;
-    }
-  }
-
-  // Redirect to the language-prefixed path
-  return NextResponse.redirect(
-    new URL(`/${preferredLanguage}${pathname}`, request.url)
-  );
+  // No language redirect needed - site is German only
+  return NextResponse.next();
 }
 
 // Configure the middleware to run on specific paths

@@ -164,6 +164,24 @@ function ChatPageContent() {
   const [showMetaDisclaimer, setShowMetaDisclaimer] = useState(false);
   const [metaPollInterval, setMetaPollInterval] = useState<NodeJS.Timeout | undefined>(undefined);
   const [metaPollTimeout, setMetaPollTimeout] = useState<NodeJS.Timeout | undefined>(undefined);
+  const fetchAbortControllerRef = useRef<AbortController | null>(null);
+  
+  // CRITICAL: Cleanup intervals, timeouts, and fetch requests on unmount
+  useEffect(() => {
+    return () => {
+      if (metaPollInterval) {
+        clearInterval(metaPollInterval);
+      }
+      if (metaPollTimeout) {
+        clearTimeout(metaPollTimeout);
+      }
+      // Abort any ongoing fetch requests
+      if (fetchAbortControllerRef.current) {
+        fetchAbortControllerRef.current.abort();
+        fetchAbortControllerRef.current = null;
+      }
+    };
+  }, [metaPollInterval, metaPollTimeout]);
   const [metaWaitSeconds, setMetaWaitSeconds] = useState(0);
   const [metaFadeOut, setMetaFadeOut] = useState(false);
   
@@ -342,8 +360,9 @@ function ChatPageContent() {
       setInput(queryParam);
       
       // Use requestAnimationFrame for better timing, then auto-submit
+      let timeoutId: NodeJS.Timeout | null = null;
       requestAnimationFrame(() => {
-        setTimeout(async () => {
+        timeoutId = setTimeout(async () => {
           // Set form mount time to allow immediate submission (bypass 3-second check)
           formMountTime.current = Date.now() - 4000;
           
@@ -659,14 +678,17 @@ function ChatPageContent() {
             setMetaFadeOut(true);
             clearInterval(interval);
             if (metaPollTimeout) clearTimeout(metaPollTimeout);
-            setTimeout(() => setShowMetaDisclaimer(false), 500);
+            const hideTimeout = setTimeout(() => setShowMetaDisclaimer(false), 500);
+            // Store hideTimeout for cleanup if needed
+            setMetaPollTimeout(hideTimeout);
           }
         }, 200);
         setMetaPollInterval(interval);
         const timeout = setTimeout(() => {
           setMetaFadeOut(true);
           clearInterval(interval);
-          setTimeout(() => setShowMetaDisclaimer(false), 500);
+          const hideTimeout = setTimeout(() => setShowMetaDisclaimer(false), 500);
+          setMetaPollTimeout(hideTimeout);
         }, 5000);
         setMetaPollTimeout(timeout);
       }

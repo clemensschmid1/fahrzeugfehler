@@ -44,7 +44,7 @@ function applyTheme(theme: Theme) {
   
   // Save to localStorage
   try {
-    localStorage.setItem('fault-base-theme', theme);
+    localStorage.setItem('fahrzeugfehler-theme', theme);
   } catch {}
   
   // Final force reflow
@@ -63,7 +63,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let initialTheme: Theme = 'light'; // Default to light mode (bright mode)
     try {
-      const saved = localStorage.getItem('fault-base-theme');
+      const saved = localStorage.getItem('fahrzeugfehler-theme');
       if (saved === 'dark' || saved === 'light') {
         initialTheme = saved;
       }

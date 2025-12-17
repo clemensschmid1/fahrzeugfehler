@@ -71,13 +71,11 @@ type Props = {
   fault: CarFault;
   relatedFaults: RelatedFault[];
   globalRelatedFaults?: RelatedFault[];
-  lang: string;
   initialComments?: Comment[];
   user?: User | null;
 };
 
-export default function FaultClient({ brand, model, generation, fault, relatedFaults, globalRelatedFaults = [], lang, initialComments = [], user }: Props) {
-  const t = (en: string, de: string) => lang === 'de' ? de : en;
+export default function FaultClient({ brand, model, generation, fault, relatedFaults, globalRelatedFaults = [], initialComments = [], user }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
@@ -115,7 +113,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           scope: 'global',
           matchThreshold: 0.7,
           matchCount: 6,
-          language: lang,
+          language: 'de',
         }),
       });
       
@@ -212,10 +210,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
     return cleaned.trim();
   }, [fault.solution, fault.symptoms, fault.diagnostic_steps]);
 
-  // Language switcher URL
-  const otherLang = lang === 'en' ? 'de' : 'en';
-  const currentPath = pathname || '';
-  const langSwitchUrl = currentPath.replace(`/${lang}/`, `/${otherLang}/`) + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
+  // Language switcher URL - removed, site is German-only
   
   // Calculate reading time (average 200 words per minute)
   const wordCount = fault.solution.split(/\s+/).length;
@@ -253,12 +248,12 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
 
   const handleExportPDF = async () => {
     try {
-      const pdfUrl = `/api/faults/${fault.slug}/pdf?lang=${lang}&brand=${brand.slug}&model=${model.slug}&generation=${generation.slug}`;
+      const pdfUrl = `/api/faults/${fault.slug}/pdf?brand=${brand.slug}&model=${model.slug}&generation=${generation.slug}`;
       
       // Open PDF HTML in new window with print dialog
       const newWindow = window.open(pdfUrl, '_blank');
       if (!newWindow) {
-        alert(lang === 'de' ? 'Bitte erlauben Sie Pop-ups für diese Seite' : 'Please allow pop-ups for this site');
+        alert('Bitte erlauben Sie Pop-ups für diese Seite');
         return;
       }
       
@@ -270,7 +265,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
       };
     } catch (error) {
       console.error('PDF export error:', error);
-      alert(lang === 'de' ? 'Fehler beim Exportieren des PDFs' : 'Error exporting PDF');
+      alert('Fehler beim Exportieren des PDFs');
     }
   };
 
@@ -278,13 +273,13 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
     e.preventDefault();
     if (!newComment.trim() || isSubmitting) return;
     if (newComment.length > 1000) {
-      setCommentError(lang === 'de' ? 'Maximal 1000 Zeichen erlaubt.' : 'Maximum 1000 characters allowed.');
+      setCommentError('Maximal 1000 Zeichen erlaubt.');
       return;
     }
     const now = Date.now();
     const delta = now - formMountTime.current;
     if (delta < 3000) {
-      setError(t('Please wait at least 3 seconds before submitting your comment.', 'Bitte warten Sie mindestens 3 Sekunden, bevor Sie Ihren Kommentar absenden.'));
+      setError('Bitte warten Sie mindestens 3 Sekunden, bevor Sie Ihren Kommentar absenden.');
       return;
     }
     setIsSubmitting(true);
@@ -301,12 +296,12 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         }),
       });
       if (!response.ok) {
-        let errorMsg = t('Failed to post comment', 'Kommentar konnte nicht gepostet werden');
+        let errorMsg = 'Kommentar konnte nicht gepostet werden';
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
         } catch {
-          errorMsg = t('Failed to post comment (invalid response)', 'Kommentar konnte nicht gepostet werden (ungültige Antwort)');
+          errorMsg = 'Kommentar konnte nicht gepostet werden (ungültige Antwort)';
         }
         throw new Error(errorMsg);
       }
@@ -365,8 +360,8 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
 
   const getDifficultyColor = (difficulty?: string) => {
     switch (difficulty?.toLowerCase()) {
-      case 'expert': return 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30';
-      case 'hard': return 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-900/30';
+      case 'expert': return 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
+      case 'hard': return 'bg-slate-100 dark:bg-slate-950/50 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-900/30';
       case 'medium': return 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/30';
       case 'easy': return 'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/30';
       default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
@@ -388,23 +383,23 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           >
             {/* Breadcrumb - Mobile optimized */}
             <nav className="mb-4 sm:mb-6 flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-slate-400 overflow-x-auto pb-2 -mx-4 sm:mx-0 px-4 sm:px-0">
-              <Link href={`/${lang}`} className="hover:text-white transition-colors whitespace-nowrap">
-                {t('Home', 'Startseite')}
+              <Link href="/" className="hover:text-white transition-colors whitespace-nowrap">
+                Startseite
               </Link>
               <span className="flex-shrink-0">/</span>
-              <Link href={`/${lang}/cars`} className="hover:text-white transition-colors whitespace-nowrap">
-                {t('Cars', 'Autos')}
+              <Link href="/cars" className="hover:text-white transition-colors whitespace-nowrap">
+                Autos
               </Link>
               <span className="flex-shrink-0">/</span>
-              <Link href={`/${lang}/cars/${brand.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
+              <Link href={`/cars/${brand.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {brand.name}
               </Link>
               <span className="flex-shrink-0">/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
+              <Link href={`/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {model.name}
               </Link>
               <span className="flex-shrink-0">/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
+              <Link href={`/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
                 {generation.name}
               </Link>
               <span className="flex-shrink-0">/</span>
@@ -421,17 +416,6 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
 
             {/* Action Buttons - Mobile optimized */}
             <div className="flex flex-wrap gap-1.5 sm:gap-2 md:gap-3 mb-3 sm:mb-4 md:mb-6">
-              {/* Language Switcher */}
-              <Link
-                href={langSwitchUrl}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
-                title={lang === 'en' ? 'Deutsch' : 'English'}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                </svg>
-                <span className="hidden sm:inline">{otherLang.toUpperCase()}</span>
-              </Link>
               {/* Dark Mode Toggle */}
               <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 rounded-lg backdrop-blur-sm flex items-center">
                 <ThemeToggle />
@@ -445,14 +429,14 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    {t('Copied!', 'Kopiert!')}
+                    Kopiert!
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    {t('Copy Link', 'Link kopieren')}
+                    Link kopieren
                   </>
                 )}
               </button>
@@ -463,17 +447,17 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                <span className="hidden sm:inline">{t('Print', 'Drucken')}</span>
+                <span className="hidden sm:inline">Drucken</span>
               </button>
               <button
                 onClick={handleExportPDF}
                 className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
-                title={t('Export as PDF', 'Als PDF exportieren')}
+                title="Als PDF exportieren"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <span className="hidden sm:inline">{t('PDF', 'PDF')}</span>
+                <span className="hidden sm:inline">PDF</span>
               </button>
               {tocItems.length > 0 && (
                 <button
@@ -483,7 +467,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                   <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  <span className="hidden sm:inline">{t('Table of Contents', 'Inhaltsverzeichnis')}</span>
+                  <span className="hidden sm:inline">Inhaltsverzeichnis</span>
                 </button>
               )}
             </div>
@@ -492,17 +476,17 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
               {fault.severity && (
                 <span className={`px-4 py-2 rounded-xl text-sm font-black border-2 uppercase tracking-wide ${getSeverityColor(fault.severity)} shadow-sm`}>
-                  {t('Severity', 'Schweregrad')}: {fault.severity}
+                  Schweregrad: {fault.severity}
                 </span>
               )}
               {fault.difficulty_level && (
                 <span className={`px-4 py-2 rounded-xl text-sm font-black border-2 uppercase tracking-wide ${getDifficultyColor(fault.difficulty_level)} shadow-sm`}>
-                  {t('Difficulty', 'Schwierigkeit')}: {fault.difficulty_level}
+                  Schwierigkeit: {fault.difficulty_level}
                 </span>
               )}
               {fault.error_code && (
                 <span className="px-4 py-2 rounded-xl text-sm font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-2 border-blue-200 dark:border-blue-900/50 shadow-sm font-mono">
-                  {t('Error Code', 'Fehlercode')}: {fault.error_code}
+                  Fehlercode: {fault.error_code}
                 </span>
               )}
               {fault.estimated_repair_time && (
@@ -524,7 +508,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         {showTOC && tocItems.length > 0 && (
           <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
-              {t('Table of Contents', 'Inhaltsverzeichnis')}
+              Inhaltsverzeichnis
             </h2>
             <nav className="space-y-2">
               {tocItems.map((item, index) => (
@@ -552,13 +536,13 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>{readingTime} {t('min read', 'Min. Lesezeit')}</span>
+            <span>{readingTime} Min. Lesezeit</span>
           </div>
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span>{wordCount} {t('words', 'Wörter')}</span>
+            <span>{wordCount} Wörter</span>
           </div>
         </div>
         {/* Critical Safety Warning */}
@@ -570,13 +554,10 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               </svg>
               <div>
                 <h3 className="text-lg font-bold text-red-900 dark:text-red-300 mb-2">
-                  {t('⚠️ Safety Warning', '⚠️ Sicherheitshinweis')}
+                  ⚠️ Sicherheitshinweis
                 </h3>
                 <p className="text-red-800 dark:text-red-200 leading-relaxed">
-                  {t(
-                    'This issue requires immediate attention. If you are not experienced with automotive repairs, consult a professional mechanic. Working on critical systems can be dangerous.',
-                    'Dieses Problem erfordert sofortige Aufmerksamkeit. Wenn Sie nicht erfahren in der Autoreparatur sind, konsultieren Sie einen professionellen Mechaniker. Arbeiten an kritischen Systemen kann gefährlich sein.'
-                  )}
+                  Dieses Problem erfordert sofortige Aufmerksamkeit. Wenn Sie nicht erfahren in der Autoreparatur sind, konsultieren Sie einen professionellen Mechaniker. Arbeiten an kritischen Systemen kann gefährlich sein.
                 </p>
               </div>
             </div>
@@ -594,7 +575,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               </div>
               <div className="flex-1">
                 <h2 className="text-2xl sm:text-3xl font-black text-red-900 dark:text-red-200 mb-4 flex items-center gap-2">
-                  <span>{t('Problem Statement', 'Problembeschreibung')}</span>
+                  <span>Problembeschreibung</span>
                 </h2>
                 <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-red-200/50 dark:border-red-800/30">
                   <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg sm:text-xl font-medium">
@@ -611,7 +592,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           {fault.error_code && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900/30">
               <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">
-                {t('Error Code', 'Fehlercode')}
+                Fehlercode
               </div>
               <code className="text-lg font-mono font-bold text-blue-900 dark:text-blue-200 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
                 {fault.error_code}
@@ -621,7 +602,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           {fault.affected_component && (
             <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-900/30">
               <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2">
-                {t('Component', 'Komponente')}
+                Komponente
               </div>
               <div className="text-base font-semibold text-purple-900 dark:text-purple-200">
                 {fault.affected_component}
@@ -631,7 +612,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           {fault.estimated_repair_time && (
             <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-900/30">
               <div className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">
-                {t('Repair Time', 'Reparaturzeit')}
+                Reparaturzeit
               </div>
               <div className="text-base font-semibold text-green-900 dark:text-green-200 flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -653,7 +634,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               </svg>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-red-900 dark:text-red-300 mb-3">
-                  {t('Safety Warnings', 'Sicherheitshinweise')}
+                  Sicherheitshinweise
                 </h3>
                 <ul className="space-y-2">
                   {fault.safety_warnings.map((warning, index) => (
@@ -678,7 +659,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                   <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  {t('Symptoms', 'Symptome')}
+                  Symptome
                 </h2>
                 <ul className="space-y-2">
                   {fault.symptoms.map((symptom, index) => (
@@ -698,7 +679,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                   <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  {t('Diagnostic Steps', 'Diagnoseschritte')}
+                  Diagnoseschritte
                 </h2>
                 <ol className="space-y-2">
                   {fault.diagnostic_steps.map((step, index) => (
@@ -722,7 +703,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {t('Solution', 'Lösung')}
+              Lösung
             </h2>
             <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base">
               <ReactMarkdown
@@ -784,32 +765,29 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               <svg className="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {t('Verification', 'Überprüfung')}
+              Überprüfung
             </h2>
             <p className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
-              {t(
-                'After completing the repair, verify that the issue has been resolved:',
-                'Nach Abschluss der Reparatur überprüfen Sie, ob das Problem behoben wurde:'
-              )}
+              Nach Abschluss der Reparatur überprüfen Sie, ob das Problem behoben wurde:
             </p>
             <ul className="space-y-3 text-slate-700 dark:text-slate-300">
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{t('Test the affected component to ensure it functions correctly', 'Testen Sie die betroffene Komponente, um sicherzustellen, dass sie ordnungsgemäß funktioniert')}</span>
+                <span>Testen Sie die betroffene Komponente, um sicherzustellen, dass sie ordnungsgemäß funktioniert</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{t('Check for any error codes or warning lights', 'Überprüfen Sie auf Fehlercodes oder Warnleuchten')}</span>
+                <span>Überprüfen Sie auf Fehlercodes oder Warnleuchten</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{t('Monitor the vehicle for a few days to ensure the issue does not recur', 'Überwachen Sie das Fahrzeug einige Tage lang, um sicherzustellen, dass das Problem nicht erneut auftritt')}</span>
+                <span>Überwachen Sie das Fahrzeug einige Tage lang, um sicherzustellen, dass das Problem nicht erneut auftritt</span>
               </li>
             </ul>
           </div>
@@ -821,30 +799,27 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            {t('Prevention Tips', 'Vorbeugung')}
+            Vorbeugung
           </h2>
           <p className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
-            {t(
-              'To prevent this issue from occurring again:',
-              'Um zu verhindern, dass dieses Problem erneut auftritt:'
-            )}
+            Um zu verhindern, dass dieses Problem erneut auftritt:
           </p>
           <ul className="space-y-3 text-slate-700 dark:text-slate-300">
             <li className="flex items-start gap-3">
               <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
-              <span>{t('Follow the manufacturer\'s recommended maintenance schedule', 'Befolgen Sie den empfohlenen Wartungsplan des Herstellers')}</span>
+              <span>Befolgen Sie den empfohlenen Wartungsplan des Herstellers</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
-              <span>{t('Address warning signs early before they develop into major issues', 'Beheben Sie Warnzeichen frühzeitig, bevor sie zu größeren Problemen werden')}</span>
+              <span>Beheben Sie Warnzeichen frühzeitig, bevor sie zu größeren Problemen werden</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
-              <span>{t('Use quality parts and fluids recommended for your vehicle', 'Verwenden Sie qualitativ hochwertige Teile und Flüssigkeiten, die für Ihr Fahrzeug empfohlen werden')}</span>
+              <span>Verwenden Sie qualitativ hochwertige Teile und Flüssigkeiten, die für Ihr Fahrzeug empfohlen werden</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">•</span>
-              <span>{t('Keep detailed records of all repairs and maintenance', 'Führen Sie detaillierte Aufzeichnungen über alle Reparaturen und Wartungen')}</span>
+              <span>Führen Sie detaillierte Aufzeichnungen über alle Reparaturen und Wartungen</span>
             </li>
           </ul>
         </div>
@@ -857,7 +832,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {t('Tools & Equipment Required', 'Benötigte Werkzeuge & Ausrüstung')}
+              Benötigte Werkzeuge & Ausrüstung
             </h2>
             <ul className="space-y-3">
               {fault.tools_required.map((tool, index) => (
@@ -881,7 +856,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
               </svg>
-              {t('Parts Required', 'Benötigte Teile')}
+              Benötigte Teile
             </h2>
             <ul className="space-y-3">
               {fault.parts_required.map((part, index) => (
@@ -902,13 +877,13 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         {/* Additional Information - Enhanced with all metadata */}
         <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
-            {t('Additional Information', 'Zusätzliche Informationen')}
+            Zusätzliche Informationen
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {fault.error_code && (
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/30">
                 <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-1">
-                  {t('Error Code', 'Fehlercode')}
+                  Fehlercode
                 </span>
                 <code className="text-base font-mono font-bold text-blue-900 dark:text-blue-200">
                   {fault.error_code}
@@ -918,7 +893,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             {fault.affected_component && (
               <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-900/30">
                 <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider block mb-1">
-                  {t('Component', 'Komponente')}
+                  Komponente
                 </span>
                 <p className="text-base font-semibold text-purple-900 dark:text-purple-200">{fault.affected_component}</p>
               </div>
@@ -926,7 +901,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             {fault.estimated_repair_time && (
               <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900/30">
                 <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider block mb-1">
-                  {t('Repair Time', 'Reparaturzeit')}
+                  Reparaturzeit
                 </span>
                 <p className="text-base font-semibold text-green-900 dark:text-green-200 flex items-center gap-1.5">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -939,7 +914,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             {fault.difficulty_level && (
               <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-900/30">
                 <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider block mb-1">
-                  {t('Difficulty', 'Schwierigkeit')}
+                  Schwierigkeit
                 </span>
                 <p className="text-base font-semibold text-yellow-900 dark:text-yellow-200 capitalize">{fault.difficulty_level}</p>
               </div>
@@ -947,7 +922,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             {fault.severity && (
               <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-900/30">
                 <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider block mb-1">
-                  {t('Severity', 'Schweregrad')}
+                  Schweregrad
                 </span>
                 <p className="text-base font-semibold text-orange-900 dark:text-orange-200 capitalize">{fault.severity}</p>
               </div>
@@ -955,20 +930,20 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             {fault.tools_required && fault.tools_required.length > 0 && (
               <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900/30">
                 <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider block mb-1">
-                  {t('Tools', 'Werkzeuge')}
+                  Werkzeuge
                 </span>
                 <p className="text-base font-semibold text-amber-900 dark:text-amber-200">
-                  {fault.tools_required.length} {t('items', 'Artikel')}
+                  {fault.tools_required.length} Artikel
                 </p>
               </div>
             )}
             {fault.parts_required && fault.parts_required.length > 0 && (
               <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-900/30">
                 <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block mb-1">
-                  {t('Parts', 'Teile')}
+                  Teile
                 </span>
                 <p className="text-base font-semibold text-indigo-900 dark:text-indigo-200">
-                  {fault.parts_required.length} {t('items', 'Artikel')}
+                  {fault.parts_required.length} Artikel
                 </p>
               </div>
             )}
@@ -979,19 +954,19 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         {(relatedFaults.length > 0 || globalRelatedFaults.length > 0 || isLoadingRelatedFaults) && (
           <section 
             className="mb-8"
-            aria-label={t('Related Faults', 'Ähnliche Fehler')}
+            aria-label="Ähnliche Fehler"
             itemScope
             itemType="https://schema.org/ItemList"
           >
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white" itemProp="name">
-                {t('Related Faults', 'Ähnliche Fehler')}
+                Ähnliche Fehler
               </h2>
               
               {/* Scope Toggle Buttons */}
               <nav 
                 className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 shadow-inner"
-                aria-label={t('Filter related faults by scope', 'Ähnliche Fehler nach Bereich filtern')}
+                aria-label="Ähnliche Fehler nach Bereich filtern"
                 role="tablist"
               >
                 <button
@@ -1000,10 +975,10 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                   role="tab"
                   aria-selected={relatedFaultsScope === 'generation'}
                   aria-controls="related-faults-generation"
-                  aria-label={t('Show faults from this generation only', 'Nur Fehler aus dieser Generation anzeigen')}
+                  aria-label="Nur Fehler aus dieser Generation anzeigen"
                   className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
                     relatedFaultsScope === 'generation'
-                      ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm'
+                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   } ${relatedFaults.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
@@ -1011,9 +986,9 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
-                    {t('This Generation', 'Diese Generation')}
+                    Diese Generation
                     {relatedFaults.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs font-bold" aria-label={t('Number of related faults', 'Anzahl ähnlicher Fehler')}>
+                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded text-xs font-bold" aria-label="Anzahl ähnlicher Fehler">
                         {relatedFaults.length}
                       </span>
                     )}
@@ -1030,10 +1005,10 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                   role="tab"
                   aria-selected={relatedFaultsScope === 'global'}
                   aria-controls="related-faults-global"
-                  aria-label={t('Show faults from all generations', 'Fehler aus allen Generationen anzeigen')}
+                  aria-label="Fehler aus allen Generationen anzeigen"
                   className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
                     relatedFaultsScope === 'global'
-                      ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm'
+                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
@@ -1041,9 +1016,9 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {t('All Generations', 'Alle Generationen')}
+                    Alle Generationen
                     {loadedGlobalFaults.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs font-bold" aria-label={t('Number of related faults', 'Anzahl ähnlicher Fehler')}>
+                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded text-xs font-bold" aria-label="Anzahl ähnlicher Fehler">
                         {loadedGlobalFaults.length}
                       </span>
                     )}
@@ -1055,7 +1030,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             {isLoadingRelatedFaults && (
               <div className="text-center py-12" role="status" aria-live="polite">
                 <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 dark:border-red-400" aria-hidden="true"></div>
-                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{t('Loading similar faults...', 'Lade ähnliche Fehler...')}</p>
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Lade ähnliche Fehler...</p>
               </div>
             )}
 
@@ -1063,12 +1038,12 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               <>
                 {relatedFaultsScope === 'generation' && relatedFaults.length === 0 && (
                   <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                    {t('No similar faults found in this generation.', 'Keine ähnlichen Fehler in dieser Generation gefunden.')}
+                    Keine ähnlichen Fehler in dieser Generation gefunden.
                   </div>
                 )}
                 {relatedFaultsScope === 'global' && loadedGlobalFaults.length === 0 && (
                   <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                    {t('No similar faults found across all generations.', 'Keine ähnlichen Fehler in allen Generationen gefunden.')}
+                    Keine ähnlichen Fehler in allen Generationen gefunden.
                   </div>
                 )}
                 {((relatedFaultsScope === 'generation' && relatedFaults.length > 0) || (relatedFaultsScope === 'global' && loadedGlobalFaults.length > 0)) && (
@@ -1087,8 +1062,8 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                       // Determine URL based on whether it's from same generation or global
                       const isSameGeneration = !related.generationName || related.generationName === generation.name;
                       const href = isSameGeneration
-                        ? `/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${related.slug}`
-                        : `/${lang}/cars/${related.brandName?.toLowerCase().replace(/\s+/g, '-')}/${related.modelName?.toLowerCase().replace(/\s+/g, '-')}/${related.generationName?.toLowerCase().replace(/\s+/g, '-')}/faults/${related.slug}`;
+                        ? `/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${related.slug}`
+                        : `/cars/${related.brandName?.toLowerCase().replace(/\s+/g, '-')}/${related.modelName?.toLowerCase().replace(/\s+/g, '-')}/${related.generationName?.toLowerCase().replace(/\s+/g, '-')}/faults/${related.slug}`;
                       
                       // Format similarity to 2 decimal places (e.g., 95.23%)
                       // Always show similarity if available, even if 0
@@ -1130,29 +1105,29 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                             href={href}
                             className="group block p-6 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-500/50 transition-all shadow-md hover:shadow-xl hover:scale-[1.02]"
                             itemProp="url"
-                            aria-label={t(`View fault: ${related.title}`, `Fehler anzeigen: ${related.title}`)}
+                            aria-label={`Fehler anzeigen: ${related.title}`}
                           >
                             <article itemScope itemType="https://schema.org/Article">
                               <meta itemProp="headline" content={related.title} />
                               <meta itemProp="name" content={related.title} />
                               <div className="flex items-start justify-between gap-3 mb-3">
-                                <h3 className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors flex-1 leading-tight" itemProp="headline">
+                                <h3 className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-1 leading-tight" itemProp="headline">
                                   {related.title}
                                 </h3>
                                 {similarityPercent !== null ? (
                                   <div 
                                     className={`px-3 py-1.5 rounded-lg text-sm font-black border-2 ${similarityColor} flex-shrink-0 min-w-[75px] text-center shadow-sm`}
-                                    aria-label={t(`Similarity: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeit: ${similarityPercent.toFixed(2)}%`)}
-                                    title={t(`Similarity: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeit: ${similarityPercent.toFixed(2)}%`)}
+                                    aria-label={`Ähnlichkeit: ${similarityPercent.toFixed(2)}%`}
+                                    title={`Ähnlichkeit: ${similarityPercent.toFixed(2)}%`}
                                   >
                                     <span aria-hidden="true">{similarityPercent.toFixed(2)}%</span>
                                   </div>
                                 ) : (
                                   <div 
                                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex-shrink-0 min-w-[75px] text-center"
-                                    aria-label={t('Similarity not available', 'Ähnlichkeit nicht verfügbar')}
+                                    aria-label="Ähnlichkeit nicht verfügbar"
                                   >
-                                    <span aria-hidden="true">{t('N/A', 'N/A')}</span>
+                                    <span aria-hidden="true">N/A</span>
                                   </div>
                                 )}
                               </div>
@@ -1171,9 +1146,9 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                               )}
                           
                               {similarityPercent !== null && (
-                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700" aria-label={t(`Similarity match: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeitsübereinstimmung: ${similarityPercent.toFixed(2)}%`)}>
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700" aria-label={`Ähnlichkeitsübereinstimmung: ${similarityPercent.toFixed(2)}%`}>
                                   <div className="flex items-center gap-3">
-                                    <div className="flex-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner" role="progressbar" aria-valuenow={similarityPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t(`Similarity: ${similarityPercent.toFixed(2)}%`, `Ähnlichkeit: ${similarityPercent.toFixed(2)}%`)}>
+                                    <div className="flex-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner" role="progressbar" aria-valuenow={similarityPercent} aria-valuemin={0} aria-valuemax={100}                                     aria-label={`Ähnlichkeit: ${similarityPercent.toFixed(2)}%`}>
                                       <div 
                                         className={`h-full rounded-full transition-all duration-500 ${
                                           similarityPercent >= 85 
@@ -1189,7 +1164,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                                       />
                                     </div>
                                     <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap">
-                                      {t('Match', 'Übereinstimmung')}
+                                      Übereinstimmung
                                     </span>
                                   </div>
                                 </div>
@@ -1209,7 +1184,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         {/* Social Sharing */}
         <div className="mt-8 sm:mt-12 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
           <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
-            {t('Share this solution', 'Diese Lösung teilen')}
+            Diese Lösung teilen
           </h3>
           <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
@@ -1255,25 +1230,25 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              <span className="hidden sm:inline">{t('Email', 'E-Mail')}</span>
+              <span className="hidden sm:inline">E-Mail</span>
             </button>
           </div>
         </div>
 
         {/* Comments Section */}
         <div className="mt-12 pt-12 border-t border-slate-200 dark:border-white/10">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-6">{t("Comments", "Kommentare")}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-6">Kommentare</h2>
           {!user ? (
             <div className="text-center mb-8 p-6 sm:p-8 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-white/10 rounded-2xl">
               <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-slate-400 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              <p className="text-slate-700 dark:text-slate-300 text-base sm:text-lg mb-4 font-medium">{t("Sign in to share your thoughts", "Melden Sie sich an, um Ihre Gedanken zu teilen")}</p>
+              <p className="text-slate-700 dark:text-slate-300 text-base sm:text-lg mb-4 font-medium">Melden Sie sich an, um Ihre Gedanken zu teilen</p>
               <Link
-                href={`/${lang}/login`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-medium hover:bg-red-700 dark:hover:bg-red-600 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
+                href="/login"
+                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
               >
-                {t("Sign In", "Anmelden")}
+                Anmelden
               </Link>
             </div>
           ) : (
@@ -1286,14 +1261,14 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder={t('Share your thoughts...', 'Teilen Sie Ihre Gedanken mit...')}
-                    className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-white/20 rounded-xl shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm sm:text-base resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 transition-all"
+                    placeholder="Teilen Sie Ihre Gedanken mit..."
+                    className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-white/20 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 transition-all"
                     rows={4}
                     maxLength={1000}
                   />
                   <div className="flex items-center justify-between mt-3">
                     <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {newComment.length}/1000 {t('characters', 'Zeichen')}
+                      {newComment.length}/1000 Zeichen
                     </span>
                     <button
                       type="submit"
@@ -1306,10 +1281,10 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          {t('Posting...', 'Wird gepostet...')}
+                          Wird gepostet...
                         </span>
                       ) : (
-                        t('Post Comment', 'Kommentar posten')
+                        'Kommentar posten'
                       )}
                     </button>
                   </div>
@@ -1330,7 +1305,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
           )}
           <div className="space-y-4">
             {comments.map((comment) => {
-              const displayName = comment.user_name || t('Anonymous User', 'Anonymer Benutzer');
+              const displayName = comment.user_name || 'Anonymer Benutzer';
               const initials = displayName
                 .split(' ')
                 .map((n: string) => n[0])
@@ -1342,7 +1317,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                 <div key={comment.id} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-6 hover:shadow-md transition-all duration-200">
                   <div className="flex items-start gap-3 sm:gap-4">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-sm">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-slate-500 flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-sm">
                         {initials}
                       </div>
                     </div>
@@ -1350,7 +1325,7 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                         <span className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">{displayName}</span>
                         <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                          {new Date(comment.created_at).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+                          {new Date(comment.created_at).toLocaleDateString('de-DE', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric',
@@ -1370,9 +1345,9 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                 <svg className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-slate-300 dark:text-slate-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg font-medium">{t("No comments yet", "Noch keine Kommentare")}</p>
+                <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg font-medium">Noch keine Kommentare</p>
                 {!user && (
-                  <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">{t("Be the first to share your thoughts", "Seien Sie der Erste, der Ihre Gedanken teilt")}</p>
+                  <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Seien Sie der Erste, der Ihre Gedanken teilt</p>
                 )}
               </div>
             )}
@@ -1382,13 +1357,13 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         {/* Back Button */}
         <div className="mt-8 sm:mt-12">
           <Link
-            href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`}
-            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-semibold hover:bg-red-700 dark:hover:bg-red-600 transition-all text-sm sm:text-base shadow-sm hover:shadow-md"
+            href={`/cars/${brand.slug}/${model.slug}/${generation.slug}`}
+            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-all text-sm sm:text-base shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            {t('Back to Generation', 'Zurück zur Generation')}
+            Zurück zur Generation
           </Link>
         </div>
       </div>

@@ -44,3 +44,7 @@ next-env.d.ts
 
 # bulk generation progress
 .bulk-generation-progress.json
+
+# generated files (temporary artifacts from bulk generation)
+/public/generated/**
+!/public/generated/.gitkeep

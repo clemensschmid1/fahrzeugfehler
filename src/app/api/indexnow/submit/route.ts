@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     // Configuration
     const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
-    const HOST = process.env.INDEXNOW_HOST || 'faultbase.com';
+    const HOST = process.env.INDEXNOW_HOST || 'fahrzeugfehler.de';
     // IndexNow key location must be accessible at the root domain
     const KEY_LOCATION = `https://${HOST}/${INDEXNOW_KEY}.txt`;
     

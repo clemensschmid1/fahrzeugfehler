@@ -127,8 +127,8 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
 
   const getSeverityColor = (severity?: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-600 text-white';
-      case 'high': return 'bg-orange-500 text-white';
+      case 'critical': return 'bg-blue-700 text-white';
+      case 'high': return 'bg-slate-600 text-white';
       case 'medium': return 'bg-yellow-500 text-white';
       case 'low': return 'bg-green-500 text-white';
       default: return 'bg-slate-500 text-white';
@@ -137,8 +137,8 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
 
   const getDifficultyColor = (difficulty?: string) => {
     switch (difficulty) {
-      case 'expert': return 'bg-red-600 text-white';
-      case 'hard': return 'bg-orange-500 text-white';
+      case 'expert': return 'bg-blue-700 text-white';
+      case 'hard': return 'bg-slate-600 text-white';
       case 'medium': return 'bg-yellow-500 text-white';
       case 'easy': return 'bg-green-500 text-white';
       default: return 'bg-slate-500 text-white';
@@ -148,7 +148,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-700 to-red-800 dark:from-red-950 dark:via-red-900 dark:to-red-950">
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 dark:from-blue-950 dark:via-blue-900 dark:to-blue-950">
         <div className="absolute inset-0 bg-gradient-to-br from-black/20 via-transparent to-black/10 dark:from-black/40 dark:via-transparent dark:to-black/20"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_70%)] dark:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.05),transparent_70%)]"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
@@ -159,7 +159,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
             className="text-center"
           >
             {/* Breadcrumb */}
-            <nav className="mb-6 flex items-center justify-center space-x-2 text-sm text-red-100">
+            <nav className="mb-6 flex items-center justify-center space-x-2 text-sm text-blue-100">
               <Link
                 href={`/${lang}`}
                 className="hover:text-white transition-colors"
@@ -188,7 +188,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
             <div className="mb-6 flex flex-wrap gap-3 justify-center">
               <Link
                 href={`/${lang}/cas`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 dark:bg-white/5 rounded-lg text-sm font-semibold text-red-50 dark:text-red-100/90 hover:bg-white/20 dark:hover:bg-white/10 transition-all backdrop-blur-sm border border-white/10 dark:border-white/5"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 dark:bg-white/5 rounded-lg text-sm font-semibold text-blue-50 dark:text-blue-100/90 hover:bg-white/20 dark:hover:bg-white/10 transition-all backdrop-blur-sm border border-white/10 dark:border-white/5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -197,7 +197,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
               </Link>
               <Link
                 href={`/${lang}/cas/${brand.slug}`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 dark:bg-white/5 rounded-lg text-sm font-semibold text-red-50 dark:text-red-100/90 hover:bg-white/20 dark:hover:bg-white/10 transition-all backdrop-blur-sm border border-white/10 dark:border-white/5"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 dark:bg-white/5 rounded-lg text-sm font-semibold text-blue-50 dark:text-blue-100/90 hover:bg-white/20 dark:hover:bg-white/10 transition-all backdrop-blur-sm border border-white/10 dark:border-white/5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -218,15 +218,15 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
               </div>
             )}
             <h1 className="text-5xl sm:text-6xl font-black text-white mb-4 tracking-tight drop-shadow-lg dark:drop-shadow-2xl">
-              <span className="bg-gradient-to-r from-white via-red-50 to-white dark:from-white dark:via-red-100 dark:to-white bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-white via-blue-50 to-white dark:from-white dark:via-blue-100 dark:to-white bg-clip-text text-transparent">
                 {model.name}
               </span>
             </h1>
-            <p className="text-2xl text-red-50 dark:text-red-100 mb-2 drop-shadow-md font-semibold">
+            <p className="text-2xl text-blue-50 dark:text-blue-100 mb-2 drop-shadow-md font-semibold">
               {brand.name}
             </p>
             {(model.year_start || model.year_end) && (
-              <p className="text-lg text-red-50 dark:text-red-100/90">
+              <p className="text-lg text-blue-50 dark:text-blue-100/90">
                 {model.year_start && model.year_end
                   ? `${model.year_start} - ${model.year_end}`
                   : model.year_start
@@ -237,7 +237,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
               </p>
             )}
             {model.description && (
-              <p className="text-lg text-red-50 dark:text-red-100/90 mt-4 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-lg text-blue-50 dark:text-blue-100/90 mt-4 max-w-2xl mx-auto leading-relaxed">
                 {model.description}
               </p>
             )}
@@ -251,7 +251,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
         <div className="mb-8 flex flex-wrap gap-4 justify-center">
           <Link
             href={`/${lang}/cas`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -260,7 +260,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
           </Link>
           <Link
             href={`/${lang}/cas/${brand.slug}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -269,7 +269,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
           </Link>
           <Link
             href={`/${lang}/chat`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -278,7 +278,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
           </Link>
           <Link
             href={`/${lang}/knowledge`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -293,22 +293,22 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/30 dark:backdrop-blur-sm rounded-xl p-6 border border-red-200 dark:border-red-900/30 hover:shadow-lg dark:hover:shadow-red-900/20 transition-all duration-300"
+            className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/30 dark:backdrop-blur-sm rounded-xl p-6 border border-blue-200 dark:border-blue-900/30 hover:shadow-lg dark:hover:shadow-blue-900/20 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-red-700 dark:text-red-300/90 mb-1">
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-300/90 mb-1">
                   {t('Faults & Solutions', 'Fehler & Lösungen')}
                 </p>
-                <p className="text-3xl font-black text-red-600 dark:text-red-400/90">
+                <p className="text-3xl font-black text-blue-600 dark:text-blue-400/90">
                   {faults.length}
                 </p>
-                <p className="text-xs text-red-600/70 dark:text-red-400/60 mt-1">
+                <p className="text-xs text-blue-600/70 dark:text-blue-400/60 mt-1">
                   {filteredFaults.length} {t('visible', 'sichtbar')}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-red-200 dark:bg-red-950/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform border border-red-300/50 dark:border-red-900/30">
-                <svg className="w-6 h-6 text-red-600 dark:text-red-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 bg-blue-200 dark:bg-blue-950/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform border border-blue-300/50 dark:border-blue-900/30">
+                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
@@ -369,13 +369,13 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
         {/* Search and Filter Bar */}
         <div className="mb-6 space-y-4">
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-red-500/5 dark:from-red-500/10 dark:via-transparent dark:to-red-500/10 rounded-xl blur-xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 dark:from-blue-500/10 dark:via-transparent dark:to-blue-500/10 rounded-xl blur-xl"></div>
             <input
               type="text"
               placeholder={t('Search faults and manuals...', 'Fehler und Anleitungen suchen...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="relative w-full px-6 py-4 text-lg border-2 border-slate-300 dark:border-zinc-700/50 rounded-xl bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 focus:border-transparent transition-all shadow-sm dark:shadow-xl"
+              className="relative w-full px-6 py-4 text-lg border-2 border-slate-300 dark:border-zinc-700/50 rounded-xl bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent transition-all shadow-sm dark:shadow-xl"
             />
             <svg
               className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-slate-400 dark:text-zinc-500 z-10"
@@ -396,7 +396,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
                 <select
                   value={faultFilter}
                   onChange={(e) => setFaultFilter(e.target.value as typeof faultFilter)}
-                  className="px-4 py-2 border border-slate-300 dark:border-zinc-700/50 rounded-lg bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 shadow-sm dark:shadow-lg"
+                  className="px-4 py-2 border border-slate-300 dark:border-zinc-700/50 rounded-lg bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm dark:shadow-lg"
                 >
                   <option value="all">{t('All Severities', 'Alle Schweregrade')}</option>
                   <option value="critical">{t('Critical', 'Kritisch')}</option>
@@ -434,7 +434,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="px-4 py-2 border border-slate-300 dark:border-zinc-700/50 rounded-lg bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 shadow-sm dark:shadow-lg"
+                className="px-4 py-2 border border-slate-300 dark:border-zinc-700/50 rounded-lg bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm dark:shadow-lg"
               >
                 <option value="newest">{t('Newest First', 'Neueste zuerst')}</option>
                 {activeTab === 'faults' && (
@@ -463,14 +463,14 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
               }}
               className={`py-4 px-2 border-b-2 font-semibold text-lg transition-colors relative ${
                 activeTab === 'faults'
-                  ? 'border-red-600 dark:border-red-500 text-red-600 dark:text-red-400/90'
+                  ? 'border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400/90'
                   : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-300'
               }`}
             >
               {t('Faults & Solutions', 'Fehler & Lösungen')}
               <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
                 activeTab === 'faults'
-                  ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300/90 border border-red-200/50 dark:border-red-900/30'
+                  ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300/90 border border-blue-200/50 dark:border-blue-900/30'
                   : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'
               }`}>
                 {filteredFaults.length}
@@ -512,7 +512,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
               >
                 <button
                   onClick={() => setSelectedFault(null)}
-                  className="mb-6 flex items-center text-slate-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400/90 transition-colors"
+                  className="mb-6 flex items-center text-slate-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400/90 transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -620,7 +620,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
                           setSearchQuery('');
                           setFaultFilter('all');
                         }}
-                        className="text-red-600 dark:text-red-400/90 hover:underline text-sm font-medium"
+                        className="text-blue-600 dark:text-blue-400/90 hover:underline text-sm font-medium"
                       >
                         {t('Clear filters', 'Filter zurücksetzen')}
                       </button>
@@ -636,12 +636,12 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
                     >
                       <div
                         onClick={() => setSelectedFault(fault)}
-                        className="group relative bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl shadow-lg dark:shadow-2xl hover:shadow-xl dark:hover:shadow-red-900/20 p-6 cursor-pointer transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-red-500 dark:hover:border-red-500/50 overflow-hidden"
+                        className="group relative bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl shadow-lg dark:shadow-2xl hover:shadow-xl dark:hover:shadow-blue-900/20 p-6 cursor-pointer transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-blue-500 dark:hover:border-blue-500/50 overflow-hidden"
                       >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/5 to-transparent rounded-full blur-2xl group-hover:from-red-500/10 dark:group-hover:from-red-500/20 transition-opacity"></div>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-transparent rounded-full blur-2xl group-hover:from-blue-500/10 dark:group-hover:from-blue-500/20 transition-opacity"></div>
                         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-50/50 dark:to-zinc-900/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="flex items-start justify-between mb-4 relative z-10">
-                          <h3 className="text-2xl font-bold text-slate-900 dark:text-zinc-100 flex-grow group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors">
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-zinc-100 flex-grow group-hover:text-blue-600 dark:group-hover:text-blue-400/90 transition-colors">
                             {fault.title}
                           </h3>
                           {fault.severity && (
@@ -674,7 +674,7 @@ export default function ModelClient({ model, faults, manuals, lang }: ModelClien
                             </p>
                           </div>
                         )}
-                        <div className="flex items-center text-red-600 dark:text-red-400/90 font-semibold text-sm mt-4 group-hover:translate-x-1 transition-transform relative z-10">
+                        <div className="flex items-center text-blue-600 dark:text-blue-400/90 font-semibold text-sm mt-4 group-hover:translate-x-1 transition-transform relative z-10">
                           {t('View Solution', 'Lösung ansehen')}
                           <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

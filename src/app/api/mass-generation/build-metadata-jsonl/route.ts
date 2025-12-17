@@ -128,17 +128,17 @@ export async function POST(req: Request) {
         continue;
       }
       
-      const answer = answerResult.response?.body?.choices?.[0]?.message?.content;
-      if (answer) {
-        qaPairs.push({
-          question: questionData.question,
-          answer: answer.trim(),
-          generationId: questionData.generationId,
-          customId,
-        });
+        const answer = answerResult.response?.body?.choices?.[0]?.message?.content;
+        if (answer) {
+          qaPairs.push({
+            question: questionData.question,
+            answer: answer.trim(),
+            generationId: questionData.generationId,
+            customId,
+          });
         successfulAnswers.add(customId);
+        }
       }
-    }
 
     // Calculate statistics
     const totalQuestions = questionsMap.size;
@@ -512,17 +512,17 @@ Example output:
       writeStream.on('error', (err) => {
         reject(new Error(`Failed to write metadata file: ${err.message}`));
       });
-      
+
       writeStream.on('finish', () => {
-        // Return example prompts for display
-        const exampleQa = qaPairs[0];
-        const exampleGenData = exampleQa?.generationId ? generationDataMap.get(exampleQa.generationId) : null;
-        const context = exampleGenData 
-          ? `This is about ${exampleGenData.brand} ${exampleGenData.model} ${exampleGenData.generation}.`
-          : '';
-        
-        const exampleMetadataPrompt = contentType === 'fault'
-          ? `You are an expert automotive technician and SEO specialist. Generate comprehensive metadata for a car fault/solution page.
+    // Return example prompts for display
+    const exampleQa = qaPairs[0];
+    const exampleGenData = exampleQa?.generationId ? generationDataMap.get(exampleQa.generationId) : null;
+    const context = exampleGenData 
+      ? `This is about ${exampleGenData.brand} ${exampleGenData.model} ${exampleGenData.generation}.`
+      : '';
+    
+    const exampleMetadataPrompt = contentType === 'fault'
+      ? `You are an expert automotive technician and SEO specialist. Generate comprehensive metadata for a car fault/solution page.
 
 Context: ${context}
 
@@ -565,7 +565,7 @@ Return **ONLY valid JSON** (no markdown, no code blocks, no explanations).
 **Scoring Guidelines:**
 - seo_score: Assess keyword optimization, search intent match, title/description quality. Good technical content should score 70-90.
 - content_score: Assess detail level, accuracy, step-by-step clarity, practical value. Comprehensive guides should score 80-95.`
-          : `You are an expert automotive technician and SEO specialist. Generate comprehensive metadata for a car maintenance/repair manual page.
+      : `You are an expert automotive technician and SEO specialist. Generate comprehensive metadata for a car maintenance/repair manual page.
 
 Context: ${context}
 
@@ -592,11 +592,11 @@ Return **ONLY valid JSON** (no markdown, no code blocks, no explanations).
 - List all tools mentioned
 - List all parts/components mentioned
 - Generate meta_title: Include procedure type, brand/model. Keep it concise and search-friendly.`;
-        
+
         const MODEL_METADATA = 'gpt-4o-mini-2024-07-18';
         
         resolve(NextResponse.json({
-          success: true,
+      success: true,
           statistics: {
             totalQuestions,
             totalAnswers,
@@ -606,23 +606,23 @@ Return **ONLY valid JSON** (no markdown, no code blocks, no explanations).
             unmatchedQuestions,
             successRate: successRate.toFixed(1) + '%',
           },
-          fileUrl: `/generated/${metadataFilename}`,
-          filename: metadataFilename,
-          count: batchJsonlLines.length,
-          qaPairsCount: qaPairs.length,
-          prompts: {
-            systemPrompt: 'You are an expert at extracting structured metadata from automotive technical content. Always return valid JSON only. Be precise with scores and ensure all required fields are present.',
-            exampleUserPrompt: exampleMetadataPrompt,
-            model: MODEL_METADATA,
-            temperature: 0.2,
-            maxTokens: 1500,
-            responseFormat: 'json_object',
-            generationContext: exampleGenData ? {
-              brand: exampleGenData.brand,
-              model: exampleGenData.model,
-              generation: exampleGenData.generation,
-            } : null,
-          },
+      fileUrl: `/generated/${metadataFilename}`,
+      filename: metadataFilename,
+      count: batchJsonlLines.length,
+      qaPairsCount: qaPairs.length,
+      prompts: {
+        systemPrompt: 'You are an expert at extracting structured metadata from automotive technical content. Always return valid JSON only. Be precise with scores and ensure all required fields are present.',
+        exampleUserPrompt: exampleMetadataPrompt,
+        model: MODEL_METADATA,
+        temperature: 0.2,
+        maxTokens: 1500,
+        responseFormat: 'json_object',
+        generationContext: exampleGenData ? {
+          brand: exampleGenData.brand,
+          model: exampleGenData.model,
+          generation: exampleGenData.generation,
+        } : null,
+      },
         }));
       });
       

@@ -58,23 +58,42 @@ export default function SketchfabViewer({ modelId, title, className = '' }: Sket
     containerRef.current.appendChild(iframe);
 
     // Hide loading placeholder when iframe loads
+    let timeoutId1: NodeJS.Timeout | null = null;
+    let timeoutId2: NodeJS.Timeout | null = null;
+    
     const hideLoading = () => {
       const loadingEl = document.getElementById('sketchfab-loading');
       if (loadingEl) {
         loadingEl.style.opacity = '0';
-        setTimeout(() => {
+        timeoutId1 = setTimeout(() => {
           loadingEl.style.display = 'none';
+          timeoutId1 = null;
         }, 500);
       }
     };
 
     iframe.onload = hideLoading;
     // Fallback: hide after 3 seconds
-    setTimeout(hideLoading, 3000);
+    timeoutId2 = setTimeout(() => {
+      hideLoading();
+      timeoutId2 = null;
+    }, 3000);
 
     return () => {
+      // CRITICAL: Cleanup all timeouts
+      if (timeoutId1) {
+        clearTimeout(timeoutId1);
+      }
+      if (timeoutId2) {
+        clearTimeout(timeoutId2);
+      }
+      // Cleanup iframe
       if (containerRef.current && iframe.parentNode) {
-        containerRef.current.removeChild(iframe);
+        try {
+          containerRef.current.removeChild(iframe);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
     };
   }, [modelId, title]);

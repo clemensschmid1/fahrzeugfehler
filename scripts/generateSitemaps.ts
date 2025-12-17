@@ -401,11 +401,11 @@ async function generateSitemaps() {
           } else {
             // Simplified query: fetch faults first, then fetch generation data separately
             const result = await supabase
-              .from('car_faults')
+          .from('car_faults')
               .select('slug, language_path, updated_at, created_at, model_generation_id')
-              .eq('status', 'live')
+            .eq('status', 'live')
               .order('id', { ascending: true })
-              .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
+            .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
             
             faults = result.data;
             faultsError = result.error;
@@ -443,7 +443,7 @@ async function generateSitemaps() {
             consecutiveEmptyBatches++;
             if (consecutiveEmptyBatches >= maxConsecutiveEmptyBatches) {
               console.log('⚠️  Too many consecutive errors, stopping fault fetch');
-              break;
+            break;
             }
             faultsFrom += faultsBatchSize;
             continue;
@@ -453,7 +453,7 @@ async function generateSitemaps() {
             consecutiveEmptyBatches++;
             if (consecutiveEmptyBatches >= maxConsecutiveEmptyBatches) {
               console.log('✅ Reached end of faults data');
-              break;
+            break;
             }
             faultsFrom += faultsBatchSize;
             continue;

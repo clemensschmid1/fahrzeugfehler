@@ -8,6 +8,15 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Fahrzeugfehler.de Brand Colors - Technisches Blau/Grau */
+  --primary: #0066cc;
+  --primary-dark: #004499;
+  --primary-light: #3385d6;
+  --accent: #1e40af;
+  --accent-light: #3b82f6;
+  --success: #059669;
+  --border: #cbd5e1;
+  --border-dark: #475569;
 }
 
 /* Dark mode - when dark class is on html */
@@ -143,18 +152,18 @@ html {
 
 /* Enhanced focus styles for accessibility */
 *:focus-visible {
-  outline: 2px solid rgb(239, 68, 68);
+  outline: 2px solid #0066cc;
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 /* Professional selection styles */
 ::selection {
-  background-color: rgba(239, 68, 68, 0.2);
+  background-color: rgba(0, 102, 204, 0.2);
   color: inherit;
 }
 
 ::-moz-selection {
-  background-color: rgba(239, 68, 68, 0.2);
+  background-color: rgba(0, 102, 204, 0.2);
   color: inherit;
 }

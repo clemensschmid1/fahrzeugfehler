@@ -118,3 +118,9 @@ export function removeVisitedPage(slug: string, type: 'knowledge' | 'news', lang
 
 
 
+
+
+
+
+
+

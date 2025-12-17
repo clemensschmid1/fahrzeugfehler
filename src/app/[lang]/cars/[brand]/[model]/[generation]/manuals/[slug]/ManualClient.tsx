@@ -61,13 +61,11 @@ type Props = {
   generation: ModelGeneration;
   manual: CarManual;
   relatedManuals: RelatedManual[];
-  lang: string;
   initialComments?: Comment[];
   user?: User | null;
 };
 
-export default function ManualClient({ brand, model, generation, manual, relatedManuals, lang, initialComments = [], user }: Props) {
-  const t = (en: string, de: string) => lang === 'de' ? de : en;
+export default function ManualClient({ brand, model, generation, manual, relatedManuals, initialComments = [], user }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
@@ -85,10 +83,6 @@ export default function ManualClient({ brand, model, generation, manual, related
     formMountTime.current = Date.now();
   }, []);
 
-  // Language switcher URL
-  const otherLang = lang === 'en' ? 'de' : 'en';
-  const currentPath = pathname || '';
-  const langSwitchUrl = currentPath.replace(`/${lang}/`, `/${otherLang}/`) + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
   
   // Calculate reading time (average 200 words per minute)
   const wordCount = manual.content.split(/\s+/).length;
@@ -128,13 +122,13 @@ export default function ManualClient({ brand, model, generation, manual, related
     e.preventDefault();
     if (!newComment.trim() || isSubmitting) return;
     if (newComment.length > 1000) {
-      setCommentError(lang === 'de' ? 'Maximal 1000 Zeichen erlaubt.' : 'Maximum 1000 characters allowed.');
+      setCommentError('Maximal 1000 Zeichen erlaubt.');
       return;
     }
     const now = Date.now();
     const delta = now - formMountTime.current;
     if (delta < 3000) {
-      setError(t('Please wait at least 3 seconds before submitting your comment.', 'Bitte warten Sie mindestens 3 Sekunden, bevor Sie Ihren Kommentar absenden.'));
+      setError('Bitte warten Sie mindestens 3 Sekunden, bevor Sie Ihren Kommentar absenden.');
       return;
     }
     setIsSubmitting(true);
@@ -151,12 +145,12 @@ export default function ManualClient({ brand, model, generation, manual, related
         }),
       });
       if (!response.ok) {
-        let errorMsg = t('Failed to post comment', 'Kommentar konnte nicht gepostet werden');
+        let errorMsg = 'Kommentar konnte nicht gepostet werden';
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
         } catch {
-          errorMsg = t('Failed to post comment (invalid response)', 'Kommentar konnte nicht gepostet werden (ungültige Antwort)');
+          errorMsg = 'Kommentar konnte nicht gepostet werden (ungültige Antwort)';
         }
         throw new Error(errorMsg);
       }
@@ -206,8 +200,8 @@ export default function ManualClient({ brand, model, generation, manual, related
 
   const getDifficultyColor = (difficulty?: string) => {
     switch (difficulty?.toLowerCase()) {
-      case 'expert': return 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30';
-      case 'hard': return 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-900/30';
+      case 'expert': return 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
+      case 'hard': return 'bg-slate-100 dark:bg-slate-950/50 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-900/30';
       case 'medium': return 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/30';
       case 'easy': return 'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/30';
       default: return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
@@ -229,28 +223,28 @@ export default function ManualClient({ brand, model, generation, manual, related
           >
             {/* Breadcrumb */}
             <nav className="mb-6 flex items-center space-x-2 text-sm text-slate-400">
-              <Link href={`/${lang}`} className="hover:text-white transition-colors">
-                {t('Home', 'Startseite')}
+              <Link href="/" className="hover:text-white transition-colors">
+                Startseite
               </Link>
               <span>/</span>
-              <Link href={`/${lang}/cars`} className="hover:text-white transition-colors">
-                {t('Cars', 'Autos')}
+              <Link href="/cars" className="hover:text-white transition-colors">
+                Autos
               </Link>
               <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}`} className="hover:text-white transition-colors">
+              <Link href={`/cars/${brand.slug}`} className="hover:text-white transition-colors">
                 {brand.name}
               </Link>
               <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors">
+              <Link href={`/cars/${brand.slug}/${model.slug}`} className="hover:text-white transition-colors">
                 {model.name}
               </Link>
               <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors">
+              <Link href={`/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors">
                 {generation.name}
               </Link>
               <span>/</span>
-              <Link href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors">
-                {t('Manuals', 'Anleitungen')}
+              <Link href={`/cars/${brand.slug}/${model.slug}/${generation.slug}`} className="hover:text-white transition-colors">
+                Anleitungen
               </Link>
               <span>/</span>
               <span className="text-white font-semibold">{manual.title}</span>
@@ -266,17 +260,6 @@ export default function ManualClient({ brand, model, generation, manual, related
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
-              {/* Language Switcher */}
-              <Link
-                href={langSwitchUrl}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all flex items-center gap-1.5 sm:gap-2 backdrop-blur-sm text-xs sm:text-sm"
-                title={lang === 'en' ? 'Deutsch' : 'English'}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                </svg>
-                <span className="hidden sm:inline">{otherLang.toUpperCase()}</span>
-              </Link>
               {/* Dark Mode Toggle */}
               <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 rounded-lg backdrop-blur-sm flex items-center">
                 <ThemeToggle />
@@ -290,14 +273,14 @@ export default function ManualClient({ brand, model, generation, manual, related
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    {t('Copied!', 'Kopiert!')}
+                    Kopiert!
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    {t('Copy Link', 'Link kopieren')}
+                    Link kopieren
                   </>
                 )}
               </button>
@@ -308,7 +291,7 @@ export default function ManualClient({ brand, model, generation, manual, related
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                <span className="hidden sm:inline">{t('Print', 'Drucken')}</span>
+                <span className="hidden sm:inline">Drucken</span>
               </button>
               {tocItems.length > 0 && (
                 <button
@@ -318,7 +301,7 @@ export default function ManualClient({ brand, model, generation, manual, related
                   <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  <span className="hidden sm:inline">{t('Table of Contents', 'Inhaltsverzeichnis')}</span>
+                  <span className="hidden sm:inline">Inhaltsverzeichnis</span>
                 </button>
               )}
             </div>
@@ -332,7 +315,7 @@ export default function ManualClient({ brand, model, generation, manual, related
               )}
               {manual.difficulty_level && (
                 <span className={`px-3 py-1 rounded-lg text-sm font-bold border ${getDifficultyColor(manual.difficulty_level)}`}>
-                  {t('Difficulty', 'Schwierigkeit')}: {manual.difficulty_level}
+                  Schwierigkeit: {manual.difficulty_level}
                 </span>
               )}
               {manual.estimated_time && (
@@ -351,7 +334,7 @@ export default function ManualClient({ brand, model, generation, manual, related
         {showTOC && tocItems.length > 0 && (
           <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
-              {t('Table of Contents', 'Inhaltsverzeichnis')}
+              Inhaltsverzeichnis
             </h2>
             <nav className="space-y-2">
               {tocItems.map((item, index) => (
@@ -379,13 +362,13 @@ export default function ManualClient({ brand, model, generation, manual, related
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>{readingTime} {t('min read', 'Min. Lesezeit')}</span>
+            <span>{readingTime} Min. Lesezeit</span>
           </div>
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span>{wordCount} {t('words', 'Wörter')}</span>
+            <span>{wordCount} Wörter</span>
           </div>
         </div>
         {/* Prerequisites Section - New */}
@@ -394,13 +377,13 @@ export default function ManualClient({ brand, model, generation, manual, related
             <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
-            {t('Prerequisites', 'Voraussetzungen')}
+            Voraussetzungen
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {manual.tools_required && manual.tools_required.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-                  {t('Tools Required', 'Benötigte Werkzeuge')}
+                  Benötigte Werkzeuge
                 </h3>
                 <ul className="space-y-2">
                   {manual.tools_required.map((tool, index) => (
@@ -417,7 +400,7 @@ export default function ManualClient({ brand, model, generation, manual, related
             {manual.parts_required && manual.parts_required.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-                  {t('Parts Required', 'Benötigte Teile')}
+                  Benötigte Teile
                 </h3>
                 <ul className="space-y-2">
                   {manual.parts_required.map((part, index) => (
@@ -434,7 +417,7 @@ export default function ManualClient({ brand, model, generation, manual, related
             {manual.estimated_time && (
               <div>
                 <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-                  {t('Estimated Time', 'Geschätzte Zeit')}
+                  Geschätzte Zeit
                 </h3>
                 <p className="text-lg font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -447,7 +430,7 @@ export default function ManualClient({ brand, model, generation, manual, related
             {manual.difficulty_level && (
               <div>
                 <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-                  {t('Difficulty Level', 'Schwierigkeitsgrad')}
+                  Schwierigkeitsgrad
                 </h3>
                 <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold border ${getDifficultyColor(manual.difficulty_level)}`}>
                   {manual.difficulty_level.charAt(0).toUpperCase() + manual.difficulty_level.slice(1)}
@@ -464,7 +447,7 @@ export default function ManualClient({ brand, model, generation, manual, related
               <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {t('Overview', 'Übersicht')}
+              Übersicht
             </h2>
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-base sm:text-lg">
               {manual.description}
@@ -479,7 +462,7 @@ export default function ManualClient({ brand, model, generation, manual, related
             <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            {t('Step-by-Step Guide', 'Schritt-für-Schritt-Anleitung')}
+            Schritt-für-Schritt-Anleitung
           </h2>
           <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base">
             <ReactMarkdown
@@ -539,32 +522,32 @@ export default function ManualClient({ brand, model, generation, manual, related
             <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {t('Completion Checklist', 'Abschluss-Checkliste')}
+            Abschluss-Checkliste
           </h2>
           <ul className="space-y-3 text-slate-700 dark:text-slate-300">
             <li className="flex items-start gap-3">
               <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{t('All steps have been completed successfully', 'Alle Schritte wurden erfolgreich abgeschlossen')}</span>
+              <span>Alle Schritte wurden erfolgreich abgeschlossen</span>
             </li>
             <li className="flex items-start gap-3">
               <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{t('All tools and parts have been properly stored', 'Alle Werkzeuge und Teile wurden ordnungsgemäß verstaut')}</span>
+              <span>Alle Werkzeuge und Teile wurden ordnungsgemäß verstaut</span>
             </li>
             <li className="flex items-start gap-3">
               <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{t('The work area has been cleaned up', 'Der Arbeitsbereich wurde aufgeräumt')}</span>
+              <span>Der Arbeitsbereich wurde aufgeräumt</span>
             </li>
             <li className="flex items-start gap-3">
               <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{t('Final inspection and testing have been performed', 'Endprüfung und Tests wurden durchgeführt')}</span>
+              <span>Endprüfung und Tests wurden durchgeführt</span>
             </li>
           </ul>
         </div>
@@ -572,13 +555,13 @@ export default function ManualClient({ brand, model, generation, manual, related
         {/* Additional Info */}
         <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
-            {t('Additional Information', 'Zusätzliche Informationen')}
+            Zusätzliche Informationen
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {manual.estimated_time && (
               <div>
                 <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {t('Estimated Time', 'Geschätzte Zeit')}:
+                  Geschätzte Zeit:
                 </span>
                 <p className="text-slate-900 dark:text-white font-medium">{manual.estimated_time}</p>
               </div>
@@ -586,7 +569,7 @@ export default function ManualClient({ brand, model, generation, manual, related
             {manual.difficulty_level && (
               <div>
                 <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {t('Difficulty Level', 'Schwierigkeitsgrad')}:
+                  Schwierigkeitsgrad:
                 </span>
                 <p className="text-slate-900 dark:text-white font-medium capitalize">{manual.difficulty_level}</p>
               </div>
@@ -594,7 +577,7 @@ export default function ManualClient({ brand, model, generation, manual, related
             {manual.manual_type && (
               <div>
                 <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {t('Manual Type', 'Anleitungstyp')}:
+                  Anleitungstyp:
                 </span>
                 <p className="text-slate-900 dark:text-white font-medium capitalize">{manual.manual_type}</p>
               </div>
@@ -606,13 +589,13 @@ export default function ManualClient({ brand, model, generation, manual, related
         {relatedManuals.length > 0 && (
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-              {t('Related Manuals', 'Ähnliche Anleitungen')}
+              Ähnliche Anleitungen
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {relatedManuals.map((related) => (
                 <Link
                   key={related.id}
-                  href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}/manuals/${related.slug}`}
+                  href={`/cars/${brand.slug}/${model.slug}/${generation.slug}/manuals/${related.slug}`}
                   className="group block p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 transition-all"
                 >
                   <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -627,7 +610,7 @@ export default function ManualClient({ brand, model, generation, manual, related
         {/* Social Sharing */}
         <div className="mt-12 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-            {t('Share this guide', 'Diese Anleitung teilen')}
+            Diese Anleitung teilen
           </h3>
           <div className="flex flex-wrap gap-3">
             <button
@@ -673,25 +656,25 @@ export default function ManualClient({ brand, model, generation, manual, related
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {t('Email', 'E-Mail')}
+              E-Mail
             </button>
           </div>
         </div>
 
         {/* Comments Section */}
         <div className="mt-12 pt-12 border-t border-slate-200 dark:border-white/10">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-6">{t("Comments", "Kommentare")}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-6">Kommentare</h2>
           {!user ? (
             <div className="text-center mb-8 p-6 sm:p-8 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-white/10 rounded-2xl">
               <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-slate-400 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              <p className="text-slate-700 dark:text-slate-300 text-base sm:text-lg mb-4 font-medium">{t("Sign in to share your thoughts", "Melden Sie sich an, um Ihre Gedanken zu teilen")}</p>
+              <p className="text-slate-700 dark:text-slate-300 text-base sm:text-lg mb-4 font-medium">Melden Sie sich an, um Ihre Gedanken zu teilen</p>
               <Link
-                href={`/${lang}/login`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-medium hover:bg-red-700 dark:hover:bg-red-600 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
+                href="/login"
+                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base"
               >
-                {t("Sign In", "Anmelden")}
+                Anmelden
               </Link>
             </div>
           ) : (
@@ -704,14 +687,14 @@ export default function ManualClient({ brand, model, generation, manual, related
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder={t('Share your thoughts...', 'Teilen Sie Ihre Gedanken mit...')}
+                    placeholder="Teilen Sie Ihre Gedanken mit..."
                     className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-white/20 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 transition-all"
                     rows={4}
                     maxLength={1000}
                   />
                   <div className="flex items-center justify-between mt-3">
                     <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {newComment.length}/1000 {t('characters', 'Zeichen')}
+                      {newComment.length}/1000 Zeichen
                     </span>
                     <button
                       type="submit"
@@ -724,10 +707,10 @@ export default function ManualClient({ brand, model, generation, manual, related
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          {t('Posting...', 'Wird gepostet...')}
+                          Wird gepostet...
                         </span>
                       ) : (
-                        t('Post Comment', 'Kommentar posten')
+                        'Kommentar posten'
                       )}
                     </button>
                   </div>
@@ -748,7 +731,7 @@ export default function ManualClient({ brand, model, generation, manual, related
           )}
           <div className="space-y-4">
             {comments.map((comment) => {
-              const displayName = comment.user_name || t('Anonymous User', 'Anonymer Benutzer');
+              const displayName = comment.user_name || 'Anonymer Benutzer';
               const initials = displayName
                 .split(' ')
                 .map((n: string) => n[0])
@@ -768,7 +751,7 @@ export default function ManualClient({ brand, model, generation, manual, related
                       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                         <span className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">{displayName}</span>
                         <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                          {new Date(comment.created_at).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+                          {new Date(comment.created_at).toLocaleDateString('de-DE', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric',
@@ -788,9 +771,9 @@ export default function ManualClient({ brand, model, generation, manual, related
                 <svg className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-slate-300 dark:text-slate-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg font-medium">{t("No comments yet", "Noch keine Kommentare")}</p>
+                <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg font-medium">Noch keine Kommentare</p>
                 {!user && (
-                  <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">{t("Be the first to share your thoughts", "Seien Sie der Erste, der Ihre Gedanken teilt")}</p>
+                  <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Seien Sie der Erste, der Ihre Gedanken teilt</p>
                 )}
               </div>
             )}
@@ -800,13 +783,13 @@ export default function ManualClient({ brand, model, generation, manual, related
         {/* Back Button */}
         <div className="mt-8 sm:mt-12">
           <Link
-            href={`/${lang}/cars/${brand.slug}/${model.slug}/${generation.slug}`}
-            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl font-semibold hover:bg-red-700 dark:hover:bg-red-600 transition-all text-sm sm:text-base shadow-sm hover:shadow-md"
+            href={`/cars/${brand.slug}/${model.slug}/${generation.slug}`}
+            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-all text-sm sm:text-base shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            {t('Back to Generation', 'Zurück zur Generation')}
+            Zurück zur Generation
           </Link>
         </div>
       </div>

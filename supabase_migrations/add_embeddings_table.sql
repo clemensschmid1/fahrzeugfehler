@@ -41,3 +41,9 @@ COMMENT ON COLUMN public.car_fault_embeddings.text_content IS 'The text content 
 
 
 
+
+
+
+
+
+

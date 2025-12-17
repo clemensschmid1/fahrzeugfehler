@@ -35,4 +35,6 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 echo "# Force deploy" >> README.md
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-# faultbase
+# Fahrzeugfehler.de
+
+Technische Diagnose-Datenbank für Fahrzeugfehler. Umfassende Referenzquelle für Werkstätten und Fahrzeughalter.

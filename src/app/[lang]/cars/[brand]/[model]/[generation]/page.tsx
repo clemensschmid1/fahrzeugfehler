@@ -6,8 +6,8 @@ import Header from '@/components/Header';
 import { Suspense } from 'react';
 import GenerationDetailClient from './GenerationDetailClient';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 600;
+// Use static generation with ISR for better performance
+export const revalidate = 600; // 10 minutes cache
 
 type Params = { lang: string; brand: string; model: string; generation: string };
 

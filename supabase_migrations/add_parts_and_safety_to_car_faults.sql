@@ -9,3 +9,9 @@ COMMENT ON COLUMN public.car_faults.safety_warnings IS 'Array of safety warnings
 
 
 
+
+
+
+
+
+

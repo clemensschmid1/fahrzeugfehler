@@ -10,11 +10,10 @@ import CarPageTracker from '@/components/CarPageTracker';
 export const dynamic = 'force-dynamic';
 export const revalidate = 600;
 
-type Params = { lang: string; brand: string; model: string; generation: string; slug: string };
+type Params = { brand: string; model: string; generation: string; slug: string };
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const { lang, brand, model, generation, slug } = await params;
-  const t = (en: string, de: string) => lang === 'de' ? de : en;
+  const { brand, model, generation, slug } = await params;
   
   const cookieStore = await getCookies();
   const supabase = createServerClient(
@@ -64,13 +63,13 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     .from('car_faults')
     .select('title, description, meta_title, meta_description, solution, created_at, error_code, affected_component, severity, difficulty_level, estimated_repair_time')
     .eq('slug', slug)
-    .eq('language_path', lang)
+    .eq('language_path', 'de')
     .eq('status', 'live')
     .maybeSingle();
 
   if (!brandData || !modelData || !generationData || !faultData) {
     return {
-      title: t('Fault Not Found', 'Fehler nicht gefunden'),
+      title: 'Fehler nicht gefunden',
     };
   }
 
@@ -79,30 +78,23 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     ? `${faultData.meta_title} | ${brandData.name} ${modelData.name} ${generationData.name}`
     : `${faultData.title} | ${brandData.name} ${modelData.name} ${generationData.name}`;
 
-  const description = faultData.meta_description || faultData.description || t(
-    `Solution for ${faultData.title} in ${brandData.name} ${modelData.name} ${generationData.name}`,
-    `Lösung für ${faultData.title} im ${brandData.name} ${modelData.name} ${generationData.name}`
-  );
+  const description = faultData.meta_description || faultData.description || `Lösung für ${faultData.title} im ${brandData.name} ${modelData.name} ${generationData.name}`;
 
   return {
-    title: `${title} | Cars`,
+    title: `${title} | Fahrzeugfehler.de`,
     description,
-    keywords: faultData.title ? `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car repair, automotive troubleshooting, fault diagnosis` : undefined,
+    keywords: faultData.title ? `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, Autoreparatur, Fahrzeugdiagnose, Fehlerdiagnose` : undefined,
     alternates: {
-      canonical: `https://faultbase.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
-      languages: {
-        'en': `https://faultbase.com/en/cars/${brand}/${model}/${generation}/faults/${slug}`,
-        'de': `https://faultbase.com/de/cars/${brand}/${model}/${generation}/faults/${slug}`,
-      },
+      canonical: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/faults/${slug}`,
     },
     openGraph: {
-      title: `${title} | Cars`,
+      title: `${title} | Fahrzeugfehler.de`,
       description,
       type: 'article',
-      url: `https://faultbase.com/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`,
-      siteName: 'FAULTBASE',
+      url: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/faults/${slug}`,
+      siteName: 'Fahrzeugfehler.de',
       images: [{
-        url: `https://faultbase.com/logo.png`,
+        url: `https://fahrzeugfehler.de/logo.png`,
         width: 1200,
         height: 630,
         alt: faultData.title,
@@ -110,14 +102,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${title} | Cars`,
+      title: `${title} | Fahrzeugfehler.de`,
       description,
     },
   };
 }
 
 export default async function FaultPage({ params }: { params: Promise<Params> }) {
-  const { lang, brand, model, generation, slug } = await params;
+  const { brand, model, generation, slug } = await params;
   
   const cookieStore = await getCookies();
   const supabase = createServerClient(
@@ -188,7 +180,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
     .select('*')
     .eq('model_generation_id', generationData.id)
     .eq('slug', slug)
-    .eq('language_path', lang)
+    .eq('language_path', 'de')
     .eq('status', 'live')
     .single();
 
@@ -235,7 +227,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
         match_threshold: 0.7, // Minimum similarity threshold (0-1)
         match_count: 6, // Number of results
         filter_generation_id: generationData.id,
-        filter_language: lang,
+        filter_language: 'de',
         exclude_fault_id: faultData.id,
       }
     );
@@ -259,7 +251,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
         query_embedding: embeddingVector,
         match_threshold: 0.7, // Lower threshold for global to get more results
         match_count: 6,
-        filter_language: lang,
+        filter_language: 'de',
         exclude_fault_id: faultData.id,
       }
     );
@@ -287,7 +279,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
       .from('car_faults')
       .select('id, slug, title')
       .eq('model_generation_id', generationData.id)
-      .eq('language_path', lang)
+      .eq('language_path', 'de')
       .eq('status', 'live')
       .neq('id', faultData.id)
       .limit(6);
@@ -329,8 +321,8 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
   }));
 
   // Generate JSON-LD structured data for SEO
-  const baseUrl = 'https://faultbase.com';
-  const pageUrl = `${baseUrl}/${lang}/cars/${brand}/${model}/${generation}/faults/${slug}`;
+  const baseUrl = 'https://fahrzeugfehler.de';
+  const pageUrl = `${baseUrl}/cars/${brand}/${model}/${generation}/faults/${slug}`;
   
   // Build related faults list for structured data
   const relatedFaultsList = relatedFaults.length > 0 ? relatedFaults.map((fault, index) => ({
@@ -339,7 +331,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
     "item": {
       "@type": "Article",
       "name": fault.title,
-      "url": `${baseUrl}/${lang}/cars/${brand}/${model}/${generation}/faults/${fault.slug}`,
+      "url": `${baseUrl}/cars/${brand}/${model}/${generation}/faults/${fault.slug}`,
       ...(fault.similarity ? {
         "additionalProperty": {
           "@type": "PropertyValue",
@@ -361,12 +353,12 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
     "dateModified": faultData.created_at || new Date().toISOString(),
     "author": {
       "@type": "Organization",
-      "name": "FAULTBASE",
+      "name": "Fahrzeugfehler.de",
       "url": baseUrl
     },
     "publisher": {
       "@type": "Organization",
-      "name": "FAULTBASE",
+      "name": "Fahrzeugfehler.de",
       "url": baseUrl,
       "logo": {
         "@type": "ImageObject",
@@ -382,7 +374,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
         "text": faultData.solution || faultData.description,
         "author": {
           "@type": "Organization",
-          "name": "FAULTBASE Editorial Team"
+          "name": "Fahrzeugfehler.de Redaktion"
         }
       }
     },
@@ -405,8 +397,8 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
     ...(faultData.affected_component ? {
       "category": faultData.affected_component
     } : {}),
-    "inLanguage": lang,
-    "keywords": `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, car repair, automotive troubleshooting, fault diagnosis${faultData.error_code ? `, ${faultData.error_code}` : ''}`,
+    "inLanguage": "de",
+    "keywords": `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, Autoreparatur, Fahrzeugdiagnose, Fehlerdiagnose${faultData.error_code ? `, ${faultData.error_code}` : ''}`,
     ...(relatedFaultsList.length > 0 ? {
       "relatedLink": {
         "@type": "ItemList",
@@ -432,7 +424,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
         modelSlug={modelData.slug}
         generation={generationData.name}
         generationSlug={generationData.slug}
-        lang={lang as 'en' | 'de'}
+        lang="de"
       />
       <Suspense fallback={
         <div className="min-h-screen bg-white dark:bg-black">
@@ -452,7 +444,6 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
           fault={faultData}
           relatedFaults={relatedFaults}
           globalRelatedFaults={globalRelatedFaults}
-          lang={lang}
           initialComments={comments}
           user={user}
         />

@@ -1,104 +1,66 @@
 /**
  * Brand logo URL mappings
- * Uses multiple reliable CDN sources for car brand logos
- * Fallback chain: carlogos.org > 1000logos.net > logos-world.net
+ * Uses Next.js API route as proxy to avoid CORS issues
  */
 
-// Helper to generate logo URLs from multiple sources
-function getLogosWorldUrl(brand: string): string {
-  return `https://logos-world.net/wp-content/uploads/2020/${brand.includes('BMW') || brand.includes('Audi') || brand.includes('Ford') ? '04' : '05'}/${brand.replace(/\s+/g, '-')}-Logo.png`;
-}
-
-function getCarlogosUrl(brand: string): string {
-  const normalized = brand.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  return `https://www.carlogos.org/car-logos/${normalized}-logo.png`;
-}
-
+// Map brand slugs to API route paths
+// The API route will proxy the request to carlogos.org
 export const BRAND_LOGOS: Record<string, string> = {
   // German Brands
-  'bmw': 'https://www.carlogos.org/car-logos/bmw-logo.png',
-  'mercedes-benz': 'https://www.carlogos.org/car-logos/mercedes-benz-logo.png',
-  'mercedes': 'https://www.carlogos.org/car-logos/mercedes-benz-logo.png',
-  'audi': 'https://www.carlogos.org/car-logos/audi-logo.png',
-  'volkswagen': 'https://www.carlogos.org/car-logos/volkswagen-logo.png',
-  'vw': 'https://www.carlogos.org/car-logos/volkswagen-logo.png',
-  'porsche': 'https://www.carlogos.org/car-logos/porsche-logo.png',
-  'opel': 'https://www.carlogos.org/car-logos/opel-logo.png',
-  
-  // American Brands
-  'ford': 'https://www.carlogos.org/car-logos/ford-logo.png',
-  'chevrolet': 'https://www.carlogos.org/car-logos/chevrolet-logo.png',
-  'chevy': 'https://www.carlogos.org/car-logos/chevrolet-logo.png',
-  'cadillac': 'https://www.carlogos.org/car-logos/cadillac-logo.png',
-  'dodge': 'https://www.carlogos.org/car-logos/dodge-logo.png',
-  'jeep': 'https://www.carlogos.org/car-logos/jeep-logo.png',
-  'chrysler': 'https://www.carlogos.org/car-logos/chrysler-logo.png',
-  'tesla': 'https://www.carlogos.org/car-logos/tesla-logo.png',
+  'bmw': '/api/logos/bmw',
+  'mercedes-benz': '/api/logos/mercedes-benz',
+  'mercedes': '/api/logos/mercedes-benz',
+  'audi': '/api/logos/audi',
+  'volkswagen': '/api/logos/volkswagen',
+  'vw': '/api/logos/volkswagen',
+  'porsche': '/api/logos/porsche',
+  'opel': '/api/logos/opel',
+  'ford': '/api/logos/ford',
+  'skoda': '/api/logos/skoda',
+  'smart': '/api/logos/smart',
   
   // Japanese Brands
-  'toyota': 'https://www.carlogos.org/car-logos/toyota-logo.png',
-  'honda': 'https://www.carlogos.org/car-logos/honda-logo.png',
-  'nissan': 'https://www.carlogos.org/car-logos/nissan-logo.png',
-  'mazda': 'https://www.carlogos.org/car-logos/mazda-logo.png',
-  'subaru': 'https://www.carlogos.org/car-logos/subaru-logo.png',
-  'mitsubishi': 'https://www.carlogos.org/car-logos/mitsubishi-logo.png',
-  'suzuki': 'https://www.carlogos.org/car-logos/suzuki-logo.png',
-  'lexus': 'https://www.carlogos.org/car-logos/lexus-logo.png',
-  'infiniti': 'https://www.carlogos.org/car-logos/infiniti-logo.png',
-  'acura': 'https://www.carlogos.org/car-logos/acura-logo.png',
+  'toyota': '/api/logos/toyota',
+  'honda': '/api/logos/honda',
+  'nissan': '/api/logos/nissan',
+  'mazda': '/api/logos/mazda',
+  'mitsubishi': '/api/logos/mitsubishi',
+  'suzuki': '/api/logos/suzuki',
+  'lexus': '/api/logos/lexus',
+  'infiniti': '/api/logos/infiniti',
   
   // Korean Brands
-  'hyundai': 'https://www.carlogos.org/car-logos/hyundai-logo.png',
-  'kia': 'https://www.carlogos.org/car-logos/kia-logo.png',
+  'hyundai': '/api/logos/hyundai',
+  'kia': '/api/logos/kia',
   
   // European Brands
-  'volvo': 'https://www.carlogos.org/car-logos/volvo-logo.png',
-  'peugeot': 'https://www.carlogos.org/car-logos/peugeot-logo.png',
-  'renault': 'https://www.carlogos.org/car-logos/renault-logo.png',
-  'citroen': 'https://www.carlogos.org/car-logos/citroen-logo.png',
-  'citroën': 'https://www.carlogos.org/car-logos/citroen-logo.png',
-  'fiat': 'https://www.carlogos.org/car-logos/fiat-logo.png',
-  'alfa-romeo': 'https://www.carlogos.org/car-logos/alfa-romeo-logo.png',
-  'alfaromeo': 'https://www.carlogos.org/car-logos/alfa-romeo-logo.png',
-  'ferrari': 'https://www.carlogos.org/car-logos/ferrari-logo.png',
-  'lamborghini': 'https://www.carlogos.org/car-logos/lamborghini-logo.png',
-  'maserati': 'https://www.carlogos.org/car-logos/maserati-logo.png',
-  'jaguar': 'https://www.carlogos.org/car-logos/jaguar-logo.png',
-  'land-rover': 'https://www.carlogos.org/car-logos/land-rover-logo.png',
-  'landrover': 'https://www.carlogos.org/car-logos/land-rover-logo.png',
-  'mini': 'https://www.carlogos.org/car-logos/mini-logo.png',
-  'rolls-royce': 'https://www.carlogos.org/car-logos/rolls-royce-logo.png',
-  'rollsroyce': 'https://www.carlogos.org/car-logos/rolls-royce-logo.png',
-  'skoda': 'https://www.carlogos.org/car-logos/skoda-logo.png',
-  'škoda': 'https://www.carlogos.org/car-logos/skoda-logo.png',
-  'seat': 'https://www.carlogos.org/car-logos/seat-logo.png',
+  'volvo': '/api/logos/volvo',
+  'peugeot': '/api/logos/peugeot',
+  'renault': '/api/logos/renault',
+  'seat': '/api/logos/seat',
+  'fiat': '/api/logos/fiat',
+  'citroen': '/api/logos/citroen',
+  'alfa-romeo': '/api/logos/alfa-romeo',
+  'mini': '/api/logos/mini',
+  'dacia': '/api/logos/dacia',
+  'lada': '/api/logos/lada',
   
-  // Additional American Brands
-  'ram': 'https://www.carlogos.org/car-logos/ram-logo.png',
-  'gmc': 'https://www.carlogos.org/car-logos/gmc-logo.png',
-  'lincoln': 'https://www.carlogos.org/car-logos/lincoln-logo.png',
-  'buick': 'https://www.carlogos.org/car-logos/buick-logo.png',
+  // British Brands
+  'land-rover': '/api/logos/land-rover',
+  'jaguar': '/api/logos/jaguar',
   
-  // Luxury & Premium Brands
-  'genesis': 'https://www.carlogos.org/car-logos/genesis-logo.png',
-  'polestar': 'https://www.carlogos.org/car-logos/polestar-logo.png',
-  'bentley': 'https://www.carlogos.org/car-logos/bentley-logo.png',
-  'aston-martin': 'https://www.carlogos.org/car-logos/aston-martin-logo.png',
-  'mclaren': 'https://www.carlogos.org/car-logos/mclaren-logo.png',
-  
-  // Additional European Brands
-  'smart': 'https://www.carlogos.org/car-logos/smart-logo.png',
-  'ds': 'https://www.carlogos.org/car-logos/ds-automobiles-logo.png',
-  'ds-automobiles': 'https://www.carlogos.org/car-logos/ds-automobiles-logo.png',
+  // American Brands
+  'jeep': '/api/logos/jeep',
 };
 
 /**
  * Get logo URL for a brand by slug or name
  * Falls back to database logo_url if available, otherwise uses mapping
+ * Uses Next.js API route as proxy to avoid CORS issues
  */
 export function getBrandLogoUrl(brandSlug: string, brandName?: string, dbLogoUrl?: string | null): string | null {
-  // First check database logo_url
-  if (dbLogoUrl) {
+  // First check database logo_url (if it's a full URL, not from carlogos.org)
+  if (dbLogoUrl && !dbLogoUrl.includes('carlogos.org')) {
     return dbLogoUrl;
   }
   
@@ -127,12 +89,7 @@ export function getBrandLogoUrl(brandSlug: string, brandName?: string, dbLogoUrl
     }
   }
   
-  // Final fallback: try to generate URL from carlogos.org
-  const normalizedSlug = brandSlug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  if (normalizedSlug) {
-    return getCarlogosUrl(normalizedSlug);
-  }
-  
+  // No logo found - return null to show fallback (initial letter)
   return null;
 }
 

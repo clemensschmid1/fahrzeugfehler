@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrandLogoUrl } from '@/lib/car-brand-logos';
 import { getVisitedCarPages, clearVisitedCarPages } from '@/lib/car-visited-pages';
@@ -21,19 +21,17 @@ type CarBrand = {
 
 type CarsClientProps = {
   brands: CarBrand[];
-  lang: string;
   stats?: {
     totalModels: number;
     totalFaults: number;
-    totalManuals: number;
   };
-  brandCounts?: Map<string, { faults: number; manuals: number }>;
+  brandCounts?: Map<string, { faults: number }>;
 };
 
 type FilterType = 'all' | 'featured' | 'country';
 type SortType = 'alphabetical' | 'featured' | 'country';
 
-export default function CarsClient({ brands, lang, stats, brandCounts }: CarsClientProps) {
+export default function CarsClient({ brands, stats, brandCounts }: CarsClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('featured');
@@ -41,13 +39,12 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
   const [recentlyViewed, setRecentlyViewed] = useState<ReturnType<typeof getVisitedCarPages>>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const t = (en: string, de: string) => lang === 'de' ? de : en;
 
   // Load recently viewed pages
   useEffect(() => {
-    const visited = getVisitedCarPages().filter(page => page.lang === lang);
+    const visited = getVisitedCarPages().filter(page => page.lang === 'de');
     setRecentlyViewed(visited);
-  }, [lang]);
+  }, []);
 
   // Get unique countries
   const countries = useMemo(() => {
@@ -100,26 +97,41 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
     return result;
   }, [brands, searchQuery, filterType, sortType, selectedCountry]);
 
-  // Separate featured and regular brands for display
-  const featuredBrands = filteredBrands.filter(b => b.is_featured);
-  const regularBrands = filteredBrands.filter(b => !b.is_featured);
+  // Separate featured and regular brands for display - memoized for performance
+  const featuredBrands = useMemo(() => 
+    filteredBrands.filter(b => b.is_featured),
+    [filteredBrands]
+  );
+  const regularBrands = useMemo(() => 
+    filteredBrands.filter(b => !b.is_featured),
+    [filteredBrands]
+  );
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     // Search is handled by state, no need to navigate
-  };
+  }, []);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setSearchQuery('');
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-white dark:bg-black font-sans">
       {/* Hero Section - Modern Premium Design */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-black dark:via-slate-950 dark:to-black">
-        {/* Animated background pattern */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.02%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+        {/* Enhanced animated background pattern */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.03%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221.5%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
+        {/* Gradient overlays for depth */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/5 via-transparent to-slate-900/5"></div>
+        {/* Subtle animated grid lines */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
+          }}></div>
+        </div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32">
           <motion.div
@@ -128,14 +140,13 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
             transition={{ duration: 0.6 }}
             className="text-center max-w-4xl mx-auto"
           >
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-6 tracking-tight leading-tight">
-              {t('Car Maintenance & Repair', 'Auto-Wartung & Reparatur')}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-6 tracking-tight leading-tight drop-shadow-2xl">
+              <span className="bg-gradient-to-r from-white via-slate-100 to-white bg-clip-text text-transparent">
+                Auto-Wartung & Reparatur
+              </span>
             </h1>
-            <p className="text-lg sm:text-xl lg:text-2xl text-slate-300 dark:text-slate-400 mb-10 leading-relaxed">
-              {t(
-                'Find step-by-step guides, fault solutions, and maintenance manuals for your exact car model and generation.',
-                'Finden Sie Schritt-für-Schritt-Anleitungen, Fehlerlösungen und Wartungshandbücher für Ihr genaues Automodell und Generation.'
-              )}
+            <p className="text-lg sm:text-xl lg:text-2xl text-slate-200 dark:text-slate-300 mb-10 leading-relaxed max-w-3xl mx-auto drop-shadow-lg">
+              Finden Sie Schritt-für-Schritt-Anleitungen, Fehlerlösungen und Wartungshandbücher für Ihr genaues Automodell und Generation.
             </p>
 
             {/* Professional Search Bar */}
@@ -147,15 +158,15 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
               transition={{ duration: 0.6, delay: 0.3 }}
             >
               <div className="relative">
-                <div className="relative flex items-center bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden focus-within:border-slate-300 dark:focus-within:border-slate-700 focus-within:shadow-xl transition-all duration-300">
+                <div className="relative flex items-center bg-white dark:bg-slate-900 rounded-xl shadow-xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden focus-within:border-blue-500/50 dark:focus-within:border-blue-500/50 focus-within:shadow-2xl focus-within:ring-4 focus-within:ring-blue-500/20 transition-all duration-300">
                   <div className="pl-6 pr-2">
-                    <svg className="w-6 h-6 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
                   <input
                     type="text"
-                    placeholder={t('Search by brand, model, or fault...', 'Nach Marke, Modell oder Fehler suchen...')}
+                    placeholder="Nach Marke, Modell oder Fehler suchen..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="flex-1 px-4 py-5 text-base sm:text-lg bg-transparent text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none"
@@ -165,7 +176,7 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                       type="button"
                       onClick={clearSearch}
                       className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                      aria-label={t('Clear search', 'Suche löschen')}
+                      aria-label="Suche löschen"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       whileHover={{ scale: 1.1 }}
@@ -178,68 +189,62 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                   )}
                   <button
                     type="submit"
-                    className="px-6 sm:px-8 py-5 bg-slate-900 dark:bg-slate-800 text-white font-semibold hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center gap-2"
+                    className="px-6 sm:px-8 py-5 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white font-semibold hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-800 dark:hover:to-blue-900 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-100"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <span className="hidden sm:inline">{t('Search', 'Suchen')}</span>
+                    <span className="hidden sm:inline">Suchen</span>
                   </button>
                 </div>
               </div>
             </motion.form>
 
             {/* Professional Stats - Optimized for Large Numbers */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 max-w-5xl mx-auto text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto text-center">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/30 dark:hover:border-white/20 transition-all shadow-lg hover:shadow-xl"
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-white/30 hover:bg-white/15 dark:hover:bg-white/10 transition-all shadow-lg hover:shadow-2xl cursor-default"
               >
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight">{brands.length.toLocaleString()}</div>
-                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">{t('Car Brands', 'Automarken')}</div>
-                <div className="text-xs text-white/70 mt-1">{t('Available', 'Verfügbar')}</div>
+                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight bg-gradient-to-br from-white to-slate-200 bg-clip-text text-transparent">{brands.length.toLocaleString()}</div>
+                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">Automarken</div>
+                <div className="text-xs text-white/70 mt-1">Verfügbar</div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/30 dark:hover:border-white/20 transition-all shadow-lg hover:shadow-xl"
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-white/30 hover:bg-white/15 dark:hover:bg-white/10 transition-all shadow-lg hover:shadow-2xl cursor-default"
               >
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight">{(stats?.totalModels || 0).toLocaleString()}</div>
-                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">{t('Car Models', 'Automodelle')}</div>
-                <div className="text-xs text-white/70 mt-1">{t('Total', 'Gesamt')}</div>
+                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight bg-gradient-to-br from-white to-slate-200 bg-clip-text text-transparent">{(stats?.totalModels || 0).toLocaleString()}</div>
+                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">Automodelle</div>
+                <div className="text-xs text-white/70 mt-1">Gesamt</div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/30 dark:hover:border-white/20 transition-all shadow-lg hover:shadow-xl"
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-white/30 hover:bg-white/15 dark:hover:bg-white/10 transition-all shadow-lg hover:shadow-2xl cursor-default"
               >
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight">{(stats?.totalFaults || 0).toLocaleString()}</div>
-                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">{t('Fault Solutions', 'Fehlerlösungen')}</div>
-                <div className="text-xs text-white/70 mt-1">{t('Verified', 'Verifiziert')}</div>
+                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight bg-gradient-to-br from-white to-slate-200 bg-clip-text text-transparent">{(stats?.totalFaults || 0).toLocaleString()}</div>
+                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">Fehlerlösungen</div>
+                <div className="text-xs text-white/70 mt-1">Verifiziert</div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 }}
-                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/30 dark:hover:border-white/20 transition-all shadow-lg hover:shadow-xl"
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/40 dark:hover:border-white/30 hover:bg-white/15 dark:hover:bg-white/10 transition-all shadow-lg hover:shadow-2xl cursor-default"
               >
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight">{(stats?.totalManuals || 0).toLocaleString()}</div>
-                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">{t('Manuals', 'Anleitungen')}</div>
-                <div className="text-xs text-white/70 mt-1">{t('Step-by-Step', 'Schritt-für-Schritt')}</div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 dark:border-white/10 hover:border-white/30 dark:hover:border-white/20 transition-all shadow-lg hover:shadow-xl"
-              >
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight">{countries.length.toLocaleString()}</div>
-                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">{t('Countries', 'Länder')}</div>
-                <div className="text-xs text-white/70 mt-1">{t('Worldwide', 'Weltweit')}</div>
+                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2 leading-tight bg-gradient-to-br from-white to-slate-200 bg-clip-text text-transparent">{countries.length.toLocaleString()}</div>
+                <div className="text-xs sm:text-sm font-semibold text-white/90 uppercase tracking-wide">Länder</div>
+                <div className="text-xs text-white/70 mt-1">Weltweit</div>
               </motion.div>
             </div>
           </motion.div>
@@ -254,10 +259,10 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">
-                  {t('Recently Viewed', 'Zuletzt angeschaut')}
+                  Zuletzt angeschaut
                 </h2>
                 <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  {t('Continue where you left off', 'Setzen Sie dort fort, wo Sie aufgehört haben')}
+                  Setzen Sie dort fort, wo Sie aufgehört haben
                 </p>
               </div>
               <button
@@ -266,9 +271,9 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                   setRecentlyViewed([]);
                 }}
                 className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                title={t('Clear history', 'Verlauf löschen')}
+                title="Verlauf löschen"
               >
-                {t('Clear', 'Löschen')}
+                Löschen
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -283,20 +288,16 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                     href={page.url}
                     className="group block h-full"
                   >
-                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700 hover:border-red-400 dark:hover:border-red-600 transition-all duration-200 h-full flex flex-col">
+                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-200 h-full flex flex-col">
                       {/* Type badge */}
                       <div className="mb-2">
-                        <span className={`inline-block px-2 py-0.5 text-xs font-bold rounded ${
-                          page.type === 'fault' 
-                            ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400' 
-                            : 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
-                        }`}>
-                          {page.type === 'fault' ? t('Fault', 'Fehler') : t('Manual', 'Anleitung')}
+                        <span className="inline-block px-2 py-0.5 text-xs font-bold rounded bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400">
+                          Fehler
                         </span>
                       </div>
                       
                       {/* Title */}
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {page.title}
                       </h3>
                       
@@ -307,8 +308,8 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                       </div>
                       
                       {/* Arrow indicator */}
-                      <div className="mt-2 flex items-center text-red-600 dark:text-red-400 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                        {t('View', 'Ansehen')}
+                      <div className="mt-2 flex items-center text-blue-600 dark:text-blue-400 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                        Ansehen
                         <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
@@ -322,15 +323,15 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
         )}
 
         {/* Professional Filters and Sort Bar */}
-        <div className="sticky top-0 z-20 bg-white dark:bg-black border-b border-slate-200 dark:border-slate-800 mb-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 backdrop-blur-sm">
+        <div className="sticky top-0 z-20 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 mb-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 shadow-sm">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             {/* Results count */}
             <div className="text-sm font-semibold text-slate-600 dark:text-slate-400">
               {filteredBrands.length === 0 ? (
-                t('No brands found', 'Keine Marken gefunden')
+                'Keine Marken gefunden'
               ) : (
                 <>
-                  {filteredBrands.length.toLocaleString()} {filteredBrands.length === 1 ? t('brand', 'Marke') : t('brands', 'Marken')}
+                  {filteredBrands.length.toLocaleString()} {filteredBrands.length === 1 ? 'Marke' : 'Marken'}
                 </>
               )}
             </div>
@@ -340,15 +341,15 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
               {/* Filter Type */}
               <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                  {t('Filter', 'Filter')}:
+                  Filter:
                 </label>
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value as FilterType)}
-                  className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 transition-all"
+                  className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-500/50 transition-all cursor-pointer"
                 >
-                  <option value="all">{t('All', 'Alle')}</option>
-                  <option value="featured">{t('Featured', 'Beliebt')}</option>
+                  <option value="all">Alle</option>
+                  <option value="featured">Beliebt</option>
                 </select>
               </div>
 
@@ -356,14 +357,14 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
               {countries.length > 0 && (
                 <div className="flex items-center gap-2">
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                    {t('Country', 'Land')}:
+                    Land:
                   </label>
                   <select
                     value={selectedCountry}
                     onChange={(e) => setSelectedCountry(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 transition-all"
+                    className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-500/50 transition-all cursor-pointer"
                   >
-                    <option value="all">{t('All Countries', 'Alle Länder')}</option>
+                    <option value="all">Alle Länder</option>
                     {countries.map(country => (
                       <option key={country} value={country}>{country}</option>
                     ))}
@@ -374,16 +375,16 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
               {/* Sort */}
               <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                  {t('Sort', 'Sortieren')}:
+                  Sortieren:
                 </label>
                 <select
                   value={sortType}
                   onChange={(e) => setSortType(e.target.value as SortType)}
-                  className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600 transition-all"
+                  className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-500/50 transition-all cursor-pointer"
                 >
-                  <option value="featured">{t('Featured First', 'Beliebt zuerst')}</option>
-                  <option value="alphabetical">{t('A-Z', 'A-Z')}</option>
-                  <option value="country">{t('By Country', 'Nach Land')}</option>
+                  <option value="featured">Beliebt zuerst</option>
+                  <option value="alphabetical">A-Z</option>
+                  <option value="country">Nach Land</option>
                 </select>
               </div>
             </div>
@@ -396,18 +397,18 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-2">
-                  {t('Featured Brands', 'Empfohlene Marken')}
+                  Empfohlene Marken
                 </h2>
                 <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  {t('Selected car brands with comprehensive content', 'Ausgewählte Automarken mit umfassendem Inhalt')}
+                  Ausgewählte Automarken mit umfassendem Inhalt
                 </p>
               </div>
               {regularBrands.length > 0 && (
                 <Link
                   href="#all-brands"
-                  className="text-red-600 dark:text-red-400 font-semibold hover:underline flex items-center gap-1 transition-colors"
+                  className="text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center gap-1 transition-colors"
                 >
-                  {t('View All', 'Alle anzeigen')}
+                  Alle anzeigen
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -423,20 +424,22 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                 >
                   <Link
-                    href={`/${lang}/cars/${brand.slug}`}
+                    href={`/cars/${brand.slug}`}
                     className="group block h-full"
                   >
                     <motion.div 
-                      className="group relative bg-white dark:bg-slate-900 rounded-lg p-6 shadow-sm dark:shadow-lg hover:shadow-md dark:hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 h-full flex flex-col"
-                      whileHover={{ y: -2 }}
+                      className="group relative bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm dark:shadow-lg hover:shadow-xl dark:hover:shadow-2xl transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-blue-500/30 dark:hover:border-blue-500/40 h-full flex flex-col overflow-hidden"
+                      whileHover={{ y: -4, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                     >
+                      {/* Hover gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 via-transparent to-blue-50/0 dark:from-blue-950/0 dark:via-transparent dark:to-blue-950/0 group-hover:from-blue-50/50 group-hover:to-blue-50/30 dark:group-hover:from-blue-950/30 dark:group-hover:to-blue-950/20 transition-all duration-300 pointer-events-none"></div>
                       
                       {/* Featured badge - only show if actually popular (has significant content) */}
                       {false && (
                         <div className="absolute top-3 right-3 z-20">
-                          <span className="px-2 py-1 bg-red-600 text-white text-xs font-bold rounded-full">
-                            {t('Popular', 'Beliebt')}
+                          <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">
+                            Beliebt
                           </span>
                         </div>
                       )}
@@ -445,27 +448,27 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                       {(() => {
                         const logoUrl = getBrandLogoUrl(brand.slug, brand.name, brand.logo_url);
                         return logoUrl ? (
-                          <div className="mb-4 h-32 flex items-center justify-center relative z-10 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700 group-hover:border-red-400 dark:group-hover:border-red-600 group-hover:shadow-lg dark:group-hover:shadow-red-900/20 transition-all duration-300">
+                          <div className="mb-4 h-32 flex items-center justify-center relative z-10 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-400 dark:group-hover:border-blue-600 group-hover:shadow-xl dark:group-hover:shadow-blue-900/30 transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-blue-50/30 group-hover:to-white dark:group-hover:from-blue-950/20 dark:group-hover:to-slate-900">
                             {/* Subtle inner glow */}
-                            <div className="absolute inset-1 rounded-lg bg-gradient-to-br from-white/50 to-transparent dark:from-white/5 dark:to-transparent"></div>
+                            <div className="absolute inset-1 rounded-lg bg-gradient-to-br from-white/50 to-transparent dark:from-white/5 dark:to-transparent group-hover:from-blue-100/30 dark:group-hover:from-blue-900/20 transition-all duration-300"></div>
                             <img
                               src={logoUrl}
                               alt={`${brand.name} logo`}
-                              className="relative max-h-24 max-w-full object-contain filter drop-shadow-md group-hover:scale-110 group-hover:drop-shadow-lg transition-all duration-300"
+                              className="relative max-h-24 max-w-full object-contain filter drop-shadow-md group-hover:scale-110 group-hover:drop-shadow-xl transition-all duration-300 z-10"
                               loading="lazy"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
                                 const parent = target.parentElement;
                                 if (parent) {
-                                  parent.innerHTML = `<span class="text-4xl font-black text-red-600 dark:text-red-400/90">${brand.name.charAt(0)}</span>`;
+                                  parent.innerHTML = `<span class="text-4xl font-black text-blue-600 dark:text-blue-400/90 z-10 relative">${brand.name.charAt(0)}</span>`;
                                 }
                               }}
                             />
                           </div>
                         ) : (
-                          <div className="mb-4 h-32 flex items-center justify-center bg-gradient-to-br from-red-100 via-red-50 to-red-100 dark:from-red-950/40 dark:via-red-900/30 dark:to-red-950/40 rounded-xl relative z-10 group-hover:from-red-200 group-hover:via-red-100 group-hover:to-red-200 dark:group-hover:from-red-900/50 dark:group-hover:via-red-800/40 dark:group-hover:to-red-900/50 transition-all duration-300 border-2 border-red-200/50 dark:border-red-900/30 group-hover:border-red-300 dark:group-hover:border-red-700 group-hover:shadow-lg">
-                            <span className="text-5xl font-black text-red-600 dark:text-red-400/90 group-hover:scale-110 transition-transform duration-300">
+                          <div className="mb-4 h-32 flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-50 to-blue-100 dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 rounded-xl relative z-10 group-hover:from-blue-200 group-hover:via-blue-100 group-hover:to-blue-200 dark:group-hover:from-blue-900/50 dark:group-hover:via-blue-800/40 dark:group-hover:to-blue-900/50 transition-all duration-300 border-2 border-blue-200/50 dark:border-blue-900/30 group-hover:border-blue-400 dark:group-hover:border-blue-600 group-hover:shadow-xl">
+                            <span className="text-5xl font-black text-blue-600 dark:text-blue-400/90 group-hover:scale-110 transition-transform duration-300">
                               {brand.name.charAt(0)}
                             </span>
                           </div>
@@ -473,7 +476,7 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                       })()}
                       
                       {/* Brand Name */}
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors relative z-10">
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors relative z-10 group-hover:translate-x-1 duration-300">
                         {brand.name}
                       </h3>
                       
@@ -529,21 +532,8 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                  {counts.faults.toLocaleString()} {t('Faults', 'Fehler')}
+                                  {counts.faults.toLocaleString()} Fehler
                                 </span>
-                                {counts.manuals > 0 && (
-                                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
-                                    + {counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {counts.faults === 0 && counts.manuals > 0 && (
-                              <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                <svg className="w-4 h-4 text-slate-600 dark:text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}</span>
                               </div>
                             )}
                           </div>
@@ -551,15 +541,15 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                       })()}
 
                       {/* CTA */}
-                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center text-slate-700 dark:text-slate-300 font-semibold text-sm group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all">
-                          {t('Browse Models', 'Modelle durchsuchen')}
-                          <svg className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700 relative z-10">
+                        <div className="flex items-center text-slate-700 dark:text-slate-300 font-semibold text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all duration-300">
+                          Modelle durchsuchen
+                          <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
-                          <span className="font-semibold">{t('Featured', 'Empfohlen')}</span>
+                        <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-300">
+                          <span className="font-semibold">Empfohlen</span>
                         </div>
                       </div>
                     </motion.div>
@@ -574,10 +564,10 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
         <div id="all-brands">
           <div className="mb-8">
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-2">
-              {t('All Car Brands', 'Alle Automarken')}
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 text-sm">
-              {t('Browse all available car brands', 'Alle verfügbaren Automarken durchsuchen')}
+              Alle Automarken
+              </h2>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">
+              Alle verfügbaren Automarken durchsuchen
             </p>
           </div>
 
@@ -589,13 +579,10 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                  {t('No brands found', 'Keine Marken gefunden')}
+                  Keine Marken gefunden
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 mb-6">
-                  {t(
-                    'Try adjusting your search or filters to find what you\'re looking for.',
-                    'Versuchen Sie, Ihre Suche oder Filter anzupassen, um zu finden, wonach Sie suchen.'
-                  )}
+                  Versuchen Sie, Ihre Suche oder Filter anzupassen, um zu finden, wonach Sie suchen.
                 </p>
                 <button
                   onClick={() => {
@@ -604,12 +591,12 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                     setSelectedCountry('all');
                     setSortType('featured');
                   }}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  {t('Clear Filters', 'Filter zurücksetzen')}
+                  Filter zurücksetzen
                 </button>
               </div>
             </div>
@@ -623,22 +610,28 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                   transition={{ duration: 0.4, delay: (featuredBrands.length + index) * 0.03 }}
                 >
                   <Link
-                    href={`/${lang}/cars/${brand.slug}`}
+                    href={`/cars/${brand.slug}`}
                     className="group block h-full"
                   >
-                    <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-sm dark:shadow-md hover:shadow-md dark:hover:shadow-lg transition-all duration-200 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 h-full flex flex-col">
+                    <motion.div 
+                      className="group relative bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm dark:shadow-md hover:shadow-xl dark:hover:shadow-2xl transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-blue-500/30 dark:hover:border-blue-500/40 h-full flex flex-col overflow-hidden"
+                      whileHover={{ y: -3, scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {/* Hover gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 via-transparent to-blue-50/0 dark:from-blue-950/0 dark:via-transparent dark:to-blue-950/0 group-hover:from-blue-50/40 group-hover:to-blue-50/20 dark:group-hover:from-blue-950/20 dark:group-hover:to-blue-950/10 transition-all duration-300 pointer-events-none"></div>
                       
                       {/* Logo */}
                       {(() => {
                         const logoUrl = getBrandLogoUrl(brand.slug, brand.name, brand.logo_url);
                         return logoUrl ? (
-                          <div className="mb-4 h-24 flex items-center justify-center relative z-10 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-xl p-3 border-2 border-slate-200 dark:border-slate-700 group-hover:border-red-400 dark:group-hover:border-red-600 group-hover:shadow-md dark:group-hover:shadow-red-900/20 transition-all duration-300">
+                          <div className="mb-4 h-24 flex items-center justify-center relative z-10 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-xl p-3 border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-400 dark:group-hover:border-blue-600 group-hover:shadow-xl dark:group-hover:shadow-blue-900/30 transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-blue-50/30 group-hover:to-white dark:group-hover:from-blue-950/20 dark:group-hover:to-slate-900">
                             {/* Subtle inner glow */}
-                            <div className="absolute inset-1 rounded-lg bg-gradient-to-br from-white/50 to-transparent dark:from-white/5 dark:to-transparent"></div>
+                            <div className="absolute inset-1 rounded-lg bg-gradient-to-br from-white/50 to-transparent dark:from-white/5 dark:to-transparent group-hover:from-blue-100/30 dark:group-hover:from-blue-900/20 transition-all duration-300"></div>
                             <img
                               src={logoUrl}
                               alt={`${brand.name} logo`}
-                              className="relative max-h-18 max-w-full object-contain filter drop-shadow-sm group-hover:scale-105 group-hover:drop-shadow-md transition-all duration-300"
+                              className="relative max-h-18 max-w-full object-contain filter drop-shadow-sm group-hover:scale-110 group-hover:drop-shadow-xl transition-all duration-300 z-10"
                               loading="lazy"
                               decoding="async"
                               fetchPriority="low"
@@ -647,14 +640,14 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                                 target.style.display = 'none';
                                 const parent = target.parentElement;
                                 if (parent) {
-                                  parent.innerHTML = `<span class="text-3xl font-black text-slate-600 dark:text-slate-300 group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors">${brand.name.charAt(0)}</span>`;
+                                  parent.innerHTML = `<span class="text-3xl font-black text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400/90 transition-colors z-10 relative">${brand.name.charAt(0)}</span>`;
                                 }
                               }}
                             />
                           </div>
                         ) : (
-                          <div className="mb-4 h-24 flex items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-xl relative z-10 group-hover:from-red-100 group-hover:via-red-50 group-hover:to-red-100 dark:group-hover:from-red-950/40 dark:group-hover:via-red-900/30 dark:group-hover:to-red-950/40 transition-all duration-300 border-2 border-slate-200/50 dark:border-slate-700/50 group-hover:border-red-300 dark:group-hover:border-red-700 group-hover:shadow-md">
-                            <span className="text-4xl font-black text-slate-600 dark:text-slate-300 group-hover:text-red-600 dark:group-hover:text-red-400/90 group-hover:scale-110 transition-all duration-300">
+                          <div className="mb-4 h-24 flex items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-xl relative z-10 group-hover:from-blue-100 group-hover:via-blue-50 group-hover:to-blue-100 dark:group-hover:from-blue-950/40 dark:group-hover:via-blue-900/30 dark:group-hover:to-blue-950/40 transition-all duration-300 border-2 border-slate-200/50 dark:border-slate-700/50 group-hover:border-blue-400 dark:group-hover:border-blue-600 group-hover:shadow-xl">
+                            <span className="text-4xl font-black text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400/90 group-hover:scale-110 transition-all duration-300">
                               {brand.name.charAt(0)}
                             </span>
                           </div>
@@ -662,7 +655,7 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                       })()}
                       
                       {/* Brand Name */}
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors relative z-10">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400/90 transition-colors relative z-10 group-hover:translate-x-1 duration-300">
                         {brand.name}
                       </h3>
                       
@@ -700,21 +693,8 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                  {counts.faults.toLocaleString()} {t('Faults', 'Fehler')}
+                                  {counts.faults.toLocaleString()} Fehler
                                 </span>
-                                {counts.manuals > 0 && (
-                                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
-                                    + {counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {counts.faults === 0 && counts.manuals > 0 && (
-                              <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                <svg className="w-4 h-4 text-slate-600 dark:text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{counts.manuals.toLocaleString()} {t('Manuals', 'Anleitungen')}</span>
                               </div>
                             )}
                           </div>
@@ -722,15 +702,15 @@ export default function CarsClient({ brands, lang, stats, brandCounts }: CarsCli
                       })()}
 
                       {/* CTA */}
-                      <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center text-slate-700 dark:text-slate-300 font-semibold text-sm group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all">
-                          {t('View Models', 'Modelle ansehen')}
-                          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700 relative z-10">
+                        <div className="flex items-center text-slate-700 dark:text-slate-300 font-semibold text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all duration-300">
+                          Modelle ansehen
+                          <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   </Link>
                 </motion.div>
               ))}

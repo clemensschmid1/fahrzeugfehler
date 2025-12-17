@@ -6,14 +6,13 @@ import Header from '@/components/Header';
 import { Suspense } from 'react';
 import BrandClient from './BrandClient';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 600;
+// Use static generation with ISR for better performance
+export const revalidate = 600; // 10 minutes cache
 
-type Params = { lang: string; brand: string };
+type Params = { brand: string };
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const { lang, brand } = await params;
-  const t = (en: string, de: string) => lang === 'de' ? de : en;
+  const { brand } = await params;
   
   const cookieStore = await getCookies();
   const supabase = createServerClient(
@@ -45,28 +44,21 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
   if (!brandData) {
     return {
-      title: t('Brand Not Found', 'Marke nicht gefunden'),
+      title: 'Marke nicht gefunden',
     };
   }
 
   return {
-    title: `${brandData.name} - ${t('Car Models', 'Automodelle')} | Cars`,
-    description: brandData.description || t(
-      `Find fixing manuals and fault solutions for ${brandData.name} car models.`,
-      `Finden Sie Reparaturanleitungen und Fehlerlösungen für ${brandData.name} Automodelle.`
-    ),
+    title: `${brandData.name} - Automodelle | Fahrzeugfehler.de`,
+    description: brandData.description || `Finden Sie Reparaturanleitungen und Fehlerlösungen für ${brandData.name} Automodelle.`,
     alternates: {
-      canonical: `https://infoneva.com/${lang}/cars/${brand}`,
-      languages: {
-        'en': `https://infoneva.com/en/cars/${brand}`,
-        'de': `https://infoneva.com/de/cars/${brand}`,
-      },
+      canonical: `https://fahrzeugfehler.de/cars/${brand}`,
     },
   };
 }
 
 export default async function BrandPage({ params }: { params: Promise<Params> }) {
-  const { lang, brand } = await params;
+  const { brand } = await params;
   
   const cookieStore = await getCookies();
   const supabase = createServerClient(
@@ -90,10 +82,10 @@ export default async function BrandPage({ params }: { params: Promise<Params> })
     }
   );
 
-  // Fetch brand first
+  // Fetch brand first - only select needed fields for performance
   const brandResult = await supabase
     .from('car_brands')
-    .select('*')
+    .select('id, name, slug, logo_url, description, country, founded_year, is_featured, display_order')
     .eq('slug', brand)
     .single();
 
@@ -103,46 +95,77 @@ export default async function BrandPage({ params }: { params: Promise<Params> })
 
   const brandData = brandResult.data;
 
-  // Then fetch models for this brand
+  // Then fetch models for this brand - only select needed fields for performance
   const modelsResult = await supabase
     .from('car_models')
-    .select('*')
+    .select('id, brand_id, name, slug, year_start, year_end, description, image_url, sprite_3d_url, production_numbers, is_featured, display_order')
     .eq('brand_id', brandData.id)
     .order('display_order', { ascending: true })
     .order('name', { ascending: true });
 
   const models = modelsResult.data || [];
 
-  // Fetch fault/manual counts for this brand
+  // Fetch fault/manual counts for this brand - OPTIMIZED with timeouts
   const modelIds = models.map(m => m.id);
   let brandFaultsCount = 0;
   let brandManualsCount = 0;
 
+  // Only fetch counts if we have models, and use timeouts to prevent slow queries
   if (modelIds.length > 0) {
-    // Get all generations for these models
-    const { data: allGenerations } = await supabase
-      .from('model_generations')
-      .select('id, car_model_id')
-      .in('car_model_id', modelIds);
+    try {
+      // Use Promise.race with timeout for all count queries
+      const countsPromise = Promise.allSettled([
+        // Get generations count (simplified - just count, don't fetch all)
+        Promise.race([
+          supabase
+            .from('model_generations')
+            .select('id', { count: 'exact', head: true })
+            .in('car_model_id', modelIds),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
+        ]).catch(() => ({ count: 0 })),
+        
+        // Count faults with timeout
+        Promise.race([
+          supabase
+            .from('car_faults')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'live')
+            .in('car_model_id', modelIds), // Simplified - only count by model_id for speed
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
+        ]).catch(() => ({ count: 0 })),
+        
+        // Count manuals with timeout
+        Promise.race([
+          supabase
+            .from('car_manuals')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'live')
+            .in('car_model_id', modelIds), // Simplified - only count by model_id for speed
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
+        ]).catch(() => ({ count: 0 }))
+      ]);
 
-    const generationIds = allGenerations?.map(g => g.id) || [];
+      const counts = await Promise.race([
+        countsPromise,
+        new Promise<Array<{ status: string; value?: { count: number } }>>((resolve) => 
+          setTimeout(() => resolve([
+            { status: 'fulfilled', value: { count: 0 } },
+            { status: 'fulfilled', value: { count: 0 } },
+            { status: 'fulfilled', value: { count: 0 } }
+          ]), 2000) // Max 2 seconds total
+        )
+      ]);
 
-    // Count faults: either by model_id or generation_id
-    const { count: faultsCount } = await supabase
-      .from('car_faults')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'live')
-      .or(`car_model_id.in.(${modelIds.join(',')}),model_generation_id.in.(${generationIds.length > 0 ? generationIds.join(',') : 'null'})`);
-
-    // Count manuals: either by model_id or generation_id
-    const { count: manualsCount } = await supabase
-      .from('car_manuals')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'live')
-      .or(`car_model_id.in.(${modelIds.join(',')}),model_generation_id.in.(${generationIds.length > 0 ? generationIds.join(',') : 'null'})`);
-
-    brandFaultsCount = faultsCount || 0;
-    brandManualsCount = manualsCount || 0;
+      // Extract counts safely
+      const faultsResult = counts[1];
+      const manualsResult = counts[2];
+      
+      brandFaultsCount = faultsResult.status === 'fulfilled' ? (faultsResult.value?.count || 0) : 0;
+      brandManualsCount = manualsResult.status === 'fulfilled' ? (manualsResult.value?.count || 0) : 0;
+    } catch (error) {
+      // Silently fail - page works without counts
+      console.error('Error fetching brand counts:', error);
+    }
   }
 
   return (
@@ -162,7 +185,7 @@ export default async function BrandPage({ params }: { params: Promise<Params> })
           </div>
         </div>
       }>
-        <BrandClient brand={brandData} models={models} lang={lang} faultsCount={brandFaultsCount} manualsCount={brandManualsCount} />
+        <BrandClient brand={brandData} models={models} faultsCount={brandFaultsCount} manualsCount={brandManualsCount} />
       </Suspense>
     </>
   );

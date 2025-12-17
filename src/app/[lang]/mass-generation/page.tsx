@@ -386,8 +386,11 @@ function MassGenerationContent() {
   const [step5AbortController, setStep5AbortController] = useState<AbortController | null>(null);
 
   // Step 6: Import Embedding Results
-  const [step6Status, setStep6Status] = useState<'idle' | 'importing' | 'complete' | 'error'>('idle');
+  const [step6Status, setStep6Status] = useState<'idle' | 'importing' | 'complete' | 'error' | 'cancelled'>('idle');
   const [step6Error, setStep6Error] = useState<string | null>(null);
+  const [step6AbortController, setStep6AbortController] = useState<AbortController | null>(null);
+  const [step6Progress, setStep6Progress] = useState<{ processed: number; inserted: number; failed: number; duplicates: number } | null>(null);
+  const [step6Results, setStep6Results] = useState<{ processed: number; inserted: number; failed: number; duplicates: number } | null>(null);
   const [step5Results, setStep5Results] = useState<{ 
     success: number; 
     failed: number;
@@ -2087,44 +2090,80 @@ function MassGenerationContent() {
                     type="text"
                     id="batchIdInput"
                     placeholder={t('Enter Batch ID (e.g., batch_xxx)', 'Batch-ID eingeben (z.B. batch_xxx)')}
-                    className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+                    className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={step6Status === 'importing'}
                   />
-                  <button
-                    onClick={async () => {
-                      const batchId = (document.getElementById('batchIdInput') as HTMLInputElement)?.value;
-                      if (!batchId) {
-                        setStep6Error(t('Please enter a Batch ID', 'Bitte geben Sie eine Batch-ID ein'));
-                        setStep6Status('error');
-                        return;
-                      }
-
-                      setStep6Status('importing');
-                      setStep6Error(null);
-
-                      try {
-                        const response = await fetch('/api/embeddings/import-batch-results', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ batchId })
-                        });
-
-                        const data = await response.json();
-                        if (response.ok) {
-                          setStep6Status('complete');
-                          alert(t(`Successfully imported ${data.inserted} embeddings`, `Erfolgreich ${data.inserted} Embeddings importiert`));
-                        } else {
-                          setStep6Error(data.error || t('Import failed', 'Import fehlgeschlagen'));
-                          setStep6Status('error');
+                  {step6Status === 'importing' ? (
+                    <button
+                      onClick={() => {
+                        if (step6AbortController) {
+                          step6AbortController.abort();
+                          setStep6Status('cancelled');
+                          setStep6AbortController(null);
                         }
-                      } catch (error) {
-                        setStep6Error(error instanceof Error ? error.message : t('Unknown error', 'Unbekannter Fehler'));
-                        setStep6Status('error');
-                      }
-                    }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
-                  >
-                    {t('Import', 'Importieren')}
-                  </button>
+                      }}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                    >
+                      {t('Cancel', 'Abbrechen')}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        const batchId = (document.getElementById('batchIdInput') as HTMLInputElement)?.value;
+                        if (!batchId) {
+                          setStep6Error(t('Please enter a Batch ID', 'Bitte geben Sie eine Batch-ID ein'));
+                          setStep6Status('error');
+                          return;
+                        }
+
+                        const abortController = new AbortController();
+                        setStep6AbortController(abortController);
+                        setStep6Status('importing');
+                        setStep6Error(null);
+                        setStep6Progress({ processed: 0, inserted: 0, failed: 0, duplicates: 0 });
+                        setStep6Results(null);
+
+                        try {
+                          const response = await fetch('/api/embeddings/import-batch-results', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ batchId }),
+                            signal: abortController.signal
+                          });
+
+                          const data = await response.json();
+                          if (response.status === 499 || data.cancelled) {
+                            setStep6Status('cancelled');
+                            setStep6Error(t('Import cancelled', 'Import abgebrochen'));
+                          } else if (response.ok) {
+                            setStep6Status('complete');
+                            setStep6Results({
+                              processed: data.processed || 0,
+                              inserted: data.inserted || 0,
+                              failed: data.failed || 0,
+                              duplicates: data.duplicates || 0
+                            });
+                          } else {
+                            setStep6Error(data.error || t('Import failed', 'Import fehlgeschlagen'));
+                            setStep6Status('error');
+                          }
+                        } catch (error) {
+                          if (error instanceof Error && error.name === 'AbortError') {
+                            setStep6Status('cancelled');
+                            setStep6Error(t('Import cancelled', 'Import abgebrochen'));
+                          } else {
+                            setStep6Error(error instanceof Error ? error.message : t('Unknown error', 'Unbekannter Fehler'));
+                            setStep6Status('error');
+                          }
+                        } finally {
+                          setStep6AbortController(null);
+                        }
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                    >
+                      {t('Import', 'Importieren')}
+                    </button>
+                  )}
                 </div>
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   {t('Automatically downloads and imports results from OpenAI using the Batch ID', 'Lädt automatisch Ergebnisse von OpenAI herunter und importiert sie mit der Batch-ID')}
@@ -2147,58 +2186,147 @@ function MassGenerationContent() {
                     </ol>
                   </div>
                 </div>
-                <input
-                  type="file"
-                  accept=".jsonl"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept=".jsonl"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
 
-                    setStep6Status('importing');
-                    setStep6Error(null);
+                      const abortController = new AbortController();
+                      setStep6AbortController(abortController);
+                      setStep6Status('importing');
+                      setStep6Error(null);
+                      setStep6Progress({ processed: 0, inserted: 0, failed: 0, duplicates: 0 });
+                      setStep6Results(null);
 
-                    try {
-                      const formData = new FormData();
-                      formData.append('file', file);
+                      try {
+                        const formData = new FormData();
+                        formData.append('file', file);
 
-                      const response = await fetch('/api/embeddings/import-batch-results', {
-                        method: 'POST',
-                        body: formData
-                      });
+                        const response = await fetch('/api/embeddings/import-batch-results', {
+                          method: 'POST',
+                          body: formData,
+                          signal: abortController.signal
+                        });
 
-                      const data = await response.json();
-                      if (response.ok) {
-                        setStep6Status('complete');
-                        alert(t(`Successfully imported ${data.inserted} embeddings`, `Erfolgreich ${data.inserted} Embeddings importiert`));
-                      } else {
-                        setStep6Error(data.error || t('Import failed', 'Import fehlgeschlagen'));
-                        setStep6Status('error');
+                        const data = await response.json();
+                        if (response.status === 499 || data.cancelled) {
+                          setStep6Status('cancelled');
+                          setStep6Error(t('Import cancelled', 'Import abgebrochen'));
+                        } else if (response.ok) {
+                          setStep6Status('complete');
+                          setStep6Results({
+                            processed: data.processed || 0,
+                            inserted: data.inserted || 0,
+                            failed: data.failed || 0,
+                            duplicates: data.duplicates || 0
+                          });
+                        } else {
+                          setStep6Error(data.error || t('Import failed', 'Import fehlgeschlagen'));
+                          setStep6Status('error');
+                        }
+                      } catch (error) {
+                        if (error instanceof Error && error.name === 'AbortError') {
+                          setStep6Status('cancelled');
+                          setStep6Error(t('Import cancelled', 'Import abgebrochen'));
+                        } else {
+                          setStep6Error(error instanceof Error ? error.message : t('Unknown error', 'Unbekannter Fehler'));
+                          setStep6Status('error');
+                        }
+                      } finally {
+                        setStep6AbortController(null);
+                        // Reset input
+                        e.target.value = '';
                       }
-                    } catch (error) {
-                      setStep6Error(error instanceof Error ? error.message : t('Unknown error', 'Unbekannter Fehler'));
-                      setStep6Status('error');
-                    }
-
-                    // Reset input
-                    e.target.value = '';
-                  }}
-                  className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer cursor-pointer border-2 border-dashed border-blue-300 dark:border-blue-600 rounded-lg p-4 bg-white/50 dark:bg-slate-800/50"
-                />
+                    }}
+                    className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer cursor-pointer border-2 border-dashed border-blue-300 dark:border-blue-600 rounded-lg p-4 bg-white/50 dark:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={step6Status === 'importing'}
+                  />
+                  {step6Status === 'importing' && (
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => {
+                          if (step6AbortController) {
+                            step6AbortController.abort();
+                            setStep6Status('cancelled');
+                            setStep6AbortController(null);
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                      >
+                        {t('Cancel Import', 'Import abbrechen')}
+                      </button>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                        {t('Processing large file, please wait...', 'Große Datei wird verarbeitet, bitte warten...')}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
                   {t('Upload the completed batch output file (.jsonl) from OpenAI', 'Laden Sie die fertige Batch-Output-Datei (.jsonl) von OpenAI hoch')}
                 </div>
               </div>
 
+              {/* Progress Display */}
+              {step6Status === 'importing' && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                    <div className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                      {t('Importing embeddings...', 'Embeddings werden importiert...')}
+                    </div>
+                  </div>
+                  {step6Progress && (
+                    <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1 mt-2">
+                      <div>{t('Processed:', 'Verarbeitet:')} {step6Progress.processed.toLocaleString()}</div>
+                      <div className="text-green-700 dark:text-green-300">{t('Inserted:', 'Eingefügt:')} {step6Progress.inserted.toLocaleString()}</div>
+                      {step6Progress.duplicates > 0 && (
+                        <div className="text-yellow-700 dark:text-yellow-300">{t('Duplicates:', 'Duplikate:')} {step6Progress.duplicates.toLocaleString()}</div>
+                      )}
+                      {step6Progress.failed > 0 && (
+                        <div className="text-red-700 dark:text-red-300">{t('Failed:', 'Fehlgeschlagen:')} {step6Progress.failed.toLocaleString()}</div>
+                      )}
+                    </div>
+                  )}
+                  <div className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    {t('Large files may take several minutes. Do not close this page.', 'Große Dateien können mehrere Minuten dauern. Bitte schließen Sie diese Seite nicht.')}
+                  </div>
+                </div>
+              )}
+
+              {/* Error Display */}
               {step6Error && (
                 <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <div className="text-sm text-red-800 dark:text-red-200">{step6Error}</div>
                 </div>
               )}
 
-              {step6Status === 'complete' && (
-                <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <div className="text-sm text-green-800 dark:text-green-200">
+              {/* Success Display */}
+              {step6Status === 'complete' && step6Results && (
+                <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">
                     {t('Embeddings imported successfully!', 'Embeddings erfolgreich importiert!')}
+                  </div>
+                  <div className="text-xs text-green-700 dark:text-green-300 space-y-1">
+                    <div>{t('Processed:', 'Verarbeitet:')} {step6Results.processed.toLocaleString()}</div>
+                    <div className="font-semibold">{t('Successfully inserted:', 'Erfolgreich eingefügt:')} {step6Results.inserted.toLocaleString()}</div>
+                    {step6Results.duplicates > 0 && (
+                      <div>{t('Duplicates (skipped):', 'Duplikate (übersprungen):')} {step6Results.duplicates.toLocaleString()}</div>
+                    )}
+                    {step6Results.failed > 0 && (
+                      <div className="text-red-700 dark:text-red-300">{t('Failed:', 'Fehlgeschlagen:')} {step6Results.failed.toLocaleString()}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Cancelled Display */}
+              {step6Status === 'cancelled' && (
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                    {t('Import cancelled. Partial results may have been saved.', 'Import abgebrochen. Teilweise Ergebnisse wurden möglicherweise gespeichert.')}
                   </div>
                 </div>
               )}

@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import BrandClient from './BrandClient';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 600;
+export const revalidate = 300; // 5 minutes cache for better performance
 
 type Params = { lang: string; brand: string };
 

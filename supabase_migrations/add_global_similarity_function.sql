@@ -47,3 +47,9 @@ COMMENT ON FUNCTION match_car_faults_global IS 'Find similar car faults globally
 
 
 
+
+
+
+
+
+

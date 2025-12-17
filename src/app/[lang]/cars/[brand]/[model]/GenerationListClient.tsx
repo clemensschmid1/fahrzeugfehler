@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { getBrandLogoUrl } from '@/lib/car-brand-logos';
 import SketchfabViewer from '@/components/SketchfabViewer';
 import MinimalCarViewer from '@/components/MinimalCarViewer';
+import ModelFaultsSection from './ModelFaultsSection';
 
 type CarBrand = {
   id: string;
@@ -49,9 +50,10 @@ type Props = {
   generations: ModelGeneration[];
   lang: string;
   totalFaultsCount?: number;
+  initialFaults?: any[];
 };
 
-export default function GenerationListClient({ brand, model, generations, lang, totalFaultsCount = 0 }: Props) {
+export default function GenerationListClient({ brand, model, generations, lang, totalFaultsCount = 0, initialFaults = [] }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
@@ -546,6 +548,26 @@ export default function GenerationListClient({ brand, model, generations, lang, 
             </div>
           )}
         </div>
+
+        {/* Faults Section */}
+        {totalFaultsCount > 0 && (
+          <div className="mt-16">
+            <ModelFaultsSection
+              brandSlug={brand.slug}
+              modelSlug={model.slug}
+              modelName={model.name}
+              lang={lang}
+              generations={generations.map(g => ({
+                id: g.id,
+                name: g.name,
+                slug: g.slug,
+                generation_code: g.generation_code
+              }))}
+              initialFaults={initialFaults}
+              totalCount={totalFaultsCount}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -116,10 +116,10 @@ export async function POST(req: Request) {
         while (retryCount < maxRetries && !batchSuccess) {
           try {
             const result = await supabase
-              .from('car_faults')
-              .select('id, title, description')
+          .from('car_faults')
+          .select('id, title, description')
               .in('id', batchIds);
-            
+
             if (result.error) {
               fetchError = result.error;
               if (retryCount < maxRetries - 1) {
@@ -127,8 +127,8 @@ export async function POST(req: Request) {
                 console.warn(`[Embeddings] Fetch batch ${Math.floor(i / FETCH_BATCH_SIZE) + 1} retry ${retryCount + 1}/${maxRetries} after ${waitTime}ms`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 retryCount++;
-                continue;
-              }
+          continue;
+        }
             } else if (result.data) {
               faults.push(...result.data);
               batchSuccess = true;
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
       // Get existing embeddings for this chunk (single query - Supabase can handle 500 items)
       // Use the shared Supabase client
       const { data: existingEmbeddings } = await supabase
-        .from('car_fault_embeddings')
+          .from('car_fault_embeddings')
         .select('car_fault_id')
         .in('car_fault_id', chunk);
 
@@ -201,15 +201,15 @@ export async function POST(req: Request) {
               return { faultId, success: false, error: 'Fault not found' };
             }
 
-            // Prepare text content for embedding (title + description)
-            const textContent = `${fault.title}${fault.description ? ` ${fault.description}` : ''}`.trim();
+        // Prepare text content for embedding (title + description)
+        const textContent = `${fault.title}${fault.description ? ` ${fault.description}` : ''}`.trim();
 
-            if (!textContent) {
+        if (!textContent) {
               return { faultId, success: false, error: 'No text content to embed' };
-            }
+        }
 
-            // Generate embedding
-            const embedding = await generateEmbedding(textContent);
+        // Generate embedding
+        const embedding = await generateEmbedding(textContent);
             return { faultId, success: true, embedding, textContent };
           } catch (error) {
             return {

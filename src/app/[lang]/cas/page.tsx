@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 import CASClient from './CASClient';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 600;
+export const revalidate = 300; // 5 minutes cache for better performance
 
 type Params = { lang: string };
 

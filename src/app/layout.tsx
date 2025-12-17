@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import ClientClarityInit from "@/components/ClientClarityInit";
+import { OrganizationStructuredData, WebsiteStructuredData } from "@/components/StructuredData";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,23 +23,67 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://faultbase.com"),
-    title: {
-      default: "FAULTBASE: Industrial Knowledge Hub",
-      template: "%s | FAULTBASE",
+  metadataBase: new URL("https://fahrzeugfehler.de"),
+  title: {
+    default: "Fahrzeugfehler.de: Diagnose-Datenbank für Fahrzeugfehler",
+    template: "%s | Fahrzeugfehler.de",
   },
   description:
-    "Transform fault codes into instant solutions. Precision diagnosis for industrial automation.",
+    "Umfassende Diagnose-Datenbank für Fahrzeugfehler. Technische Lösungen und Ursachenanalysen für alle Automarken und Modelle.",
+  keywords: [
+    "Fahrzeugfehler",
+    "Autoreparatur",
+    "Fehlerdiagnose",
+    "Fahrzeugdiagnose",
+    "Reparaturanleitung",
+    "Fehlercode",
+    "Auto Fehler",
+    "Kfz Reparatur",
+    "Werkstatt",
+    "Fahrzeugtechnik",
+  ],
+  authors: [{ name: "Fahrzeugfehler.de Redaktion" }],
+  creator: "Fahrzeugfehler.de",
+  publisher: "Fahrzeugfehler.de",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'de_DE',
+    url: 'https://fahrzeugfehler.de',
+    siteName: 'Fahrzeugfehler.de',
+    title: 'Fahrzeugfehler.de: Diagnose-Datenbank für Fahrzeugfehler',
+    description: 'Umfassende Diagnose-Datenbank für Fahrzeugfehler. Technische Lösungen und Ursachenanalysen für alle Automarken und Modelle.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Fahrzeugfehler.de: Diagnose-Datenbank für Fahrzeugfehler',
+    description: 'Umfassende Diagnose-Datenbank für Fahrzeugfehler. Technische Lösungen und Ursachenanalysen für alle Automarken und Modelle.',
+  },
+  alternates: {
+    canonical: 'https://fahrzeugfehler.de',
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION,
+    other: {
+      'msvalidate.01': '04FC17AA84330E866FDBF4F1C78EFD59',
+    },
+  },
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon.ico', sizes: 'any' },
     ],
     apple: [
       { url: '/apple-icon.svg', type: 'image/svg+xml' },
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
 };
@@ -48,25 +93,8 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  // Try to get lang from pathname (e.g. /en/..., /de/...)
-  let lang = 'en';
-  if (typeof window === 'undefined') {
-    // On server, try to parse from headers
-    const headersList = await headers();
-    let pathname = headersList.get('x-invoke-path') || '';
-    if (!pathname && process.env.NEXT_PUBLIC_SITE_URL) {
-      try {
-        pathname = new URL(process.env.NEXT_PUBLIC_SITE_URL).pathname;
-      } catch {}
-    }
-    if (pathname.startsWith('/de')) lang = 'de';
-    else if (pathname.startsWith('/en')) lang = 'en';
-  } else {
-    // On client, use window.location.pathname
-    const pathname = window.location.pathname;
-    if (pathname.startsWith('/de')) lang = 'de';
-    else if (pathname.startsWith('/en')) lang = 'en';
-  }
+  // Site is German only
+  const lang = 'de';
   return (
     <html lang={lang} className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
@@ -110,7 +138,7 @@ export default async function RootLayout({
             })(window, document, "clarity", "script", "sigphxs9mi");
           `}
         </Script>
-        <Script defer data-domain="infoneva.com" src="https://plausible.io/js/script.js" strategy="lazyOnload"></Script>
+        <Script defer data-domain="fahrzeugfehler.de" src="https://plausible.io/js/script.js" strategy="lazyOnload"></Script>
         <Script id="plausible-inline" strategy="lazyOnload">
           {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
         </Script>
@@ -130,11 +158,11 @@ export default async function RootLayout({
             _paq.push(['trackPageView']);
             _paq.push(['enableLinkTracking']);
             (function() {
-              var u="https://faultbase.matomo.cloud/";
+              var u="https://fahrzeugfehler.matomo.cloud/";
               _paq.push(['setTrackerUrl', u+'matomo.php']);
               _paq.push(['setSiteId', '1']);
               var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
-              g.async=true; g.src='https://cdn.matomo.cloud/faultbase.matomo.cloud/matomo.js'; s.parentNode.insertBefore(g,s);
+              g.async=true; g.src='https://cdn.matomo.cloud/fahrzeugfehler.matomo.cloud/matomo.js'; s.parentNode.insertBefore(g,s);
             })();
           `}
         </Script>
@@ -160,7 +188,7 @@ export default async function RootLayout({
           {`
             (function() {
               try {
-                const stored = localStorage.getItem('fault-base-theme');
+                const stored = localStorage.getItem('fahrzeugfehler-theme');
                 // Default to light mode (bright mode) - ignore system preference
                 const theme = stored === 'dark' || stored === 'light' ? stored : 'light';
                 const root = document.documentElement;
@@ -179,6 +207,8 @@ export default async function RootLayout({
         </Script>
         <ThemeProvider>
           <UserSessionProvider>
+            <OrganizationStructuredData />
+            <WebsiteStructuredData />
             <div className="flex-1">
               {children}
             </div>

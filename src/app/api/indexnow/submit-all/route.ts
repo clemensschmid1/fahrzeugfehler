@@ -58,9 +58,9 @@ export async function POST(req: Request) {
         for (const fault of faults) {
           const gen = fault.model_generations as any;
           if (gen && gen.car_models && gen.car_models.car_brands) {
-            const langPath = fault.language_path || 'en';
+            // Nur deutsche URLs (kein lang-Parameter mehr)
             urls.push(
-              `https://faultbase.com/${langPath}/cars/${gen.car_models.car_brands.slug}/${gen.car_models.slug}/${gen.slug}/faults/${fault.slug}`
+              `https://fahrzeugfehler.de/cars/${gen.car_models.car_brands.slug}/${gen.car_models.slug}/${gen.slug}/faults/${fault.slug}`
             );
           }
         }
@@ -98,9 +98,9 @@ export async function POST(req: Request) {
         for (const manual of manuals) {
           const gen = manual.model_generations as any;
           if (gen && gen.car_models && gen.car_models.car_brands) {
-            const langPath = manual.language_path || 'en';
+            // Nur deutsche URLs (kein lang-Parameter mehr)
             urls.push(
-              `https://faultbase.com/${langPath}/cars/${gen.car_models.car_brands.slug}/${gen.car_models.slug}/${gen.slug}/manuals/${manual.slug}`
+              `https://fahrzeugfehler.de/cars/${gen.car_models.car_brands.slug}/${gen.car_models.slug}/${gen.slug}/manuals/${manual.slug}`
             );
           }
         }

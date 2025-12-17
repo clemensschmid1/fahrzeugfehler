@@ -41,3 +41,9 @@ COMMENT ON COLUMN car_bulk_generation_jobs.batch2_id IS 'OpenAI Batch API ID for
 
 
 
+
+
+
+
+
+

@@ -4,13 +4,13 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "functions": {
-    "app/api/**/*.ts": {
+    "src/app/api/**/*.ts": {
       "maxDuration": 30
     },
     "src/app/api/cars/bulk-generate/route.ts": {
       "maxDuration": 800
     },
-    "app/api/cars/bulk-generate-continue/route.ts": {
+    "src/app/api/cars/bulk-generate-continue/route.ts": {
       "maxDuration": 300
     }
   },

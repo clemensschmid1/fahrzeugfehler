@@ -83,7 +83,9 @@ export async function POST(req: Request) {
             jobId: job.id,
           };
           
-          const request = new Request('http://localhost:3000/api/cars/bulk-generate', {
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+          const request = new Request(`${baseUrl}/api/cars/bulk-generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
@@ -115,7 +117,9 @@ export async function POST(req: Request) {
         try {
           console.log(`[Worker] Continuing job ${job.id} (status: ${job.status})`);
           
-          const request = new Request('http://localhost:3000/api/cars/bulk-generate-continue', {
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+          const request = new Request(`${baseUrl}/api/cars/bulk-generate-continue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobId: job.id }),

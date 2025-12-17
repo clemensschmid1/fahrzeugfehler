@@ -35,7 +35,7 @@ try {
 }
 
 const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
-const HOST = 'faultbase.com';
+const HOST = 'fahrzeugfehler.de';
 const KEY_LOCATION = `https://${HOST}/${INDEXNOW_KEY}.txt`;
 const KEY_FILE_URL = `https://${HOST}/${INDEXNOW_KEY}.txt`;
 

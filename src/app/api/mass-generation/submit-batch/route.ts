@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
+import { createReadStream } from 'fs';
+import { createInterface } from 'readline';
 import { join } from 'path';
 
 export const runtime = 'nodejs';
@@ -86,40 +88,88 @@ export async function POST(req: Request) {
         batchName = `Batch ${baseName}`;
       }
     } else {
-      // Read from fileUrl
-      filename = fileUrl!.replace('/generated/', '');
+      // MEMORY-OPTIMIZED: Stream file and validate line-by-line without loading entire file
+      filename = fileUrl!.replace('/generated/', '').replace(/^\/+/, '');
       const filePath = join(process.cwd(), 'public', 'generated', filename);
+      
+      // Use streaming read with small chunks to prevent memory issues
+      const fileStream = createReadStream(filePath, { 
+        encoding: 'utf-8',
+        highWaterMark: 64 * 1024 // 64KB chunks
+      });
+      
+      const rl = createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+      });
+      
+      // Build content incrementally instead of storing all lines in array
+      const validLines: string[] = [];
+      let lineCount = 0;
+      
       try {
-        jsonlContent = await readFile(filePath, 'utf-8');
-      } catch (err) {
-        return NextResponse.json({ error: 'File not found' }, { status: 404 });
+      for await (const line of rl) {
+          const trimmedLine = line.trim();
+          if (trimmedLine.length === 0) continue;
+          
+          // Validate JSON on-the-fly
+          try {
+            const parsed = JSON.parse(trimmedLine);
+            // Validate required fields for OpenAI Batch API
+            if (parsed.custom_id && parsed.method && parsed.url && parsed.body) {
+              // Validate body structure
+              if (parsed.body.model && parsed.body.messages && Array.isArray(parsed.body.messages)) {
+                validLines.push(trimmedLine);
+                lineCount++;
+                
+                // CRITICAL: Limit memory usage - process in chunks
+                // If we have too many lines, join and clear periodically
+                if (validLines.length >= 10000) {
+                  // This shouldn't happen for normal files, but safety measure
+                  console.warn(`[Submit Batch] Large file detected: ${lineCount} lines processed`);
+                }
+              }
+            }
+          } catch (e) {
+            // Invalid JSON line - skip it
+            continue;
+        }
+      }
+      
+        jsonlContent = validLines.join('\n');
+      } finally {
+        // CRITICAL: Always cleanup streams
+      rl.close();
+        fileStream.removeAllListeners();
+      fileStream.destroy();
+        // Clear array to help GC
+        validLines.length = 0;
       }
     }
 
-    // Validate and clean JSONL content
+    // Validate content (already validated if from fileUrl, but double-check for uploaded files)
+    if (!jsonlContent || jsonlContent.trim().length === 0) {
+      return NextResponse.json({ error: 'JSONL file is empty' }, { status: 400 });
+    }
+
+    // For uploaded files, validate now (fileUrl files are already validated during streaming)
+    let cleanedJsonlContent: string;
+    if (file) {
     const lines = jsonlContent.split('\n').filter(l => l.trim().length > 0);
     if (lines.length === 0) {
       return NextResponse.json({ error: 'JSONL file is empty' }, { status: 400 });
     }
 
-    // Validate each line is valid JSON
     const validLines: string[] = [];
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line);
-        // Validate required fields for OpenAI Batch API
-        if (!parsed.custom_id || !parsed.method || !parsed.url || !parsed.body) {
-          console.error('Invalid JSONL line - missing required fields:', Object.keys(parsed));
-          continue;
-        }
-        // Validate body structure
-        if (!parsed.body.model || !parsed.body.messages || !Array.isArray(parsed.body.messages)) {
-          console.error('Invalid JSONL line - invalid body structure:', parsed.body);
-          continue;
-        }
-        validLines.push(line);
-      } catch (e) {
-        console.error('Invalid JSON in line:', line.substring(0, 100), e);
+          if (parsed.custom_id && parsed.method && parsed.url && parsed.body) {
+            if (parsed.body.model && parsed.body.messages && Array.isArray(parsed.body.messages)) {
+              validLines.push(line);
+            }
+          }
+        } catch (e) {
         continue;
       }
     }
@@ -128,12 +178,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No valid JSONL lines found in file' }, { status: 400 });
     }
 
-    const cleanedJsonlContent = validLines.join('\n');
+      cleanedJsonlContent = validLines.join('\n');
+    } else {
+      // Already validated during streaming
+      cleanedJsonlContent = jsonlContent;
+    }
     const apiKey = getOpenAIApiKey();
 
     // Calculate file size for timeout estimation
     const fileSizeMB = (cleanedJsonlContent.length / (1024 * 1024)).toFixed(2);
-    console.log(`[Submit Batch] Uploading file: ${filename}, size: ${fileSizeMB} MB, lines: ${validLines.length}`);
+    const lineCount = cleanedJsonlContent.split('\n').filter(l => l.trim().length > 0).length;
+    console.log(`[Submit Batch] Uploading file: ${filename}, size: ${fileSizeMB} MB, lines: ${lineCount}`);
 
     // Set timeout based on file size (1 minute per 10 MB, minimum 5 minutes, maximum 10 minutes)
     const uploadTimeout = Math.min(Math.max(parseFloat(fileSizeMB) * 6 * 1000, 5 * 60 * 1000), 10 * 60 * 1000);

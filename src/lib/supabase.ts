@@ -17,7 +17,19 @@ export function getSupabaseClient() {
     )
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    // Disable Realtime to prevent warnings and reduce bundle size
+    realtime: {
+      params: {
+        eventsPerSecond: 0,
+      },
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'infoneva-browser',
+      },
+    },
+  })
 }
 
 // Lazy getter for backward compatibility with existing imports

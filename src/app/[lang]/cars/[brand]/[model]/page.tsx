@@ -6,8 +6,8 @@ import Header from '@/components/Header';
 import { Suspense } from 'react';
 import GenerationListClient from './GenerationListClient';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 600;
+// Use static generation with ISR for better performance
+export const revalidate = 600; // 10 minutes cache
 
 type Params = { lang: string; brand: string; model: string };
 
@@ -135,6 +135,7 @@ export default async function ModelGenerationsPage({ params }: { params: Promise
   // Fetch total fault count for this model across all generations
   const generationIds = generations.map(g => g.id);
   let totalFaultsCount = 0;
+  let initialFaults: any[] = [];
 
   if (generationIds.length > 0 || modelData.id) {
     // Count faults: either by model_id or generation_id
@@ -142,9 +143,25 @@ export default async function ModelGenerationsPage({ params }: { params: Promise
       .from('car_faults')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'live')
+      .eq('language_path', lang)
       .or(`car_model_id.eq.${modelData.id},model_generation_id.in.(${generationIds.length > 0 ? generationIds.join(',') : 'null'})`);
 
     totalFaultsCount = faultsCount || 0;
+
+    // Fetch initial faults (first 60) for display
+    if (totalFaultsCount > 0) {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/cars/${brand}/${model}/faults?page=1&limit=60&lang=${lang}`, {
+          cache: 'no-store'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          initialFaults = data.faults || [];
+        }
+      } catch (error) {
+        console.error('Error fetching initial faults:', error);
+      }
+    }
   }
 
   return (
@@ -170,6 +187,7 @@ export default async function ModelGenerationsPage({ params }: { params: Promise
           generations={generations} 
           lang={lang}
           totalFaultsCount={totalFaultsCount}
+          initialFaults={initialFaults}
         />
       </Suspense>
     </>

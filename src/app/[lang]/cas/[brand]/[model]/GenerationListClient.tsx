@@ -63,7 +63,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-700 to-red-800 dark:from-red-950 dark:via-red-900 dark:to-red-950">
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 dark:from-blue-950 dark:via-blue-900 dark:to-blue-950">
         <div className="absolute inset-0 bg-gradient-to-br from-black/20 via-transparent to-black/10 dark:from-black/40 dark:via-transparent dark:to-black/20"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_70%)] dark:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.05),transparent_70%)]"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
@@ -74,7 +74,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
             className="text-center"
           >
             {/* Breadcrumb */}
-            <nav className="mb-6 flex items-center justify-center space-x-2 text-sm text-red-100">
+            <nav className="mb-6 flex items-center justify-center space-x-2 text-sm text-blue-100">
               <Link href={`/${lang}`} className="hover:text-white transition-colors">
                 {t('Home', 'Startseite')}
               </Link>
@@ -101,17 +101,17 @@ export default function GenerationListClient({ brand, model, generations, lang }
             )}
 
             <h1 className="text-5xl sm:text-6xl font-black text-white mb-4 tracking-tight drop-shadow-lg dark:drop-shadow-2xl">
-              <span className="bg-gradient-to-r from-white via-red-50 to-white dark:from-white dark:via-red-100 dark:to-white bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-white via-blue-50 to-white dark:from-white dark:via-blue-100 dark:to-white bg-clip-text text-transparent">
                 {brand.name} {model.name}
               </span>
             </h1>
 
-            <p className="text-xl text-red-50 dark:text-red-100 mb-4 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+            <p className="text-xl text-blue-50 dark:text-blue-100 mb-4 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
               {t('Select Your Generation', 'Wählen Sie Ihre Generation')}
             </p>
 
             {model.description && (
-              <p className="text-lg text-red-50 dark:text-red-100/90 max-w-2xl mx-auto">
+              <p className="text-lg text-blue-50 dark:text-blue-100/90 max-w-2xl mx-auto">
                 {model.description}
               </p>
             )}
@@ -125,7 +125,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
         <div className="mb-8 flex flex-wrap gap-4 justify-center">
           <Link
             href={`/${lang}/cas`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -134,7 +134,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
           </Link>
           <Link
             href={`/${lang}/cas/${brand.slug}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-red-600 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm rounded-lg text-sm font-semibold text-slate-700 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700/80 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200 dark:border-zinc-700/50 dark:shadow-lg"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -147,13 +147,13 @@ export default function GenerationListClient({ brand, model, generations, lang }
         {generations.length > 3 && (
           <div className="mb-12">
             <div className="relative max-w-2xl mx-auto">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-red-500/5 dark:from-red-500/10 dark:via-transparent dark:to-red-500/10 rounded-xl blur-xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 dark:from-blue-500/10 dark:via-transparent dark:to-blue-500/10 rounded-xl blur-xl"></div>
               <input
                 type="text"
                 placeholder={t('Search generations...', 'Generationen suchen...')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="relative w-full px-6 py-4 text-lg border-2 border-slate-300 dark:border-zinc-700/50 rounded-xl bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-600 focus:border-transparent transition-all shadow-sm dark:shadow-xl"
+                className="relative w-full px-6 py-4 text-lg border-2 border-slate-300 dark:border-zinc-700/50 rounded-xl bg-white dark:bg-zinc-800/80 dark:backdrop-blur-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent transition-all shadow-sm dark:shadow-xl"
               />
               <svg
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-slate-400 dark:text-zinc-500 z-10"
@@ -185,8 +185,8 @@ export default function GenerationListClient({ brand, model, generations, lang }
                     href={`/${lang}/cas/${brand.slug}/${model.slug}/${generation.slug}`}
                     className="group block h-full"
                   >
-                    <div className="group relative bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl hover:shadow-2xl dark:hover:shadow-red-900/20 transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-red-500 dark:hover:border-red-500/50 h-full flex flex-col">
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-500/10 to-transparent rounded-full blur-2xl group-hover:from-red-500/20 dark:group-hover:from-red-500/30 transition-opacity z-0"></div>
+                    <div className="group relative bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl hover:shadow-2xl dark:hover:shadow-blue-900/20 transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-blue-500 dark:hover:border-blue-500/50 h-full flex flex-col">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-2xl group-hover:from-blue-500/20 dark:group-hover:from-blue-500/30 transition-opacity z-0"></div>
                       <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-50/50 dark:to-zinc-900/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       
                       {generation.image_url ? (
@@ -199,9 +199,9 @@ export default function GenerationListClient({ brand, model, generations, lang }
                           />
                         </div>
                       ) : (
-                        <div className="h-48 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950/40 dark:to-red-900/30 flex items-center justify-center relative overflow-hidden border-b border-red-200/50 dark:border-red-900/30">
-                          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent dark:from-red-500/20 dark:to-transparent"></div>
-                          <span className="text-6xl font-black text-red-600 dark:text-red-400/90 relative z-10 group-hover:scale-110 transition-transform duration-300 drop-shadow-lg">
+                        <div className="h-48 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950/40 dark:to-blue-900/30 flex items-center justify-center relative overflow-hidden border-b border-blue-200/50 dark:border-blue-900/30">
+                          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent dark:from-blue-500/20 dark:to-transparent"></div>
+                          <span className="text-6xl font-black text-blue-600 dark:text-blue-400/90 relative z-10 group-hover:scale-110 transition-transform duration-300 drop-shadow-lg">
                             {generation.generation_code || generation.name.charAt(0)}
                           </span>
                         </div>
@@ -234,7 +234,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
                           </p>
                         )}
 
-                        <div className="mt-auto flex items-center text-red-600 dark:text-red-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                        <div className="mt-auto flex items-center text-blue-600 dark:text-blue-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
                           {t('View Faults & Manuals', 'Fehler & Anleitungen ansehen')}
                           <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -273,7 +273,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
                     href={`/${lang}/cas/${brand.slug}/${model.slug}/${generation.slug}`}
                     className="group block h-full"
                   >
-                    <div className="bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl overflow-hidden shadow-md dark:shadow-xl hover:shadow-xl dark:hover:shadow-red-900/10 transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-red-500 dark:hover:border-red-500/50 h-full flex flex-col">
+                    <div className="bg-white dark:bg-zinc-800/90 dark:backdrop-blur-sm rounded-2xl overflow-hidden shadow-md dark:shadow-xl hover:shadow-xl dark:hover:shadow-blue-900/10 transition-all duration-300 border border-slate-200 dark:border-zinc-700/50 hover:border-blue-500 dark:hover:border-blue-500/50 h-full flex flex-col">
                       {generation.image_url ? (
                         <div className="relative h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-zinc-800 dark:to-zinc-700 overflow-hidden">
                           <img
@@ -291,7 +291,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
                       )}
 
                       <div className="p-5 flex-grow flex flex-col">
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100 mb-2 group-hover:text-red-600 dark:group-hover:text-red-400/90 transition-colors">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400/90 transition-colors">
                           {generation.name}
                         </h3>
 
@@ -301,7 +301,7 @@ export default function GenerationListClient({ brand, model, generations, lang }
                           </p>
                         )}
 
-                        <div className="mt-auto flex items-center text-red-600 dark:text-red-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                        <div className="mt-auto flex items-center text-blue-600 dark:text-blue-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">
                           {t('View Details', 'Details ansehen')}
                           <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

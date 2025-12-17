@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '19b8bc246b244733843ff32b3d426207';
-    const HOST = 'faultbase.com';
+    const HOST = 'fahrzeugfehler.de';
     const KEY_LOCATION = `https://${HOST}/${INDEXNOW_KEY}.txt`;
 
     if (!INDEXNOW_KEY || INDEXNOW_KEY === 'REPLACE_WITH_YOUR_KEY') {
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     });
 
     if (validUrls.length === 0) {
-      return NextResponse.json({ error: 'No valid URLs provided (must be from faultbase.com)' }, { status: 400 });
+      return NextResponse.json({ error: 'No valid URLs provided (must be from fahrzeugfehler.de)' }, { status: 400 });
     }
 
     // Extract hostname from first URL (all should be same)

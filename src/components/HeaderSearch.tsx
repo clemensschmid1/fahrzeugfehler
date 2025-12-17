@@ -45,7 +45,18 @@ export default function HeaderSearch({ lang }: HeaderSearchProps) {
 
   const t = (en: string, de: string) => lang === 'de' ? de : en;
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const fetchFilterOptions = async () => {
+    // Cancel previous request if still running
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new AbortController
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -55,15 +66,36 @@ export default function HeaderSearch({ lang }: HeaderSearchProps) {
         if (value) params.set(key, value);
       });
 
-      const response = await fetch(`/api/knowledge/filter-options?${params.toString()}`);
+      const response = await fetch(`/api/knowledge/filter-options?${params.toString()}`, {
+        signal: abortController.signal,
+      });
+      
+      // Check if request was aborted
+      if (abortController.signal.aborted) {
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
-        setFilterOptions(data);
+        // Only update state if not aborted
+        if (!abortController.signal.aborted) {
+          setFilterOptions(data);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
+    } catch (error: any) {
+      // Don't log AbortError - it's expected when component unmounts
+      if (error.name !== 'AbortError' && !abortController.signal.aborted) {
+        console.error('Error fetching filter options:', error);
+      }
     } finally {
-      setLoading(false);
+      // Only update loading state if not aborted
+      if (!abortController.signal.aborted) {
+        setLoading(false);
+      }
+      // Clear reference if this was the active controller
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -83,9 +115,19 @@ export default function HeaderSearch({ lang }: HeaderSearchProps) {
         setFilterOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('mousedown', handleClick, { passive: true });
     return () => document.removeEventListener('mousedown', handleClick);
   }, [filterOpen]);
+
+  // Cleanup AbortController on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   // Navigate to knowledge base with search and filters
   const navigateToKnowledge = (searchQuery?: string, newFilters?: Partial<typeof filters>) => {
@@ -126,14 +168,37 @@ export default function HeaderSearch({ lang }: HeaderSearchProps) {
       if (v) params.set(k, v);
     });
     
+    // Cancel previous request if still running
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
-      const response = await fetch(`/api/knowledge/filter-options?${params.toString()}`);
+      const response = await fetch(`/api/knowledge/filter-options?${params.toString()}`, {
+        signal: abortController.signal,
+      });
+      
+      if (abortController.signal.aborted) {
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
-        setFilterOptions(data);
+        if (!abortController.signal.aborted) {
+          setFilterOptions(data);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching updated filter options:', error);
+    } catch (error: any) {
+      if (error.name !== 'AbortError' && !abortController.signal.aborted) {
+        console.error('Error fetching updated filter options:', error);
+      }
+    } finally {
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
     }
     
     // Auto-apply filters when changed

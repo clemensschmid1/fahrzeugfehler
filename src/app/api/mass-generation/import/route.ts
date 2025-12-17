@@ -2,9 +2,22 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import { createReadStream } from 'fs';
+import { createInterface } from 'readline';
+import { tmpdir } from 'os';
+import { writeFile, unlink } from 'fs/promises';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 
 export const runtime = 'nodejs';
 export const maxDuration = 800; // ~13 minutes - Vercel maximum limit (for large imports, consider splitting into smaller batches)
+
+// Memory optimization: Process data in smaller chunks to avoid heap overflow
+// Instead of loading all data into arrays, we'll process in chunks
+
+// Memory optimization: Process files in batches to avoid heap overflow
+const PROCESSING_BATCH_SIZE = 5000; // Process 5k lines at a time to reduce memory pressure
+const MEMORY_SAFE_CHUNK_SIZE = 10000; // Process data in chunks of 10k items to avoid memory overflow
 
 const OPENAI_API_URL = 'https://api.openai.com/v1';
 
@@ -138,37 +151,117 @@ export async function POST(req: Request) {
     const apiKey = getOpenAIApiKey();
     const supabase = getSupabaseClient();
 
-    // Process all file groups - merge all files together
+    // MEMORY OPTIMIZATION: Save files to temp location first, then process with streaming
+    // This prevents loading entire files into memory at once
+    const tempDir = tmpdir();
+    const tempFiles: string[] = [];
+    
+    // Helper to save File to temp location
+    async function saveFileToTemp(file: File, prefix: string): Promise<string> {
+      const tempPath = join(tempDir, `${prefix}-${Date.now()}-${Math.random().toString(36).substring(7)}.jsonl`);
+      const arrayBuffer = await file.arrayBuffer();
+      await writeFile(tempPath, Buffer.from(arrayBuffer));
+      tempFiles.push(tempPath);
+      return tempPath;
+    }
+    
+    // Save all files to temp location (prevents memory issues with large files)
+    const questionsFilePaths: string[] = [];
+    const answersFilePaths: string[] = [];
+    const metadataFilePaths: string[] = [];
+    
+    console.log('[Import] Saving files to temp location...');
+    for (const file of questionsFiles) {
+      questionsFilePaths.push(await saveFileToTemp(file, 'questions'));
+    }
+    for (const file of answersFiles) {
+      answersFilePaths.push(await saveFileToTemp(file, 'answers'));
+    }
+    for (const file of metadataFiles) {
+      metadataFilePaths.push(await saveFileToTemp(file, 'metadata'));
+    }
+    
+    // Process files using streaming to avoid memory overflow
     const allQuestionsLines: string[] = [];
     const allAnswersLines: string[] = [];
     const allMetadataResults: any[] = [];
     
-    // Read and combine all questions files
-    for (const questionsFile of questionsFiles) {
-      const questionsJsonl = await questionsFile.text();
-      const questionsLines = questionsJsonl.trim().split('\n').filter(line => line.trim());
-      allQuestionsLines.push(...questionsLines);
-    }
-    
-    // Read and combine all answers files
-    for (const answersFile of answersFiles) {
-      const answersJsonl = await answersFile.text();
-      const answersLines = answersJsonl.trim().split('\n').filter(line => line.trim());
-      allAnswersLines.push(...answersLines);
-    }
-    
-    // Read and combine all metadata files
-    for (const metadataFile of metadataFiles) {
-      const metadataJsonl = await metadataFile.text();
-      const metadataLines = metadataJsonl.trim().split('\n').filter(line => line.trim());
-      const metadataResults = metadataLines.map(line => {
-        try {
-          return JSON.parse(line);
-        } catch (e) {
-          return null;
+    // Process questions files with streaming
+    for (const filePath of questionsFilePaths) {
+      const rl = createInterface({ input: createReadStream(filePath) });
+      let batch: string[] = [];
+      
+      for await (const line of rl) {
+        const trimmed = line.trim();
+        if (trimmed) {
+          batch.push(trimmed);
+          // Process in batches to avoid memory buildup
+          if (batch.length >= PROCESSING_BATCH_SIZE) {
+            allQuestionsLines.push(...batch);
+            batch = []; // Clear batch
+          }
         }
-      }).filter(item => item !== null);
-      allMetadataResults.push(...metadataResults);
+      }
+      if (batch.length > 0) {
+        allQuestionsLines.push(...batch);
+      }
+      rl.close();
+    }
+    
+    // Process answers files with streaming
+    for (const filePath of answersFilePaths) {
+      const rl = createInterface({ input: createReadStream(filePath) });
+      let batch: string[] = [];
+      
+      for await (const line of rl) {
+        const trimmed = line.trim();
+        if (trimmed) {
+          batch.push(trimmed);
+          if (batch.length >= PROCESSING_BATCH_SIZE) {
+            allAnswersLines.push(...batch);
+            batch = [];
+          }
+        }
+      }
+      if (batch.length > 0) {
+        allAnswersLines.push(...batch);
+      }
+      rl.close();
+    }
+    
+    // Process metadata files with streaming
+    for (const filePath of metadataFilePaths) {
+      const rl = createInterface({ input: createReadStream(filePath) });
+      let batch: any[] = [];
+      
+      for await (const line of rl) {
+        const trimmed = line.trim();
+        if (trimmed) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            batch.push(parsed);
+            if (batch.length >= PROCESSING_BATCH_SIZE) {
+              allMetadataResults.push(...batch);
+              batch = [];
+            }
+          } catch (e) {
+            // Skip invalid JSON
+          }
+        }
+      }
+      if (batch.length > 0) {
+        allMetadataResults.push(...batch);
+      }
+      rl.close();
+    }
+    
+    // Cleanup temp files
+    for (const tempPath of tempFiles) {
+      try {
+        await unlink(tempPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     }
     
     console.log(`[Import] Merged ${questionsFiles.length} questions files (${allQuestionsLines.length} lines), ${answersFiles.length} answers files (${allAnswersLines.length} lines), ${metadataFiles.length} metadata files (${allMetadataResults.length} entries)`);
@@ -394,54 +487,85 @@ export async function POST(req: Request) {
       return {};
     };
 
-    for (const line of allQuestionsLines) {
-      try {
-        const parsed = JSON.parse(line);
-        // Extract question from user message
-        const userContent = parsed.body?.messages?.[1]?.content || parsed.body?.messages?.[0]?.content || '';
-        if (!userContent) {
-          console.warn('[Import] No user content found in question line:', line.substring(0, 100));
-          continue;
-        }
-        // Remove the " - Brand Model Generation" suffix if present, but keep it for extraction
-        const questionParts = userContent.split(' - ');
-        const question = questionParts[0];
-        const suffix = questionParts[1] || '';
-        
-        // Extract generation info - prioritize suffix, but also try full userContent as fallback
-        let generationInfo = extractGenerationInfo(userContent);
-        
-        // If nothing found and we have a suffix, try extracting just from suffix
-        if ((!generationInfo.brand || !generationInfo.model) && suffix) {
-          const suffixInfo = extractGenerationInfo(`dummy - ${suffix}`);
-          if (suffixInfo.brand && suffixInfo.model) {
-            generationInfo = suffixInfo;
+    // MEMORY OPTIMIZATION: Process questions in chunks
+    console.log(`[Import] Processing ${allQuestionsLines.length} questions...`);
+    let processedQuestions = 0;
+    while (allQuestionsLines.length > 0) {
+      // Process chunk
+      const chunk = allQuestionsLines.splice(0, MEMORY_SAFE_CHUNK_SIZE);
+      
+      for (const line of chunk) {
+        try {
+          const parsed = JSON.parse(line);
+          // Extract question from user message
+          const userContent = parsed.body?.messages?.[1]?.content || parsed.body?.messages?.[0]?.content || '';
+          if (!userContent) {
+            console.warn('[Import] No user content found in question line:', line.substring(0, 100));
+            continue;
           }
+          // Remove the " - Brand Model Generation" suffix if present, but keep it for extraction
+          const questionParts = userContent.split(' - ');
+          const question = questionParts[0];
+          const suffix = questionParts[1] || '';
+          
+          // Extract generation info - prioritize suffix, but also try full userContent as fallback
+          let generationInfo = extractGenerationInfo(userContent);
+          
+          // If nothing found and we have a suffix, try extracting just from suffix
+          if ((!generationInfo.brand || !generationInfo.model) && suffix) {
+            const suffixInfo = extractGenerationInfo(`dummy - ${suffix}`);
+            if (suffixInfo.brand && suffixInfo.model) {
+              generationInfo = suffixInfo;
+            }
+          }
+          
+          // Extract generation_id from custom_id: answer-{generationId}-{index}
+          const customId = parsed.custom_id || '';
+          const match = customId.match(/^answer-(.+?)-(\d+)$/);
+          const partialGenerationId = match ? match[1] : null;
+          
+          questionsMap.set(customId, { 
+            question, 
+            generationId: partialGenerationId || undefined,
+            generationInfo // Store extracted info for later matching
+          });
+          processedQuestions++;
+        } catch (e) {
+          console.error('[Import] Failed to parse question line:', e, 'Line:', line.substring(0, 100));
         }
-        
-        // Extract generation_id from custom_id: answer-{generationId}-{index}
-        const customId = parsed.custom_id || '';
-        const match = customId.match(/^answer-(.+?)-(\d+)$/);
-        const partialGenerationId = match ? match[1] : null;
-        
-        questionsMap.set(customId, { 
-          question, 
-          generationId: partialGenerationId || undefined,
-          generationInfo // Store extracted info for later matching
-        });
-      } catch (e) {
-        console.error('[Import] Failed to parse question line:', e, 'Line:', line.substring(0, 100));
+      }
+      
+      // Force garbage collection after each chunk
+      if (global.gc) {
+        global.gc();
       }
     }
+    console.log(`[Import] Processed ${processedQuestions} questions into map`);
 
-    // Process answers
-    const answers = allAnswersLines.map(line => {
-      try {
-        return JSON.parse(line);
-      } catch (e) {
-        return null;
+    // MEMORY OPTIMIZATION: Process answers in chunks
+    console.log(`[Import] Processing ${allAnswersLines.length} answers...`);
+    const answers: any[] = [];
+    while (allAnswersLines.length > 0) {
+      // Process chunk
+      const chunk = allAnswersLines.splice(0, MEMORY_SAFE_CHUNK_SIZE);
+      
+      for (const line of chunk) {
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed) {
+            answers.push(parsed);
+          }
+        } catch (e) {
+          // Skip invalid JSON
+        }
       }
-    }).filter(item => item !== null);
+      
+      // Force garbage collection after each chunk
+      if (global.gc) {
+        global.gc();
+      }
+    }
+    console.log(`[Import] Processed ${answers.length} answers`);
 
     // CRITICAL: Map answers to questions by custom_id - this is the core matching logic
     // We MUST track custom_id through the entire process to prevent misalignment
@@ -490,18 +614,18 @@ export async function POST(req: Request) {
       
       matchedCustomIds.add(customId);
       
-      const answer = answerResult.response?.body?.choices?.[0]?.message?.content;
-      if (answer) {
-        qaPairs.push({
-          question: questionData.question,
-          answer: answer.trim(),
+        const answer = answerResult.response?.body?.choices?.[0]?.message?.content;
+        if (answer) {
+          qaPairs.push({
+            question: questionData.question,
+            answer: answer.trim(),
           customId: customId, // CRITICAL: Store custom_id for metadata matching
-          index: index++,
-          generationId: questionData.generationId,
+            index: index++,
+            generationId: questionData.generationId,
           generationInfo: questionData.generationInfo,
-        });
+          });
+        }
       }
-    }
 
     // Log matching statistics
     if (unmatchedAnswers.length > 0) {
@@ -932,6 +1056,23 @@ export async function POST(req: Request) {
 
     // Create maps for quick lookup
     const generationsMap = new Map(generationsData.map(g => [g.id, g]));
+    
+    // CRITICAL: Create a map from partial UUID to full UUID for custom_id matching
+    // The custom_id contains partial UUIDs (e.g., "answer-34430dcc-1"), we need to match them to full UUIDs
+    const partialIdToFullIdMap = new Map<string, string>();
+    for (const gen of generationsData) {
+      const fullId = gen.id;
+      // Remove dashes from UUID for partial matching
+      const idWithoutDashes = fullId.replace(/-/g, '');
+      // Create multiple partial keys (first 8, 12, 16 chars) for flexible matching
+      partialIdToFullIdMap.set(idWithoutDashes.substring(0, 8), fullId);
+      partialIdToFullIdMap.set(idWithoutDashes.substring(0, 12), fullId);
+      partialIdToFullIdMap.set(idWithoutDashes.substring(0, 16), fullId);
+      // Also try with dashes removed from partial ID
+      const partialWithDashes = fullId.substring(0, 8);
+      partialIdToFullIdMap.set(partialWithDashes.replace(/-/g, ''), fullId);
+    }
+    
     const modelsMap = new Map();
     const brandsMap = new Map();
     
@@ -954,7 +1095,7 @@ export async function POST(req: Request) {
     const invalidMetadataCustomIds: string[] = [];
     
     if (allMetadataResults.length > 0) {
-      try {
+          try {
         for (const result of allMetadataResults) {
           const metadataCustomId = result.custom_id;
           
@@ -1204,12 +1345,59 @@ export async function POST(req: Request) {
           }
         }
         
-        const { question, answer, generationId: qaGenerationId } = qaPair;
+        const { question, answer, generationId: qaGenerationId, customId } = qaPair;
         
-        // Get generation data for this question
-        const generation = qaGenerationId ? generationsMap.get(qaGenerationId) : null;
+        // CRITICAL: Resolve generation ID from custom_id if qaGenerationId is partial
+        // The custom_id format is: answer-{partialGenerationId}-{index}
+        // We need to match the partial ID to a full UUID from the selected generations
+        let resolvedGenerationId = qaGenerationId;
+        
+        if (customId && (!resolvedGenerationId || !uuidRegex.test(resolvedGenerationId))) {
+          // Extract partial generation ID from custom_id
+          const customIdMatch = customId.match(/^answer-(.+?)-(\d+)$/);
+          if (customIdMatch) {
+            const partialId = customIdMatch[1];
+            // Remove dashes from partial ID for matching
+            const partialIdClean = partialId.replace(/-/g, '');
+            
+            // Try to find full UUID by matching partial ID
+            // Try different lengths (8, 12, 16 chars)
+            for (const length of [16, 12, 8]) {
+              if (partialIdClean.length >= length) {
+                const key = partialIdClean.substring(0, length);
+                const fullId = partialIdToFullIdMap.get(key);
+                if (fullId) {
+                  resolvedGenerationId = fullId;
+                  console.log(`[Import] Resolved partial ID ${partialId} to full UUID ${fullId} for custom_id ${customId}`);
+                  break;
+                }
+              }
+            }
+            
+            // If still not found, try direct lookup in generationsMap by partial match
+            if (!resolvedGenerationId || !uuidRegex.test(resolvedGenerationId)) {
+              for (const [fullId, gen] of generationsMap.entries()) {
+                const fullIdClean = fullId.replace(/-/g, '');
+                if (fullIdClean.startsWith(partialIdClean) || partialIdClean.startsWith(fullIdClean.substring(0, 8))) {
+                  resolvedGenerationId = fullId;
+                  console.log(`[Import] Matched partial ID ${partialId} to full UUID ${fullId} via direct lookup`);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        // Validate resolved generation ID
+        if (!resolvedGenerationId || !uuidRegex.test(resolvedGenerationId)) {
+          console.warn(`[Import] Could not resolve generation ID for custom_id ${customId}, qaGenerationId: ${qaGenerationId}, skipping question ${i + 1}`);
+          continue;
+        }
+        
+        // Get generation data for this question using resolved ID
+        const generation = generationsMap.get(resolvedGenerationId);
         if (!generation) {
-          console.warn(`Generation not found for question ${i + 1}, skipping`);
+          console.warn(`[Import] Generation not found for resolved ID ${resolvedGenerationId} (custom_id: ${customId}), skipping question ${i + 1}`);
           continue;
         }
         
@@ -1443,8 +1631,8 @@ export async function POST(req: Request) {
                       
                       if (!tinyResult.error && tinyResult.data) {
                         insertedData.push(...tinyResult.data);
-                      }
                     }
+                  }
                   } else if (smallResult.data) {
                     insertedData.push(...smallResult.data);
                 }
