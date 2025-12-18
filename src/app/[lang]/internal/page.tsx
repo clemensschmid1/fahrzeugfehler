@@ -6,10 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import InternalAuth from '@/components/InternalAuth';
 
-// Force dynamic rendering to prevent build-time generation
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
-export const revalidate = 0;
+// Client Components are automatically dynamic, no need to export these
 
 interface ImportedQuestion {
   question: string;
