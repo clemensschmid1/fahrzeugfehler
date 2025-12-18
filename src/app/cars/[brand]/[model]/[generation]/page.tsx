@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies as getCookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import Header from '@/components/Header';
 import { Suspense } from 'react';
 import GenerationDetailClient from './GenerationDetailClient';
 
@@ -63,8 +62,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     };
   }
 
-  const title = generationData.meta_title || `${brandData.name} ${modelData.name} ${generationData.name} - Fehler & Anleitungen`;
-  const description = generationData.meta_description || generationData.description || `Finden Sie Fehlerlösungen und Wartungshandbücher für ${brandData.name} ${modelData.name} ${generationData.name}.`;
+  const baseTitle = generationData.meta_title || `${brandData.name} ${modelData.name} ${generationData.name}`;
+  const title = baseTitle.length > 50 ? baseTitle.substring(0, 47) + '...' : baseTitle;
+  
+  const defaultDescription = `Fehlerlösungen und Wartungshandbücher für ${brandData.name} ${modelData.name} ${generationData.name}. Schritt-für-Schritt Anleitungen.`;
+  const rawDescription = generationData.meta_description || generationData.description || defaultDescription;
+  const description = rawDescription.length > 160 ? rawDescription.substring(0, 157) + '...' : rawDescription;
 
   return {
     title: `${title} | Fahrzeugfehler.de`,
@@ -153,12 +156,14 @@ export default async function GenerationDetailPage({
   const pageSize = 60;
   
   // Fetch total counts first
+  // IMPORTANT: Only count faults WITHOUT error_code (error codes are shown on separate error-codes page)
   const { count: totalFaultsCount } = await supabase
     .from('car_faults')
     .select('*', { count: 'exact', head: true })
     .eq('model_generation_id', generationData.id)
     .eq('language_path', 'de')
-    .eq('status', 'live');
+    .eq('status', 'live')
+    .is('error_code', null); // Only faults without error codes
 
   const { count: totalManualsCount } = await supabase
     .from('car_manuals')
@@ -173,12 +178,14 @@ export default async function GenerationDetailPage({
   const totalManualPages = Math.ceil(totalManuals / pageSize);
 
   // Fetch faults for this generation with pagination
+  // IMPORTANT: Only fetch faults WITHOUT error_code (error codes are shown on separate error-codes page)
   const faultsResult = await supabase
     .from('car_faults')
     .select('*')
     .eq('model_generation_id', generationData.id)
     .eq('language_path', 'de')
     .eq('status', 'live')
+    .is('error_code', null) // Only faults without error codes
     .order('created_at', { ascending: false })
     .range((faultPage - 1) * pageSize, faultPage * pageSize - 1);
 
@@ -198,17 +205,27 @@ export default async function GenerationDetailPage({
 
   return (
     <>
-      <Header />
       <Suspense fallback={
         <div className="min-h-screen bg-white dark:bg-black">
-          <div className="max-w-7xl mx-auto px-4 py-16">
-            <div className="animate-pulse">
-              <div className="h-12 bg-gray-200 rounded w-1/3 mb-8"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-                ))}
+          <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-black dark:via-slate-950 dark:to-black">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
+              <div className="text-center animate-pulse">
+                <div className="h-12 bg-slate-700 dark:bg-slate-800 rounded w-1/3 mx-auto mb-4"></div>
+                <div className="h-8 bg-slate-700 dark:bg-slate-800 rounded w-1/4 mx-auto"></div>
               </div>
+            </div>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 py-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-48 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse">
+                  <div className="p-6 space-y-3">
+                    <div className="h-6 bg-slate-300 dark:bg-slate-700 rounded w-3/4"></div>
+                    <div className="h-4 bg-slate-300 dark:bg-slate-700 rounded w-full"></div>
+                    <div className="h-4 bg-slate-300 dark:bg-slate-700 rounded w-5/6"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

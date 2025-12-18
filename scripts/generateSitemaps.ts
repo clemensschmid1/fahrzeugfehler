@@ -240,21 +240,28 @@ async function generateSitemaps() {
           const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
           if (!brandSlug) continue;
           
-          const url = `${baseUrl}/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
-          
-          if (!seenUrls.has(url)) {
-            seenUrls.add(url);
+          // Add generation detail page
+          const generationUrl = `${baseUrl}/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
+          if (!seenUrls.has(generationUrl)) {
+            seenUrls.add(generationUrl);
             const lastmod = generation.updated_at 
               ? new Date(generation.updated_at).toISOString().split('T')[0]
               : generation.created_at 
               ? new Date(generation.created_at).toISOString().split('T')[0]
               : now;
-            allUrls.push({
-              url,
-              lastmod,
-              priority: 0.6,
-              changefreq: 'weekly'
-            });
+            addUrl(generationUrl, 0.6, 'weekly', lastmod);
+          }
+          
+          // Add error-codes page for this generation (automatically available for ALL generations)
+          const generationErrorCodesUrl = `${baseUrl}/cars/${brandSlug}/${modelData.slug}/${generation.slug}/error-codes`;
+          if (!seenUrls.has(generationErrorCodesUrl)) {
+            seenUrls.add(generationErrorCodesUrl);
+            const lastmod = generation.updated_at 
+              ? new Date(generation.updated_at).toISOString().split('T')[0]
+              : generation.created_at 
+              ? new Date(generation.created_at).toISOString().split('T')[0]
+              : now;
+            addUrl(generationErrorCodesUrl, 0.7, 'weekly', lastmod);
           }
         }
       }
@@ -285,10 +292,10 @@ async function generateSitemaps() {
         let faultsError: any = null;
         
         if (!useSimplifiedQuery) {
-          // Try full query with joins
+          // Try full query with joins (include error_code to determine URL path)
           const result = await supabase
             .from('car_faults')
-            .select('slug, updated_at, created_at, model_generation_id, model_generations(slug, car_models(slug, car_brands(slug)))')
+            .select('slug, updated_at, created_at, model_generation_id, error_code, model_generations(slug, car_models(slug, car_brands(slug)))')
             .eq('status', 'live')
             .eq('language_path', 'de')
             .order('id', { ascending: true })
@@ -305,10 +312,10 @@ async function generateSitemaps() {
             continue;
           }
         } else {
-          // Simplified query: fetch faults first, then fetch generation data separately
+          // Simplified query: fetch faults first, then fetch generation data separately (include error_code)
           const result = await supabase
             .from('car_faults')
-            .select('slug, updated_at, created_at, model_generation_id')
+            .select('slug, updated_at, created_at, model_generation_id, error_code')
             .eq('status', 'live')
             .eq('language_path', 'de')
             .order('id', { ascending: true })
@@ -411,7 +418,13 @@ async function generateSitemaps() {
           const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
           if (!brandSlug) continue;
           
-          const url = `${baseUrl}/cars/${brandSlug}/${model.slug}/${genData.slug}/faults/${fault.slug}`;
+          // Check if fault has error_code to determine URL path
+          const faultWithErrorCode = fault as any;
+          const hasErrorCode = faultWithErrorCode.error_code !== null && faultWithErrorCode.error_code !== undefined;
+          
+          const url = hasErrorCode 
+            ? `${baseUrl}/cars/${brandSlug}/${model.slug}/${genData.slug}/error-codes/${fault.slug}`
+            : `${baseUrl}/cars/${brandSlug}/${model.slug}/${genData.slug}/faults/${fault.slug}`;
           
           if (!seenUrls.has(url)) {
             seenUrls.add(url);

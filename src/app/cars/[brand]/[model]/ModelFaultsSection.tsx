@@ -175,9 +175,11 @@ export default function ModelFaultsSection({
               const generation = fault.model_generations;
               const generationSlug = generation?.slug;
               
-              // Build URL: /cars/{brand}/{model}/{generation}/faults/{slug}
+              // Build URL: Use /error-codes/ if fault has error_code, otherwise /faults/
               const faultUrl = generationSlug
-                ? `/cars/${brandSlug}/${modelSlug}/${generationSlug}/faults/${fault.slug}`
+                ? fault.error_code
+                  ? `/cars/${brandSlug}/${modelSlug}/${generationSlug}/error-codes/${fault.slug}`
+                  : `/cars/${brandSlug}/${modelSlug}/${generationSlug}/faults/${fault.slug}`
                 : null;
 
               return (

@@ -2,8 +2,8 @@ import MainPageClient from './MainPageClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Fahrzeugfehler.de: Diagnose-Datenbank für Fahrzeugfehler',
-  description: 'Umfassende Diagnose-Datenbank für Fahrzeugfehler. Technische Lösungen, Ursachenanalysen und Reparaturhinweise für alle Automarken und Modelle. Professionelle Fehlerdiagnose für Werkstätten und Fahrzeughalter.',
+  title: 'Fahrzeugfehler.de: Diagnose-Datenbank',
+  description: 'Umfassende Diagnose-Datenbank für Fahrzeugfehler. Technische Lösungen, Ursachenanalysen und Reparaturhinweise für alle Automarken. Professionelle Fehlerdiagnose.',
   keywords: [
     'Fahrzeugfehler',
     'Autoreparatur',

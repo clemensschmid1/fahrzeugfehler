@@ -3,7 +3,7 @@ import { cookies as getCookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import FaultClient from './FaultClient';
+import FaultClient from '../../faults/[slug]/FaultClient';
 import CarPageTracker from '@/components/CarPageTracker';
 
 export const dynamic = 'force-dynamic';
@@ -57,19 +57,19 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     .eq('slug', generation)
     .single();
 
-  // Fetch fault - ONLY faults WITHOUT error_code (faults with error_code are on /error-codes/ route)
+  // Fetch fault with error_code (must have error_code)
   const { data: faultData } = await supabase
     .from('car_faults')
     .select('title, description, meta_title, meta_description, solution, created_at, error_code, affected_component, severity, difficulty_level, estimated_repair_time')
     .eq('slug', slug)
     .eq('language_path', 'de')
     .eq('status', 'live')
-    .is('error_code', null) // Only faults without error codes
+    .not('error_code', 'is', null)
     .maybeSingle();
 
   if (!brandData || !modelData || !generationData || !faultData) {
     return {
-      title: 'Fehler nicht gefunden',
+      title: 'Fehlercode nicht gefunden',
     };
   }
 
@@ -78,22 +78,22 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const fullTitle = `${baseTitle} | ${brandData.name} ${modelData.name}`;
   const title = fullTitle.length > 60 ? fullTitle.substring(0, 57) + '...' : fullTitle;
 
-  const defaultDescription = `Lösung für ${faultData.title} im ${brandData.name} ${modelData.name} ${generationData.name}. Schritt-für-Schritt Anleitung.`;
+  const defaultDescription = `Fehlercode ${faultData.error_code}: Lösung für ${faultData.title} im ${brandData.name} ${modelData.name} ${generationData.name}. Schritt-für-Schritt Anleitung.`;
   const rawDescription = faultData.meta_description || faultData.description || defaultDescription;
   const description = rawDescription.length > 160 ? rawDescription.substring(0, 157) + '...' : rawDescription;
 
   return {
     title: `${title} | Fahrzeugfehler.de`,
     description,
-    keywords: faultData.title ? `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, Autoreparatur, Fahrzeugdiagnose, Fehlerdiagnose` : undefined,
+    keywords: faultData.title ? `${faultData.error_code}, ${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, OBD Fehlercode, Diagnosecode, Autoreparatur, Fahrzeugdiagnose` : undefined,
     alternates: {
-      canonical: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/faults/${slug}`,
+      canonical: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/error-codes/${slug}`,
     },
     openGraph: {
       title: `${title} | Fahrzeugfehler.de`,
       description,
       type: 'article',
-      url: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/faults/${slug}`,
+      url: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/error-codes/${slug}`,
       siteName: 'Fahrzeugfehler.de',
       images: [{
         url: `https://fahrzeugfehler.de/icon.svg`,
@@ -106,11 +106,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       card: 'summary_large_image',
       title: `${title} | Fahrzeugfehler.de`,
       description,
+      images: [`https://fahrzeugfehler.de/icon.svg`],
     },
   };
 }
 
-export default async function FaultPage({ params }: { params: Promise<Params> }) {
+export default async function ErrorCodePage({ params }: { params: Promise<Params> }) {
   const { brand, model, generation, slug } = await params;
   
   const cookieStore = await getCookies();
@@ -176,7 +177,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
 
   const generationData = generationResult.data;
 
-  // Fetch fault - ONLY faults WITHOUT error_code (faults with error_code are on /error-codes/ route)
+  // Fetch fault with error_code (must have error_code)
   const faultResult = await supabase
     .from('car_faults')
     .select('*')
@@ -184,7 +185,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
     .eq('slug', slug)
     .eq('language_path', 'de')
     .eq('status', 'live')
-    .is('error_code', null) // Only faults without error codes
+    .not('error_code', 'is', null)
     .single();
 
   if (faultResult.error || !faultResult.data) {
@@ -193,114 +194,111 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
 
   const faultData = faultResult.data;
 
-  // Fetch related faults - ONLY faults WITHOUT error_code (same generation, no error codes)
-  const relatedFaultsResult = await supabase
+  // Fetch related faults - only those with error codes
+  const { data: relatedFaults } = await supabase
     .from('car_faults')
-    .select('id, slug, title, error_code')
+    .select('id, slug, title, description, error_code, severity, difficulty_level, affected_component')
     .eq('model_generation_id', generationData.id)
     .eq('language_path', 'de')
     .eq('status', 'live')
-    .is('error_code', null) // Only faults without error codes
+    .not('error_code', 'is', null)
     .neq('id', faultData.id)
     .limit(6);
 
-  const relatedFaults = relatedFaultsResult.data || [];
-  const globalRelatedFaults: Array<{ id: string; slug: string; title: string; similarity?: number; brandName?: string; modelName?: string; generationName?: string }> = [];
-
-  // Fetch user for comments
-  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null }, error: null }));
+  // Fetch global related faults (same error code, different generation)
+  const { data: globalRelatedFaults } = faultData.error_code ? await supabase
+    .from('car_faults')
+    .select('id, slug, title, description, error_code, model_generations(name, slug, car_models(slug, car_brands(slug)))')
+    .eq('error_code', faultData.error_code)
+    .eq('language_path', 'de')
+    .eq('status', 'live')
+    .neq('id', faultData.id)
+    .limit(6) : { data: null };
 
   // Fetch comments
-  const commentsResult = await supabase
-    .from('car_comments')
-    .select('*')
-    .eq('car_fault_id', faultData.id)
-    .order('created_at', { ascending: false });
+  const { data: comments } = await supabase
+    .from('fault_comments')
+    .select('*, profiles(id, email)')
+    .eq('fault_id', faultData.id)
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false })
+    .limit(50);
 
-  // Fetch usernames for comments
-  const userIds = commentsResult.data?.map(c => c.user_id).filter(Boolean) || [];
-  const usernamesMap: Record<string, string | null> = {};
-  
-  if (userIds.length > 0) {
-    const uniqueUserIds = [...new Set(userIds)];
-    const profilesResult = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', uniqueUserIds);
-    
-    if (profilesResult.data) {
-      profilesResult.data.forEach(profile => {
-        usernamesMap[profile.id] = profile.username || null;
-      });
-    }
-  }
+  // Fetch user
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const comments = (commentsResult.data || []).map(c => ({
-    ...c,
-    user_name: usernamesMap[c.user_id] || null,
-  }));
-
-  // Generate JSON-LD structured data for SEO
-  const baseUrl = 'https://fahrzeugfehler.de';
-  const pageUrl = `${baseUrl}/cars/${brand}/${model}/${generation}/faults/${slug}`;
-  
+  // Structured Data for error code
   const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "HowTo",
-    "name": faultData.title,
-    "description": faultData.meta_description || faultData.description,
-    "url": pageUrl,
-    "image": `${baseUrl}/logo.png`,
-    "datePublished": faultData.created_at || new Date().toISOString(),
-    "dateModified": faultData.created_at || new Date().toISOString(),
-    "author": {
-      "@type": "Organization",
-      "name": "Fahrzeugfehler.de",
-      "url": baseUrl
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: faultData.title,
+    description: faultData.description,
+    author: {
+      '@type': 'Organization',
+      name: 'Fahrzeugfehler.de',
     },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Fahrzeugfehler.de",
-      "url": baseUrl,
-      "logo": {
-        "@type": "ImageObject",
-        "url": `${baseUrl}/logo.png`
-      }
-    },
-    "mainEntity": {
-      "@type": "Question",
-      "name": faultData.title,
-      "text": faultData.title,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": faultData.solution || faultData.description,
-        "author": {
-          "@type": "Organization",
-          "name": "Fahrzeugfehler.de Redaktion"
-        }
-      }
-    },
-    "about": {
-      "@type": "Vehicle",
-      "name": `${brandData.name} ${modelData.name} ${generationData.name}`,
-      "brand": {
-        "@type": "Brand",
-        "name": brandData.name
+    publisher: {
+      '@type': 'Organization',
+      name: 'Fahrzeugfehler.de',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://fahrzeugfehler.de/icon.svg',
       },
-      "model": modelData.name
     },
-    ...(faultData.error_code ? {
-      "identifier": {
-        "@type": "PropertyValue",
-        "name": "Error Code",
-        "value": faultData.error_code
-      }
-    } : {}),
-    ...(faultData.affected_component ? {
-      "category": faultData.affected_component
-    } : {}),
-    "inLanguage": "de",
-    "keywords": `${faultData.title}, ${brandData.name}, ${modelData.name}, ${generationData.name}, Autoreparatur, Fahrzeugdiagnose, Fehlerdiagnose${faultData.error_code ? `, ${faultData.error_code}` : ''}`,
+    datePublished: faultData.created_at,
+    dateModified: faultData.updated_at || faultData.created_at,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/error-codes/${slug}`,
+    },
+    breadcrumb: {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Startseite',
+          item: 'https://fahrzeugfehler.de',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Autos',
+          item: 'https://fahrzeugfehler.de/cars',
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: brandData.name,
+          item: `https://fahrzeugfehler.de/cars/${brand}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 4,
+          name: modelData.name,
+          item: `https://fahrzeugfehler.de/cars/${brand}/${model}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 5,
+          name: generationData.name,
+          item: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 6,
+          name: 'Fehlercodes',
+          item: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/error-codes`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 7,
+          name: faultData.title,
+          item: `https://fahrzeugfehler.de/cars/${brand}/${model}/${generation}/error-codes/${slug}`,
+        },
+      ],
+    },
+    keywords: `${faultData.error_code}, ${brandData.name}, ${modelData.name}, ${generationData.name}, OBD Fehlercode, Diagnosecode${faultData.error_code ? `, ${faultData.error_code}` : ''}`,
   };
 
   return (
@@ -312,7 +310,7 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
       <CarPageTracker
         slug={slug}
         title={faultData.title}
-        type="fault"
+        type="error-code"
         brand={brandData.name}
         brandSlug={brandData.slug}
         model={modelData.name}
@@ -337,9 +335,9 @@ export default async function FaultPage({ params }: { params: Promise<Params> })
           model={modelData} 
           generation={generationData}
           fault={faultData}
-          relatedFaults={relatedFaults}
-          globalRelatedFaults={globalRelatedFaults}
-          initialComments={comments}
+          relatedFaults={relatedFaults || []}
+          globalRelatedFaults={globalRelatedFaults || []}
+          initialComments={comments || []}
           user={user}
         />
       </Suspense>

@@ -11,6 +11,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import ClientClarityInit from "@/components/ClientClarityInit";
 import { OrganizationStructuredData, WebsiteStructuredData } from "@/components/StructuredData";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,7 +27,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://fahrzeugfehler.de"),
   title: {
-    default: "Fahrzeugfehler.de: Diagnose-Datenbank für Fahrzeugfehler",
+    default: "Fahrzeugfehler.de: Diagnose-Datenbank",
     template: "%s | Fahrzeugfehler.de",
   },
   description:
@@ -62,12 +63,12 @@ export const metadata: Metadata = {
     locale: 'de_DE',
     url: 'https://fahrzeugfehler.de',
     siteName: 'Fahrzeugfehler.de',
-    title: 'Fahrzeugfehler.de: Diagnose-Datenbank für Fahrzeugfehler',
+    title: 'Fahrzeugfehler.de: Diagnose-Datenbank',
     description: 'Umfassende Diagnose-Datenbank für Fahrzeugfehler. Technische Lösungen und Ursachenanalysen für alle Automarken und Modelle.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Fahrzeugfehler.de: Diagnose-Datenbank für Fahrzeugfehler',
+    title: 'Fahrzeugfehler.de: Diagnose-Datenbank',
     description: 'Umfassende Diagnose-Datenbank für Fahrzeugfehler. Technische Lösungen und Ursachenanalysen für alle Automarken und Modelle.',
   },
   alternates: {
@@ -208,13 +209,15 @@ export default async function RootLayout({
         </Script>
         <ThemeProvider>
           <UserSessionProvider>
-            <OrganizationStructuredData />
-            <WebsiteStructuredData />
-            <Header />
-            <div className="flex-1">
-              {children}
-            </div>
-            <Footer />
+            <ErrorBoundary>
+              <OrganizationStructuredData />
+              <WebsiteStructuredData />
+              <Header />
+              <div className="flex-1">
+                {children}
+              </div>
+              <Footer />
+            </ErrorBoundary>
           </UserSessionProvider>
         </ThemeProvider>
         <Analytics />

@@ -5,6 +5,7 @@ import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { createBrowserClient } from '@supabase/ssr';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
   const pathname = usePathname();
@@ -83,11 +84,11 @@ export default function Header() {
       } sticky top-0 z-50`}
       role="banner"
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4 h-16 relative">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4 h-12 sm:h-14 md:h-16 relative">
         {/* Mobile Menu Button - Left side on mobile */}
         <button
           aria-label="Menü öffnen"
-          className={`md:hidden p-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0 ${
+          className={`md:hidden p-1.5 sm:p-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center flex-shrink-0 ${
             menuOpen 
               ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' 
               : 'hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-white'
@@ -98,12 +99,12 @@ export default function Header() {
         >
           <span className="sr-only">Menü öffnen</span>
           {menuOpen ? (
-            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <svg width="20" height="20" className="sm:w-[22px] sm:h-[22px]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           ) : (
-            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <svg width="20" height="20" className="sm:w-[22px] sm:h-[22px]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
               <line x1="3" y1="12" x2="21" y2="12"></line>
               <line x1="3" y1="6" x2="21" y2="6"></line>
               <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -114,16 +115,16 @@ export default function Header() {
         {/* Logo - Centered on mobile, left on desktop */}
         <Link
           href="/"
-          className="flex items-center gap-2 sm:gap-2.5 group flex-shrink-0 min-w-0 md:flex-1"
+          className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 group flex-shrink-0 min-w-0 md:flex-1"
           aria-label="Fahrzeugfehler.de Startseite"
         >
           <div className="relative flex-shrink-0">
-            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-full shadow-md shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300"></div>
-            <div className="absolute inset-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-ping opacity-20"></div>
+            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-full shadow-md shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300"></div>
+            <div className="absolute inset-0 w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 bg-blue-400 rounded-full animate-ping opacity-20"></div>
           </div>
-          <span className="font-mono font-black text-base sm:text-lg md:text-xl lg:text-2xl text-slate-900 dark:text-white tracking-tighter group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 leading-tight">
+          <span className="font-mono font-black text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl text-slate-900 dark:text-white tracking-tighter group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 leading-tight">
             <span className="hidden sm:inline">Fahrzeugfehler</span>
-            <span className="sm:hidden">FF</span>
+            <span className="sm:hidden text-[10px] sm:text-xs">FAHRZEUGFEHLER</span>
             <span className="text-blue-600 dark:text-blue-400">.de</span>
           </span>
         </Link>
@@ -149,33 +150,23 @@ export default function Header() {
                 NEWS
               </span>
             </Link>
-            <Link
-              href="/chat"
-              className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                isChatPage
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                  : 'text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-              }`}
-              tabIndex={0}
-            >
-              FRAGEN
-            </Link>
-            <Link
-              href="/cars"
-              className={`group relative px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-                isCarsPage 
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' 
-                  : 'text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-              }`}
-              tabIndex={0}
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-                Fahrzeuge
-              </span>
-            </Link>
+            <div className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2">
+              <ThemeToggle />
+            </div>
+            {!isCarsPage && (
+              <Link
+                href="/cars"
+                className="group relative px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                tabIndex={0}
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Fahrzeuge
+                </span>
+              </Link>
+            )}
           </div>
 
           {/* User Profile Link - Desktop */}
@@ -211,7 +202,7 @@ export default function Header() {
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -20, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="fixed left-3 top-[4.5rem] w-[calc(100vw-1.5rem)] sm:w-80 max-w-[360px] rounded-2xl shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-slate-200 dark:border-white/20 z-50 flex flex-col py-2 overflow-hidden"
+                className="fixed left-3 top-[3.5rem] sm:top-[4rem] md:top-[4.5rem] w-[calc(100vw-1.5rem)] sm:w-80 max-w-[360px] rounded-2xl shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-slate-200 dark:border-white/20 z-50 flex flex-col py-2 overflow-hidden"
               >
                 <Link
                   href="/news"
@@ -229,32 +220,28 @@ export default function Header() {
                     </svg>
                   </span>
                 </Link>
-                <Link
-                  href="/chat"
-                  className="block px-4 py-3.5 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg text-base font-semibold transition-colors min-h-[48px] flex items-center"
-                  tabIndex={0}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  FRAGEN
-                </Link>
-                <Link
-                  href="/cars"
-                  className={`group relative block px-4 py-3.5 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg text-base font-bold transition-colors min-h-[48px] flex items-center ${
-                    isCarsPage ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : ''
-                  }`}
-                  tabIndex={0}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <span className="flex items-center gap-3 w-full">
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                    <span className="flex-1">Fahrzeuge</span>
-                    <svg className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
-                </Link>
+                <div className="px-4 py-3.5 flex items-center justify-between min-h-[48px]">
+                  <span className="text-slate-700 dark:text-white text-base font-semibold">Dark Mode</span>
+                  <ThemeToggle />
+                </div>
+                {!isCarsPage && (
+                  <Link
+                    href="/cars"
+                    className="group relative block px-4 py-3.5 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg text-base font-bold transition-colors min-h-[48px] flex items-center"
+                    tabIndex={0}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span className="flex items-center gap-3 w-full">
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      <span className="flex-1">Fahrzeuge</span>
+                      <svg className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </Link>
+                )}
                 {user && (
                   <>
                     <div className="border-t border-slate-200 dark:border-white/10 my-1"></div>

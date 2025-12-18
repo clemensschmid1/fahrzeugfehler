@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState, useMemo } from 'react';
 import { getBrandLogoUrl } from '@/lib/car-brand-logos';
+import { BreadcrumbStructuredData } from '@/components/StructuredData';
 
 type CarBrand = {
   id: string;
@@ -48,34 +50,107 @@ type ErrorCodeGroup = {
   count: number;
 };
 
+type ErrorCodesByGeneration = {
+  generationId: string;
+  generation?: ModelGeneration;
+  errorCodes: ErrorCodeGroup[];
+  totalCodes: number;
+  totalFaults: number;
+};
+
 type Props = {
   brand: CarBrand;
   model: CarModel;
   generations: ModelGeneration[];
-  errorCodes: ErrorCodeGroup[];
+  errorCodes: ErrorCodeGroup[]; // Flat list for backward compatibility
+  errorCodesByGeneration: ErrorCodesByGeneration[]; // Grouped by generation
 };
 
-export default function ErrorCodesClient({ brand, model, generations, errorCodes }: Props) {
+export default function ErrorCodesClient({ brand, model, generations, errorCodes, errorCodesByGeneration }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGeneration, setSelectedGeneration] = useState<string>('all');
 
+  // Use grouped by generation structure if available, otherwise fallback to flat list
+  const displayData = errorCodesByGeneration.length > 0 
+    ? errorCodesByGeneration 
+    : errorCodes.map(group => ({
+        generationId: 'all',
+        generation: undefined,
+        errorCodes: [group],
+        totalCodes: 1,
+        totalFaults: group.count,
+      }));
+
   // Filter error codes based on search and generation
   const filteredErrorCodes = useMemo(() => {
-    return errorCodes.filter(group => {
-      const matchesSearch = 
-        group.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.faults.some(f => 
-          f.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          f.affected_component?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      
-      const matchesGeneration = 
-        selectedGeneration === 'all' ||
-        group.faults.some(f => f.model_generation_id === selectedGeneration);
-      
-      return matchesSearch && matchesGeneration;
-    });
-  }, [errorCodes, searchQuery, selectedGeneration]);
+    if (errorCodesByGeneration.length > 0) {
+      // Use grouped structure
+      return displayData
+        .filter(group => {
+          const matchesGeneration = 
+            selectedGeneration === 'all' ||
+            group.generationId === selectedGeneration;
+          
+          if (!matchesGeneration) return false;
+          
+          // Filter error codes within this generation
+          const filteredCodes = group.errorCodes.filter(codeGroup => {
+            const matchesSearch = 
+              codeGroup.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              codeGroup.faults.some(f => 
+                f.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                f.affected_component?.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+            return matchesSearch;
+          });
+          
+          return filteredCodes.length > 0;
+        })
+        .map(group => ({
+          ...group,
+          errorCodes: group.errorCodes.filter(codeGroup => {
+            const matchesSearch = 
+              codeGroup.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              codeGroup.faults.some(f => 
+                f.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                f.affected_component?.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+            return matchesSearch;
+          }),
+        }));
+    } else {
+      // Fallback to flat list
+      return errorCodes.filter(group => {
+        const matchesSearch = 
+          group.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          group.faults.some(f => 
+            f.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            f.affected_component?.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        
+        const matchesGeneration = 
+          selectedGeneration === 'all' ||
+          group.faults.some(f => f.model_generation_id === selectedGeneration);
+        
+        return matchesSearch && matchesGeneration;
+      }).map(group => ({
+        generationId: 'all',
+        generation: undefined,
+        errorCodes: [group],
+        totalCodes: 1,
+        totalFaults: group.count,
+      }));
+    }
+  }, [errorCodes, errorCodesByGeneration, searchQuery, selectedGeneration, displayData]);
+
+  // Breadcrumb items for structured data
+  const breadcrumbItems = [
+    { name: 'Startseite', url: 'https://fahrzeugfehler.de' },
+    { name: 'Autos', url: 'https://fahrzeugfehler.de/cars' },
+    { name: brand.name, url: `https://fahrzeugfehler.de/cars/${brand.slug}` },
+    { name: model.name, url: `https://fahrzeugfehler.de/cars/${brand.slug}/${model.slug}` },
+    { name: 'Fehlercodes', url: `https://fahrzeugfehler.de/cars/${brand.slug}/${model.slug}/error-codes` },
+  ];
 
   const getSeverityColor = (severity?: string) => {
     switch (severity?.toLowerCase()) {
@@ -99,6 +174,7 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
+      <BreadcrumbStructuredData items={breadcrumbItems} />
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-black dark:via-slate-950 dark:to-black">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.02%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div>
@@ -149,13 +225,16 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
                     <div className="relative bg-gradient-to-br from-white/15 via-white/10 to-white/5 dark:from-white/10 dark:via-white/5 dark:to-white/0 backdrop-blur-xl rounded-3xl p-5 sm:p-7 md:p-9 border-2 border-white/30 dark:border-white/20 shadow-2xl group-hover:border-white/40 dark:group-hover:border-white/30 transition-all duration-500 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]">
                       <div className="absolute inset-2 rounded-2xl border border-white/10 dark:border-white/5"></div>
                       
-                      <img
+                      <Image
                         src={logoUrl}
                         alt={`${brand.name} logo`}
-                        className="relative h-20 sm:h-24 md:h-28 object-contain filter drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500"
+                        width={200}
+                        height={200}
+                        className="relative h-20 sm:h-24 md:h-28 w-auto object-contain filter drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500"
                         loading="eager"
-                        decoding="async"
-                        fetchPriority="high"
+                        quality={90}
+                        priority
+                        unoptimized={logoUrl.startsWith('http')}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
@@ -336,7 +415,7 @@ export default function ErrorCodesClient({ brand, model, generations, errorCodes
                     .map((fault) => {
                       const generation = fault.model_generations;
                       const faultUrl = generation?.slug
-                        ? `/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${fault.slug}`
+                        ? `/cars/${brand.slug}/${model.slug}/${generation.slug}/error-codes/${fault.slug}`
                         : null;
 
                       return (

@@ -50,6 +50,7 @@ type RelatedFault = {
   id: string;
   slug: string;
   title: string;
+  error_code?: string;
   similarity?: number;
   brandName?: string;
   modelName?: string;
@@ -502,8 +503,168 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
 
       {/* Main Content - Mobile optimized */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
-        {/* Rest of component continues... */}
-        <p className="text-slate-600 dark:text-slate-400">Content wird geladen...</p>
+        {/* Table of Contents */}
+        {showTOC && tocItems.length > 0 && (
+          <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+              Inhaltsverzeichnis
+            </h2>
+            <nav className="space-y-2">
+              {tocItems.map((item, index) => (
+                <a
+                  key={index}
+                  href={`#${item.id}`}
+                  className={`block text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${
+                    item.level === 1 ? 'font-semibold' : item.level === 2 ? 'ml-4' : 'ml-8'
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                >
+                  {item.text}
+                </a>
+              ))}
+            </nav>
+          </div>
+        )}
+
+        {/* Reading Time & Stats */}
+        <div className="mb-8 flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{readingTime} Min. Lesezeit</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>{wordCount} Wörter</span>
+          </div>
+        </div>
+
+        {/* Problem Statement */}
+        {fault.description && (
+          <div className="mb-8 p-6 bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 dark:from-red-950/30 dark:via-orange-950/20 dark:to-amber-950/20 rounded-2xl border-2 border-red-200 dark:border-red-800/50">
+            <h2 className="text-2xl font-black text-red-900 dark:text-red-200 mb-4">
+              Problembeschreibung
+            </h2>
+            <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg font-medium">
+              {fault.description}
+            </p>
+          </div>
+        )}
+
+        {/* Symptoms & Diagnostic Steps */}
+        {(fault.symptoms && fault.symptoms.length > 0) || (fault.diagnostic_steps && fault.diagnostic_steps.length > 0) ? (
+          <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {fault.symptoms && fault.symptoms.length > 0 && (
+              <div className="p-5 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-900/30">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3">
+                  Symptome
+                </h2>
+                <ul className="space-y-2">
+                  {fault.symptoms.map((symptom, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <span className="text-red-600 dark:text-red-400 mt-0.5">•</span>
+                      <span>{symptom}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {fault.diagnostic_steps && fault.diagnostic_steps.length > 0 && (
+              <div className="p-5 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-900/30">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3">
+                  Diagnoseschritte
+                </h2>
+                <ol className="space-y-2">
+                  {fault.diagnostic_steps.map((step, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <span className="flex-shrink-0 w-6 h-6 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                        {index + 1}
+                      </span>
+                      <span className="pt-0.5">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Solution */}
+        {cleanSolution && (
+          <div className="mb-8 p-6 bg-green-50 dark:bg-green-950/20 rounded-2xl border border-green-200 dark:border-green-900/30">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Lösung
+            </h2>
+            <div className="prose prose-slate dark:prose-invert max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h1: ({children}) => <h1 className="text-2xl font-bold mt-6 mb-4 text-slate-900 dark:text-white">{children}</h1>,
+                  h2: ({children}) => <h2 className="text-xl font-bold mt-6 mb-3 text-slate-900 dark:text-white">{children}</h2>,
+                  h3: ({children}) => <h3 className="text-lg font-semibold mt-5 mb-2 text-slate-800 dark:text-slate-200">{children}</h3>,
+                  p: ({children}) => <p className="mb-4 text-slate-700 dark:text-slate-300 leading-relaxed">{children}</p>,
+                  ul: ({children}) => <ul className="list-disc list-outside mb-4 space-y-2 text-slate-700 dark:text-slate-300 ml-6">{children}</ul>,
+                  ol: ({children}) => <ol className="list-decimal list-outside mb-4 space-y-3 text-slate-700 dark:text-slate-300 ml-6">{children}</ol>,
+                  li: ({children}) => <li className="leading-relaxed">{children}</li>,
+                  strong: ({children}) => <strong className="font-bold text-slate-900 dark:text-white">{children}</strong>,
+                  code: ({node, inline, ...props}: any) => {
+                    const isInline = inline !== false;
+                    return isInline ? (
+                      <code className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono text-red-600 dark:text-red-400" {...props} />
+                    ) : (
+                      <code className="block bg-slate-900 dark:bg-slate-950 text-slate-100 p-4 rounded-lg overflow-x-auto text-sm font-mono my-4 border border-slate-700" {...props} />
+                    );
+                  },
+                }}
+              >
+                {cleanSolution}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
+
+        {/* Related Faults */}
+        {relatedFaults.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+              Ähnliche Fehler
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {relatedFaults.slice(0, 6).map((relatedFault) => {
+                // Determine URL based on whether fault has error_code
+                const relatedFaultWithErrorCode = relatedFault as RelatedFault & { error_code?: string };
+                const relatedFaultUrl = relatedFaultWithErrorCode.error_code
+                  ? `/cars/${brand.slug}/${model.slug}/${generation.slug}/error-codes/${relatedFault.slug}`
+                  : `/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${relatedFault.slug}`;
+                
+                return (
+                <Link
+                  key={relatedFault.id}
+                  href={relatedFaultUrl}
+                  className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+                >
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-2">
+                    {relatedFault.title}
+                  </h3>
+                  {relatedFault.similarity && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Ähnlichkeit: {Math.round(relatedFault.similarity * 100)}%
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies as getCookies } from 'next/headers';
 import { Metadata } from 'next';
-import Header from '@/components/Header';
 import { Suspense } from 'react';
 import CarsClient from './CarsClient';
 
@@ -10,22 +9,22 @@ export const revalidate = 600; // 10 minutes cache
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Autos - Wartungs- & Reparaturanleitungen | Alle Marken',
-    description: 'Finden Sie Reparaturanleitungen und Fehlerlösungen für alle Automarken und Modelle. Umfassende Auto-Wartungs- und Reparaturanleitungen mit Schritt-für-Schritt-Anweisungen.',
+    title: 'Autos - Reparaturanleitungen | Alle Marken',
+    description: 'Reparaturanleitungen und Fehlerlösungen für alle Automarken. Professionelle Diagnose-Datenbank mit Schritt-für-Schritt-Anweisungen für Werkstätten.',
     alternates: {
       canonical: 'https://fahrzeugfehler.de/cars',
     },
     openGraph: {
       type: 'website',
-      title: 'Autos - Wartungs- & Reparaturanleitungen | Alle Marken',
-      description: 'Finden Sie Reparaturanleitungen und Fehlerlösungen für alle Automarken und Modelle. Umfassende Auto-Wartungs- und Reparaturanleitungen mit Schritt-für-Schritt-Anweisungen.',
+      title: 'Autos - Reparaturanleitungen | Alle Marken',
+      description: 'Reparaturanleitungen und Fehlerlösungen für alle Automarken. Professionelle Diagnose-Datenbank mit Schritt-für-Schritt-Anweisungen für Werkstätten.',
       url: 'https://fahrzeugfehler.de/cars',
       siteName: 'Fahrzeugfehler.de',
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Autos - Wartungs- & Reparaturanleitungen | Alle Marken',
-      description: 'Finden Sie Reparaturanleitungen und Fehlerlösungen für alle Automarken und Modelle.',
+      title: 'Autos - Reparaturanleitungen | Alle Marken',
+      description: 'Reparaturanleitungen und Fehlerlösungen für alle Automarken. Professionelle Diagnose-Datenbank.',
     },
   };
 }
@@ -121,7 +120,6 @@ export default async function CarsPage() {
 
   return (
     <>
-      <Header />
       <Suspense fallback={
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
           <div className="max-w-7xl mx-auto px-4 py-16">

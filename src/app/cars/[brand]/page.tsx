@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies as getCookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import Header from '@/components/Header';
 import { Suspense } from 'react';
 import BrandClient from './BrandClient';
 
@@ -48,23 +47,28 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     };
   }
 
+  const defaultDescription = `Reparaturanleitungen und Fehlerlösungen für ${brandData.name} Automodelle. Professionelle Diagnose-Datenbank.`;
+  const description = brandData.description 
+    ? (brandData.description.length > 160 ? brandData.description.substring(0, 157) + '...' : brandData.description)
+    : defaultDescription;
+  
   return {
-    title: `${brandData.name} - Automodelle | Fahrzeugfehler.de`,
-    description: brandData.description || `Finden Sie Reparaturanleitungen und Fehlerlösungen für ${brandData.name} Automodelle.`,
+    title: `${brandData.name} Modelle | Fahrzeugfehler.de`,
+    description,
     alternates: {
       canonical: `https://fahrzeugfehler.de/cars/${brand}`,
     },
     openGraph: {
       type: 'website',
-      title: `${brandData.name} - Automodelle | Fahrzeugfehler.de`,
-      description: brandData.description || `Finden Sie Reparaturanleitungen und Fehlerlösungen für ${brandData.name} Automodelle.`,
+      title: `${brandData.name} Modelle | Fahrzeugfehler.de`,
+      description,
       url: `https://fahrzeugfehler.de/cars/${brand}`,
       siteName: 'Fahrzeugfehler.de',
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${brandData.name} - Automodelle | Fahrzeugfehler.de`,
-      description: brandData.description || `Finden Sie Reparaturanleitungen und Fehlerlösungen für ${brandData.name} Automodelle.`,
+      title: `${brandData.name} Modelle | Fahrzeugfehler.de`,
+      description,
     },
   };
 }
@@ -191,7 +195,6 @@ export default async function BrandPage({ params }: { params: Promise<Params> })
 
   return (
     <>
-      <Header />
       <Suspense fallback={
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
           <div className="max-w-7xl mx-auto px-4 py-16">

@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: 'en
     };
   }
 
-  const baseUrl = 'https://faultbase.com';
+  const baseUrl = 'https://fahrzeugfehler.de';
   const canonicalUrl = `${baseUrl}/${lang}/news/${slug}`;
   
   // Find corresponding article in other language
@@ -58,8 +58,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: 'en
   const keywords = article.tags?.join(', ') || '';
 
   return {
-    title: `${article.title} | FAULTBASE Industrial News`,
-    description: article.excerpt,
+    title: `${article.title} | Fahrzeugfehler.de`,
+    description: article.excerpt.length > 160 ? article.excerpt.substring(0, 157) + '...' : article.excerpt,
     alternates: {
       canonical: canonicalUrl,
       languages: {
@@ -72,9 +72,9 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: 'en
       title: article.title,
       description: article.excerpt,
       url: canonicalUrl,
-      siteName: 'FAULTBASE',
+      siteName: 'Fahrzeugfehler.de',
       publishedTime: article.publishedAt,
-      authors: [article.author || 'FAULTBASE Editorial'],
+      authors: [article.author || 'Fahrzeugfehler.de Redaktion'],
       tags: article.tags,
     },
     twitter: {
@@ -83,7 +83,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: 'en
       description: article.excerpt,
     },
     keywords: keywords,
-    authors: [{ name: article.author || 'FAULTBASE Editorial' }],
+    authors: [{ name: article.author || 'Fahrzeugfehler.de Redaktion' }],
   };
 }
 
@@ -120,27 +120,27 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ la
   const readingTime = estimateReadingTime(article.content);
 
   // Generate structured data (JSON-LD) for Article schema
-  const baseUrl = 'https://faultbase.com';
+  const baseUrl = 'https://fahrzeugfehler.de';
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     "headline": article.title,
     "description": article.excerpt,
-    "image": article.heroImageUrl || `${baseUrl}/logo.png`,
+    "image": article.heroImageUrl || `${baseUrl}/icon.svg`,
     "datePublished": article.publishedAt,
     "dateModified": article.publishedAt,
     "author": {
       "@type": "Organization",
-      "name": article.author || "FAULTBASE Editorial",
+      "name": article.author || "Fahrzeugfehler.de Redaktion",
       "url": baseUrl
     },
     "publisher": {
       "@type": "Organization",
-      "name": "FAULTBASE",
+      "name": "Fahrzeugfehler.de",
       "url": baseUrl,
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/logo.png`
+        "url": `${baseUrl}/icon.svg`
       }
     },
     "mainEntityOfPage": {

@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies as getCookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import Header from '@/components/Header';
 import { Suspense } from 'react';
 import GenerationListClient from './GenerationListClient';
 
@@ -54,23 +53,28 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     };
   }
 
+  const defaultDescription = `Alle Generationen des ${brandData.name} ${modelData.name}. Spezifische Fehler und Anleitungen für jedes Modelljahr.`;
+  const description = modelData.description 
+    ? (modelData.description.length > 160 ? modelData.description.substring(0, 157) + '...' : modelData.description)
+    : defaultDescription;
+  
   return {
-    title: `${brandData.name} ${modelData.name} - Alle Generationen | Fahrzeugfehler.de`,
-    description: modelData.description || `Durchsuchen Sie alle Generationen des ${brandData.name} ${modelData.name}. Finden Sie spezifische Fehler und Anleitungen für Ihr genaues Modelljahr.`,
+    title: `${brandData.name} ${modelData.name} Generationen`,
+    description,
     alternates: {
       canonical: `https://fahrzeugfehler.de/cars/${brand}/${model}`,
     },
     openGraph: {
       type: 'website',
-      title: `${brandData.name} ${modelData.name} - Alle Generationen | Fahrzeugfehler.de`,
-      description: modelData.description || `Durchsuchen Sie alle Generationen des ${brandData.name} ${modelData.name}.`,
+      title: `${brandData.name} ${modelData.name} Generationen`,
+      description,
       url: `https://fahrzeugfehler.de/cars/${brand}/${model}`,
       siteName: 'Fahrzeugfehler.de',
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${brandData.name} ${modelData.name} - Alle Generationen | Fahrzeugfehler.de`,
-      description: modelData.description || `Durchsuchen Sie alle Generationen des ${brandData.name} ${modelData.name}.`,
+      title: `${brandData.name} ${modelData.name} Generationen`,
+      description,
     },
   };
 }
@@ -176,7 +180,6 @@ export default async function ModelGenerationsPage({ params }: { params: Promise
 
   return (
     <>
-      <Header />
       <Suspense fallback={
         <div className="min-h-screen bg-white dark:bg-black">
           <div className="max-w-7xl mx-auto px-4 py-16">

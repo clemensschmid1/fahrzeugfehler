@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrandLogoUrl } from '@/lib/car-brand-logos';
+import { BreadcrumbStructuredData } from '@/components/StructuredData';
 
 type CarBrand = {
   id: string;
@@ -214,12 +216,15 @@ export default function GenerationDetailClient({
   const uniqueComponents = Array.from(new Set(faults.map(f => f.affected_component).filter(Boolean)));
 
   // Filter and sort faults
+  // IMPORTANT: Only show faults WITHOUT error_code (error codes are on separate page)
   const filteredFaults = faults
     .filter(fault => {
+      // Exclude faults with error codes
+      if (fault.error_code) return false;
+      
       const matchesSearch = 
         fault.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        fault.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        fault.error_code?.toLowerCase().includes(searchQuery.toLowerCase());
+        fault.description?.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesSeverity = severityFilter === 'all' || fault.severity === severityFilter;
       const matchesDifficulty = difficultyFilter === 'all' || fault.difficulty_level === difficultyFilter;
@@ -300,8 +305,18 @@ export default function GenerationDetailClient({
     }
   };
 
+  // Breadcrumb items for structured data
+  const breadcrumbItems = [
+    { name: 'Startseite', url: 'https://fahrzeugfehler.de' },
+    { name: 'Autos', url: 'https://fahrzeugfehler.de/cars' },
+    { name: brand.name, url: `https://fahrzeugfehler.de/cars/${brand.slug}` },
+    { name: model.name, url: `https://fahrzeugfehler.de/cars/${brand.slug}/${model.slug}` },
+    { name: generation.name, url: `https://fahrzeugfehler.de/cars/${brand.slug}/${model.slug}/${generation.slug}` },
+  ];
+
   return (
     <div className="min-h-screen bg-white dark:bg-black">
+      <BreadcrumbStructuredData items={breadcrumbItems} />
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-black dark:via-slate-950 dark:to-black">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.02%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div>
@@ -355,13 +370,16 @@ export default function GenerationDetailClient({
                       {/* Inner glow ring */}
                       <div className="absolute inset-2 rounded-2xl border border-white/10 dark:border-white/5"></div>
                       
-                      <img
+                      <Image
                         src={logoUrl}
                         alt={`${brand.name} logo`}
-                        className="relative h-24 sm:h-28 md:h-32 object-contain filter drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500"
+                        width={200}
+                        height={200}
+                        className="relative h-24 sm:h-28 md:h-32 w-auto object-contain filter drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500"
                         loading="eager"
-                        decoding="async"
-                        fetchPriority="high"
+                        quality={90}
+                        priority
+                        unoptimized={logoUrl.startsWith('http')}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
@@ -398,6 +416,41 @@ export default function GenerationDetailClient({
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+        {/* Error Codes Banner - Prominent Link */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8 sm:mb-10"
+        >
+          <Link
+            href={`/cars/${brand.slug}/${model.slug}/${generation.slug}/error-codes`}
+            className="group block bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-xl sm:rounded-2xl p-6 sm:p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] border-2 border-blue-500 dark:border-blue-600"
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white">
+                    Fehlercodes Übersicht
+                  </h3>
+                </div>
+                <p className="text-sm sm:text-base text-blue-100 dark:text-blue-200">
+                  Vollständige Übersicht aller Fehlercodes für {brand.name} {model.name} {generation.generation_code || generation.name} mit Bedeutung und Lösungen
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-white group-hover:translate-x-1 transition-transform">
+                <span className="font-bold text-sm sm:text-base">Ansehen</span>
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+
         {/* Stats Bar - Professional & Subtle */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-10">
           <motion.div
@@ -615,11 +668,6 @@ export default function GenerationDetailClient({
                               {fault.difficulty_level}
                             </span>
                           )}
-                          {fault.error_code && (
-                            <span className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                              {fault.error_code}
-                            </span>
-                          )}
                           {fault.affected_component && (
                             <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                               {fault.affected_component}
@@ -666,11 +714,6 @@ export default function GenerationDetailClient({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </div>
-                            {fault.error_code && (
-                              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-mono font-semibold rounded-lg border border-slate-200 dark:border-slate-700">
-                                {fault.error_code}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>

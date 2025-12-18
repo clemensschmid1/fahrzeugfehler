@@ -160,3 +160,112 @@ export function BreadcrumbStructuredData({ items }: { items: Array<{ name: strin
   return null;
 }
 
+type ItemListSchema = {
+  '@context': string;
+  '@type': string;
+  name: string;
+  description: string;
+  numberOfItems?: number;
+  itemListElement: Array<{
+    '@type': string;
+    position: number;
+    name: string;
+    description?: string;
+    url?: string;
+  }>;
+};
+
+export function ItemListStructuredData({ 
+  name, 
+  description, 
+  items 
+}: { 
+  name: string; 
+  description: string; 
+  items: Array<{ name: string; description?: string; url?: string }> 
+}) {
+  useEffect(() => {
+    if (items.length === 0) return;
+
+    const schema: ItemListSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name,
+      description,
+      numberOfItems: items.length,
+      itemListElement: items.map((item, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: item.name,
+        ...(item.description ? { description: item.description } : {}),
+        ...(item.url ? { url: item.url } : {}),
+      })),
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'itemlist-schema';
+    script.text = JSON.stringify(schema);
+    
+    const existing = document.getElementById('itemlist-schema');
+    if (existing) existing.remove();
+    
+    document.head.appendChild(script);
+
+    return () => {
+      const scriptToRemove = document.getElementById('itemlist-schema');
+      if (scriptToRemove) scriptToRemove.remove();
+    };
+  }, [name, description, items]);
+
+  return null;
+}
+
+type FAQPageSchema = {
+  '@context': string;
+  '@type': string;
+  mainEntity: Array<{
+    '@type': string;
+    name: string;
+    acceptedAnswer: {
+      '@type': string;
+      text: string;
+    };
+  }>;
+};
+
+export function FAQPageStructuredData({ faqs }: { faqs: Array<{ question: string; answer: string }> }) {
+  useEffect(() => {
+    if (faqs.length === 0) return;
+
+    const schema: FAQPageSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqs.map(faq => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer,
+        },
+      })),
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'faqpage-schema';
+    script.text = JSON.stringify(schema);
+    
+    const existing = document.getElementById('faqpage-schema');
+    if (existing) existing.remove();
+    
+    document.head.appendChild(script);
+
+    return () => {
+      const scriptToRemove = document.getElementById('faqpage-schema');
+      if (scriptToRemove) scriptToRemove.remove();
+    };
+  }, [faqs]);
+
+  return null;
+}

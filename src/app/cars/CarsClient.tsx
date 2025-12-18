@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrandLogoUrl } from '@/lib/car-brand-logos';
 import { getVisitedCarPages, clearVisitedCarPages } from '@/lib/car-visited-pages';
@@ -31,7 +32,7 @@ type CarsClientProps = {
 type FilterType = 'all' | 'featured' | 'country';
 type SortType = 'alphabetical' | 'featured' | 'country';
 
-export default function CarsClient({ brands, stats, brandCounts }: CarsClientProps) {
+const CarsClient = memo(function CarsClient({ brands, stats, brandCounts }: CarsClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('featured');
@@ -500,11 +501,15 @@ export default function CarsClient({ brands, stats, brandCounts }: CarsClientPro
                           <div className="mb-4 h-32 flex items-center justify-center relative z-10 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-400 dark:group-hover:border-blue-600 group-hover:shadow-xl dark:group-hover:shadow-blue-900/30 transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-blue-50/30 group-hover:to-white dark:group-hover:from-blue-950/20 dark:group-hover:to-slate-900">
                             {/* Subtle inner glow */}
                             <div className="absolute inset-1 rounded-lg bg-gradient-to-br from-white/50 to-transparent dark:from-white/5 dark:to-transparent group-hover:from-blue-100/30 dark:group-hover:from-blue-900/20 transition-all duration-300"></div>
-                            <img
+                            <Image
                               src={logoUrl}
                               alt={`${brand.name} logo`}
+                              width={200}
+                              height={96}
                               className="relative max-h-24 max-w-full object-contain filter drop-shadow-md group-hover:scale-110 group-hover:drop-shadow-xl transition-all duration-300 z-10"
                               loading="lazy"
+                              quality={85}
+                              unoptimized={logoUrl.startsWith('http')}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
@@ -677,13 +682,15 @@ export default function CarsClient({ brands, stats, brandCounts }: CarsClientPro
                           <div className="mb-4 h-24 flex items-center justify-center relative z-10 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-xl p-3 border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-400 dark:group-hover:border-blue-600 group-hover:shadow-xl dark:group-hover:shadow-blue-900/30 transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-blue-50/30 group-hover:to-white dark:group-hover:from-blue-950/20 dark:group-hover:to-slate-900">
                             {/* Subtle inner glow */}
                             <div className="absolute inset-1 rounded-lg bg-gradient-to-br from-white/50 to-transparent dark:from-white/5 dark:to-transparent group-hover:from-blue-100/30 dark:group-hover:from-blue-900/20 transition-all duration-300"></div>
-                            <img
+                            <Image
                               src={logoUrl}
                               alt={`${brand.name} logo`}
+                              width={200}
+                              height={72}
                               className="relative max-h-18 max-w-full object-contain filter drop-shadow-sm group-hover:scale-110 group-hover:drop-shadow-xl transition-all duration-300 z-10"
                               loading="lazy"
-                              decoding="async"
-                              fetchPriority="low"
+                              quality={85}
+                              unoptimized={logoUrl.startsWith('http')}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';

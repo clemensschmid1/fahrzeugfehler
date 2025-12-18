@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { getBrandLogoUrl } from '@/lib/car-brand-logos';
 import { getModelImageUrl } from '@/lib/car-model-images';
 
@@ -40,7 +41,7 @@ type BrandClientProps = {
   manualsCount?: number;
 };
 
-export default function BrandClient({ brand, models, faultsCount = 0, manualsCount = 0 }: BrandClientProps) {
+const BrandClient = memo(function BrandClient({ brand, models, faultsCount = 0, manualsCount = 0 }: BrandClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Debug: Log models in development
@@ -126,13 +127,15 @@ export default function BrandClient({ brand, models, faultsCount = 0, manualsCou
                       {/* Subtle shine effect */}
                       <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent rounded-2xl sm:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       
-                      <img
+                      <Image
                         src={logoUrl}
                         alt={`${brand.name} logo`}
-                        className="relative h-20 sm:h-28 md:h-36 lg:h-44 xl:h-52 object-contain filter drop-shadow-[0_0_40px_rgba(0,0,0,0.6)] group-hover:scale-110 transition-transform duration-500"
+                        width={300}
+                        height={200}
+                        className="relative h-20 sm:h-28 md:h-36 lg:h-44 xl:h-52 w-auto object-contain filter drop-shadow-[0_0_40px_rgba(0,0,0,0.6)] group-hover:scale-110 transition-transform duration-500"
                         loading="eager"
-                        decoding="async"
-                        fetchPriority="high"
+                        quality={90}
+                        unoptimized={logoUrl.startsWith('http')}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
@@ -303,13 +306,15 @@ export default function BrandClient({ brand, models, faultsCount = 0, manualsCou
                           <div className="relative h-56 sm:h-64 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent dark:from-black/70 dark:via-black/30 dark:to-transparent z-10"></div>
                             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                            <img
+                            <Image
                               src={imageUrl}
                               alt={`${model.name} - ${brand.name}`}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                               loading="lazy"
-                              decoding="async"
-                              fetchPriority="low"
+                              quality={85}
+                              unoptimized={imageUrl.startsWith('http')}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
@@ -483,12 +488,15 @@ export default function BrandClient({ brand, models, faultsCount = 0, manualsCou
                           <div className="relative h-44 sm:h-48 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent dark:from-black/60 dark:via-black/20 dark:to-transparent z-10"></div>
                             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <img
+                            <Image
                               src={imageUrl}
                               alt={`${model.name} - ${brand.name}`}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              className="object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                               loading="lazy"
-                              decoding="async"
+                              quality={85}
+                              unoptimized={imageUrl.startsWith('http')}
                               fetchPriority="low"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
