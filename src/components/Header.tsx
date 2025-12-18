@@ -122,9 +122,9 @@ export default function Header() {
             <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-full shadow-md shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300"></div>
             <div className="absolute inset-0 w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 bg-blue-400 rounded-full animate-ping opacity-20"></div>
           </div>
-          <span className="font-mono font-black text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl text-slate-900 dark:text-white tracking-tighter group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 leading-tight">
+          <span className="font-mono font-black text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl text-slate-900 dark:text-white tracking-tighter group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 leading-tight">
             <span className="hidden sm:inline">Fahrzeugfehler</span>
-            <span className="sm:hidden text-[10px] sm:text-xs">FAHRZEUGFEHLER</span>
+            <span className="sm:hidden text-xs sm:text-sm">FAHRZEUGFEHLER</span>
             <span className="text-blue-600 dark:text-blue-400">.de</span>
           </span>
         </Link>

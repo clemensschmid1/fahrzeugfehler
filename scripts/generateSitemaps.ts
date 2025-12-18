@@ -403,24 +403,40 @@ async function generateSitemaps() {
       }
       
       if (allFaults.length > 0) {
+        let faultsWithErrorCodes = 0;
+        let faultsWithoutErrorCodes = 0;
+        let faultsSkipped = 0;
+        
         for (const fault of allFaults) {
-          if (!fault.slug) continue;
+          if (!fault.slug) {
+            faultsSkipped++;
+            continue;
+          }
           
           const generationData = fault.model_generations as unknown as { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] } | { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] }[];
           const genData = Array.isArray(generationData) ? generationData[0] : generationData;
-          if (!genData) continue;
+          if (!genData) {
+            faultsSkipped++;
+            continue;
+          }
           
           const modelData = genData.car_models as unknown as { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[];
           const model = Array.isArray(modelData) ? modelData[0] : modelData;
-          if (!model) continue;
+          if (!model) {
+            faultsSkipped++;
+            continue;
+          }
           
           const carBrands = model.car_brands as unknown as { slug: string } | { slug: string }[];
           const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
-          if (!brandSlug) continue;
+          if (!brandSlug) {
+            faultsSkipped++;
+            continue;
+          }
           
           // Check if fault has error_code to determine URL path
           const faultWithErrorCode = fault as any;
-          const hasErrorCode = faultWithErrorCode.error_code !== null && faultWithErrorCode.error_code !== undefined;
+          const hasErrorCode = faultWithErrorCode.error_code !== null && faultWithErrorCode.error_code !== undefined && faultWithErrorCode.error_code !== '';
           
           const url = hasErrorCode 
             ? `${baseUrl}/cars/${brandSlug}/${model.slug}/${genData.slug}/error-codes/${fault.slug}`
@@ -439,8 +455,16 @@ async function generateSitemaps() {
               priority: 0.7,
               changefreq: 'monthly'
             });
+            
+            if (hasErrorCode) {
+              faultsWithErrorCodes++;
+            } else {
+              faultsWithoutErrorCodes++;
+            }
           }
         }
+        
+        console.log(`📊 Fault breakdown: ${faultsWithErrorCodes} with error codes, ${faultsWithoutErrorCodes} without error codes, ${faultsSkipped} skipped`);
       }
       
       console.log(`✅ Added ${allBrands.length} brands, ${allModels.length} models, ${allGenerations.length} generations, and ${allFaults.length} faults to sitemap`);
