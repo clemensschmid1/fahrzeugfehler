@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { ThemeProvider } from "@/lib/contexts/ThemeContext";
 import UserSessionProvider from "@/components/UserSessionProvider";
 import Footer from "@/components/Footer";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import ClientClarityInit from "@/components/ClientClarityInit";
 import { OrganizationStructuredData, WebsiteStructuredData } from "@/components/StructuredData";
