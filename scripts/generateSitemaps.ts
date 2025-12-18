@@ -39,6 +39,25 @@ ${urlEntries}
 async function generateSitemaps() {
   console.log('🔄 Generating sitemap for fahrzeugfehler.de (German-only)...');
   
+  // Clean up old sitemap files FIRST, before Vercel processes them
+  if (fs.existsSync(PUBLIC_DIR)) {
+    const existingFiles = fs.readdirSync(PUBLIC_DIR)
+      .filter(f => /^sitemap-\d+\.xml$/.test(f));
+    
+    if (existingFiles.length > 0) {
+      console.log(`🗑️  Cleaning up ${existingFiles.length} old sitemap files...`);
+      for (const oldFile of existingFiles) {
+        const oldFilePath = path.join(PUBLIC_DIR, oldFile);
+        try {
+          fs.unlinkSync(oldFilePath);
+          console.log(`   Removed ${oldFile}`);
+        } catch (error) {
+          // Ignore errors if file doesn't exist
+        }
+      }
+    }
+  }
+  
   const allUrls: UrlWithDate[] = [];
   const baseUrl = 'https://fahrzeugfehler.de';
   const now = new Date().toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
@@ -441,22 +460,29 @@ async function generateSitemaps() {
     console.log(`✅ Created ${filename} with ${urlsForThisSitemap.length} URLs`);
   }
   
-  // Clean up old sitemap files that are no longer needed
-  const existingFiles = fs.readdirSync(PUBLIC_DIR)
-    .filter(f => /^sitemap-\d+\.xml$/.test(f))
-    .sort((a, b) => {
-      const aNum = parseInt(a.match(/sitemap-(\d+)\.xml/)![1], 10);
-      const bNum = parseInt(b.match(/sitemap-(\d+)\.xml/)![1], 10);
-      return aNum - bNum;
-    });
-  
-  // Remove files that are beyond our new count
-  for (const oldFile of existingFiles) {
-    const fileNum = parseInt(oldFile.match(/sitemap-(\d+)\.xml/)![1], 10);
-    if (fileNum >= totalSitemaps) {
-      const oldFilePath = path.join(PUBLIC_DIR, oldFile);
-      fs.unlinkSync(oldFilePath);
-      console.log(`🗑️  Removed old ${oldFile}`);
+  // Clean up any remaining old sitemap files that are beyond our new count
+  // (This is a safety check - we already cleaned up at the start)
+  if (fs.existsSync(PUBLIC_DIR)) {
+    const existingFiles = fs.readdirSync(PUBLIC_DIR)
+      .filter(f => /^sitemap-\d+\.xml$/.test(f))
+      .sort((a, b) => {
+        const aNum = parseInt(a.match(/sitemap-(\d+)\.xml/)![1], 10);
+        const bNum = parseInt(b.match(/sitemap-(\d+)\.xml/)![1], 10);
+        return aNum - bNum;
+      });
+    
+    // Remove files that are beyond our new count
+    for (const oldFile of existingFiles) {
+      const fileNum = parseInt(oldFile.match(/sitemap-(\d+)\.xml/)![1], 10);
+      if (fileNum >= totalSitemaps) {
+        const oldFilePath = path.join(PUBLIC_DIR, oldFile);
+        try {
+          fs.unlinkSync(oldFilePath);
+          console.log(`🗑️  Removed old ${oldFile}`);
+        } catch (error) {
+          // Ignore errors if file doesn't exist
+        }
+      }
     }
   }
   

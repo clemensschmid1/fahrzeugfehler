@@ -29,7 +29,7 @@
       ]
     },
     {
-      "source": "/sitemap-:number.xml",
+      "source": "/sitemap-*.xml",
       "headers": [
         {
           "key": "Content-Type",
