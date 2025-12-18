@@ -83,22 +83,53 @@ export default function Header() {
       } sticky top-0 z-50`}
       role="banner"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-16 sm:h-18 relative">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4 h-16 relative">
+        {/* Mobile Menu Button - Left side on mobile */}
+        <button
+          aria-label="Menü öffnen"
+          className={`md:hidden p-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0 ${
+            menuOpen 
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' 
+              : 'hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-white'
+          }`}
+          onClick={() => setMenuOpen(v => !v)}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
+        >
+          <span className="sr-only">Menü öffnen</span>
+          {menuOpen ? (
+            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          ) : (
+            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          )}
+        </button>
+
+        {/* Logo - Centered on mobile, left on desktop */}
         <Link
           href="/"
-          className="flex items-center gap-2.5 sm:gap-3 group flex-shrink-0 min-w-0"
+          className="flex items-center gap-2 sm:gap-2.5 group flex-shrink-0 min-w-0 md:flex-1"
           aria-label="Fahrzeugfehler.de Startseite"
         >
-          <div className="relative">
-            <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-full flex-shrink-0 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300"></div>
-            <div className="absolute inset-0 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-blue-400 rounded-full animate-ping opacity-20"></div>
+          <div className="relative flex-shrink-0">
+            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-full shadow-md shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300"></div>
+            <div className="absolute inset-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-ping opacity-20"></div>
           </div>
-          <span className="font-mono font-black text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
-            Fahrzeugfehler.de
+          <span className="font-mono font-black text-base sm:text-lg md:text-xl lg:text-2xl text-slate-900 dark:text-white tracking-tighter group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 leading-tight">
+            <span className="hidden sm:inline">Fahrzeugfehler</span>
+            <span className="sm:hidden">FF</span>
+            <span className="text-blue-600 dark:text-blue-400">.de</span>
           </span>
         </Link>
-        {/* Spacer for layout */}
-        <div className="flex-1"></div>
+
+        {/* Spacer for layout - Desktop only */}
+        <div className="hidden md:block flex-1"></div>
         <nav className="flex items-center gap-2 sm:gap-3 flex-shrink-0 relative">
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
@@ -163,33 +194,6 @@ export default function Header() {
               </svg>
             </Link>
           )}
-
-          {/* Mobile Menu Button */}
-          <button
-            aria-label="Menü öffnen"
-            className={`md:hidden p-2.5 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-              menuOpen 
-                ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' 
-                : 'hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-white'
-            }`}
-            onClick={() => setMenuOpen(v => !v)}
-            aria-expanded={menuOpen}
-            aria-controls="mobile-menu"
-          >
-            <span className="sr-only">Menü öffnen</span>
-            {menuOpen ? (
-              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            ) : (
-              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            )}
-          </button>
           
           {/* Mobile dropdown menu - Fixed positioning */}
           {menuOpen && (
@@ -203,11 +207,11 @@ export default function Header() {
               <motion.div
                 id="mobile-menu"
                 ref={menuRef}
-                initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -20, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="fixed right-3 sm:right-4 top-[4rem] sm:top-20 w-[calc(100vw-1.5rem)] sm:w-72 max-w-[320px] rounded-2xl shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-slate-200 dark:border-white/20 z-50 flex flex-col py-2 overflow-hidden"
+                className="fixed left-3 top-[4.5rem] w-[calc(100vw-1.5rem)] sm:w-80 max-w-[360px] rounded-2xl shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-slate-200 dark:border-white/20 z-50 flex flex-col py-2 overflow-hidden"
               >
                 <Link
                   href="/news"
