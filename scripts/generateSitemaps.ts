@@ -231,14 +231,23 @@ async function generateSitemaps() {
       }
       
       if (allGenerations.length > 0) {
+        let generationsAdded = 0;
+        let generationsSkipped = 0;
+        
         for (const generation of allGenerations) {
           const carModels = generation.car_models as unknown as { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[];
           const modelData = Array.isArray(carModels) ? carModels[0] : carModels;
-          if (!modelData) continue;
+          if (!modelData) {
+            generationsSkipped++;
+            continue;
+          }
           
           const carBrands = modelData.car_brands as unknown as { slug: string } | { slug: string }[];
           const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
-          if (!brandSlug) continue;
+          if (!brandSlug) {
+            generationsSkipped++;
+            continue;
+          }
           
           // Add generation detail page
           const generationUrl = `${baseUrl}/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
@@ -249,7 +258,13 @@ async function generateSitemaps() {
               : generation.created_at 
               ? new Date(generation.created_at).toISOString().split('T')[0]
               : now;
-            addUrl(generationUrl, 0.6, 'weekly', lastmod);
+            allUrls.push({
+              url: generationUrl,
+              lastmod,
+              priority: 0.6,
+              changefreq: 'weekly'
+            });
+            generationsAdded++;
           }
           
           // Add error-codes page for this generation (automatically available for ALL generations)
@@ -261,9 +276,17 @@ async function generateSitemaps() {
               : generation.created_at 
               ? new Date(generation.created_at).toISOString().split('T')[0]
               : now;
-            addUrl(generationErrorCodesUrl, 0.7, 'weekly', lastmod);
+            allUrls.push({
+              url: generationErrorCodesUrl,
+              lastmod,
+              priority: 0.7,
+              changefreq: 'weekly'
+            });
+            generationsAdded++;
           }
         }
+        
+        console.log(`✅ Added ${generationsAdded} generation URLs (${allGenerations.length} generations, ${generationsSkipped} skipped due to missing data)`);
       }
       
       // Fetch all car faults with pagination (only German, status live)
@@ -279,7 +302,7 @@ async function generateSitemaps() {
         console.log(`📊 Total live German faults in database: ${totalFaultsCount || 0}`);
       }
       
-      const allFaults: Array<{ slug: string; updated_at?: string; created_at?: string; model_generation_id: string; model_generations?: any }> = [];
+      const allFaults: Array<{ slug: string; updated_at?: string; created_at?: string; model_generation_id: string; error_code: string | null; model_generations?: any }> = [];
       let faultsFrom = 0;
       const faultsBatchSize = 1000;
       let consecutiveEmptyBatches = 0;
@@ -461,6 +484,8 @@ async function generateSitemaps() {
             } else {
               faultsWithoutErrorCodes++;
             }
+          } else {
+            faultsSkipped++; // Duplicate URL
           }
         }
         
