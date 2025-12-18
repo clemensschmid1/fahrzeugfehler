@@ -152,7 +152,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/sitemap-:number.xml',
+        source: '/sitemap-:path*.xml',
         headers: [
           {
             key: 'Content-Type',
