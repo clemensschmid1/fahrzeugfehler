@@ -6,9 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
-export const revalidate = 0;
+// Client Components are automatically dynamic, no need to export these
 
 type CarFault = {
   id: string;

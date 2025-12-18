@@ -3,9 +3,7 @@
 import { useEffect, useState } from 'react';
 import InternalAuth from '@/components/InternalAuth';
 
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
-export const revalidate = 0;
+// Client Components are automatically dynamic, no need to export these
 
 interface CheckResult {
   missingInSitemap: string[];
