@@ -10,6 +10,7 @@
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "clean:cache": "rm -rf .next/cache",
     "clean:turbo": "rm -rf .next/cache/turbo && rm -rf node_modules/.cache/turbo",
+    "prebuild": "tsx scripts/cleanupOldSitemaps.ts",
     "build": "next build",
     "sitemap:generate": "tsx scripts/generateSitemaps.ts",
     "sitemap:split": "tsx scripts/splitSitemapIndexes.ts",
