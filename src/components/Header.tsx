@@ -68,32 +68,47 @@ export default function Header() {
   // Show header on all pages
   // Always show header - removed conditional rendering
 
+  const isHomePage = pathname === '/';
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -16 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="w-full bg-white dark:bg-black backdrop-blur-sm border-b border-black/10 dark:border-white/20 sticky top-0 z-40"
+      className={`w-full backdrop-blur-md border-b transition-all duration-300 ${
+        isHomePage 
+          ? 'bg-white/80 dark:bg-black/80 border-slate-200/50 dark:border-white/10 shadow-sm' 
+          : 'bg-white dark:bg-black border-black/10 dark:border-white/20 shadow-sm'
+      } sticky top-0 z-50`}
       role="banner"
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4 h-14 sm:h-16 relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-16 sm:h-18 relative">
         <Link
           href="/"
-          className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg px-1.5 sm:px-2 py-1 transition-colors flex-shrink-0 min-w-0"
+          className="flex items-center gap-2.5 sm:gap-3 group flex-shrink-0 min-w-0"
           aria-label="Fahrzeugfehler.de Startseite"
         >
-          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-600 rounded-full flex-shrink-0"></div>
-          <span className="font-mono tracking-wider truncate">Fahrzeugfehler.de</span>
+          <div className="relative">
+            <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-full flex-shrink-0 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300"></div>
+            <div className="absolute inset-0 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-blue-400 rounded-full animate-ping opacity-20"></div>
+          </div>
+          <span className="font-mono font-black text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+            Fahrzeugfehler.de
+          </span>
         </Link>
         {/* Spacer for layout */}
         <div className="flex-1"></div>
-        <nav className="flex items-center gap-2 sm:gap-4 flex-shrink-0 relative">
+        <nav className="flex items-center gap-2 sm:gap-3 flex-shrink-0 relative">
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-1">
             <Link
               href="/news"
-              className="group relative px-4 py-2 rounded-lg text-sm font-bold text-slate-700 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all"
+              className={`group relative px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+                isNewsPage 
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' 
+                  : 'text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+              }`}
               tabIndex={0}
             >
               <span className="relative z-10 flex items-center gap-2">
@@ -102,19 +117,24 @@ export default function Header() {
                 </svg>
                 NEWS
               </span>
-              <span className="absolute inset-0 bg-blue-50 dark:bg-blue-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></span>
             </Link>
             <Link
               href="/chat"
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all"
+              className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                isChatPage
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+              }`}
               tabIndex={0}
             >
               FRAGEN
             </Link>
             <Link
               href="/cars"
-              className={`group relative px-4 py-2 rounded-lg text-sm font-bold text-slate-700 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all ${
-                isCarsPage ? 'text-blue-600 dark:text-blue-400' : ''
+              className={`group relative px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+                isCarsPage 
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' 
+                  : 'text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
               }`}
               tabIndex={0}
             >
@@ -124,7 +144,6 @@ export default function Header() {
                 </svg>
                 Fahrzeuge
               </span>
-              <span className="absolute inset-0 bg-blue-50 dark:bg-blue-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></span>
             </Link>
           </div>
 
@@ -132,7 +151,11 @@ export default function Header() {
           {user && (
             <Link
               href="/profile"
-              className="hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+              className={`hidden md:flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 ${
+                isProfilePage
+                  ? 'bg-blue-100 dark:bg-blue-900/50 border-2 border-blue-500 dark:border-blue-400'
+                  : 'bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:border-blue-300 dark:hover:border-blue-700'
+              }`}
               aria-label="Benutzerprofil"
             >
               <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,22 +164,26 @@ export default function Header() {
             </Link>
           )}
 
-          {/* Mobile Menu Button - Better positioned */}
+          {/* Mobile Menu Button */}
           <button
             aria-label="Menü öffnen"
-            className="md:hidden p-2 sm:p-2.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 hover:bg-slate-100 dark:hover:bg-white/10 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className={`md:hidden p-2.5 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+              menuOpen 
+                ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' 
+                : 'hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-white'
+            }`}
             onClick={() => setMenuOpen(v => !v)}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
           >
             <span className="sr-only">Menü öffnen</span>
             {menuOpen ? (
-              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-700 dark:text-white" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             ) : (
-              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-700 dark:text-white" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -180,7 +207,7 @@ export default function Header() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="fixed right-3 sm:right-4 top-[3.5rem] sm:top-16 w-[calc(100vw-1.5rem)] sm:w-72 max-w-[320px] rounded-xl shadow-2xl bg-white dark:bg-slate-800 backdrop-blur-sm border border-slate-200 dark:border-white/10 z-50 flex flex-col py-2"
+                className="fixed right-3 sm:right-4 top-[4rem] sm:top-20 w-[calc(100vw-1.5rem)] sm:w-72 max-w-[320px] rounded-2xl shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-slate-200 dark:border-white/20 z-50 flex flex-col py-2 overflow-hidden"
               >
                 <Link
                   href="/news"
