@@ -29,19 +29,6 @@
       ]
     },
     {
-      "source": "/sitemap-*.xml",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/xml"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600, stale-while-revalidate=86400"
-        }
-      ]
-    },
-    {
       "source": "/19b8bc246b244733843ff32b3d426207.txt",
       "headers": [
         {
