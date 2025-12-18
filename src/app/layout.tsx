@@ -209,6 +209,7 @@ export default async function RootLayout({
           <UserSessionProvider>
             <OrganizationStructuredData />
             <WebsiteStructuredData />
+            <Header />
             <div className="flex-1">
               {children}
             </div>
