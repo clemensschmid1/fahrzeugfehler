@@ -499,6 +499,24 @@ async function generateSitemaps() {
     }
   }
   
+  // Generate sitemap index file
+  const sitemapIndexPath = path.join(PUBLIC_DIR, 'sitemap.xml');
+  const sitemapEntries = sitemapFiles.map(file => 
+    `  <sitemap>
+    <loc>${baseUrl}/${file}</loc>
+    <lastmod>${now}</lastmod>
+  </sitemap>`
+  ).join('\n');
+  
+  const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapEntries}
+</sitemapindex>
+`;
+  
+  fs.writeFileSync(sitemapIndexPath, sitemapIndexXml, { encoding: 'utf8' });
+  console.log(`✅ Generated sitemap.xml index with ${sitemapFiles.length} sitemap files`);
+  
   console.log(`\n🎉 Successfully generated ${totalSitemaps} sitemap files:`);
   sitemapFiles.forEach(file => console.log(`   - ${file}`));
   console.log(`📊 Total URLs: ${allUrls.length}`);

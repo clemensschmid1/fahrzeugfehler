@@ -816,5 +816,7 @@ const CarsClient = memo(function CarsClient({ brands, stats, brandCounts }: Cars
       </div>
     </div>
   );
-}
+});
+
+export default CarsClient;
 

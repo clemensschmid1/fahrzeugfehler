@@ -588,5 +588,7 @@ const BrandClient = memo(function BrandClient({ brand, models, faultsCount = 0, 
       </div>
     </div>
   );
-}
+});
+
+export default BrandClient;
 

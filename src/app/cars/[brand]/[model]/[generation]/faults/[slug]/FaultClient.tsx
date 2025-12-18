@@ -647,21 +647,22 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
                   : `/cars/${brand.slug}/${model.slug}/${generation.slug}/faults/${relatedFault.slug}`;
                 
                 return (
-                <Link
-                  key={relatedFault.id}
-                  href={relatedFaultUrl}
-                  className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
-                >
-                  <h3 className="font-semibold text-slate-900 dark:text-white mb-2">
-                    {relatedFault.title}
-                  </h3>
-                  {relatedFault.similarity && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Ähnlichkeit: {Math.round(relatedFault.similarity * 100)}%
-                    </p>
-                  )}
-                </Link>
-              ))}
+                  <Link
+                    key={relatedFault.id}
+                    href={relatedFaultUrl}
+                    className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+                  >
+                    <h3 className="font-semibold text-slate-900 dark:text-white mb-2">
+                      {relatedFault.title}
+                    </h3>
+                    {relatedFault.similarity && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Ähnlichkeit: {Math.round(relatedFault.similarity * 100)}%
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
