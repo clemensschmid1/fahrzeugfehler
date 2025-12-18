@@ -37,109 +37,26 @@ ${urlEntries}
 }
 
 async function generateSitemaps() {
-  console.log('🔄 Fetching all live questions from database...');
+  console.log('🔄 Generating sitemap for fahrzeugfehler.de (German-only)...');
   
   try {
-    // Fetch all live questions with pagination to avoid timeouts
-    const allQuestions: Array<{ slug: string; language_path: string; created_at?: string; last_updated?: string }> = [];
-    let from = 0;
-    const batchSize = 1000;
-    
-    while (true) {
-      console.log(`📥 Fetching batch starting from ${from}...`);
-      
-      const { data, error } = await supabase
-        .from('questions2')
-        .select('slug, language_path')
-        .eq('status', 'live')
-        .eq('is_main', true)
-        .range(from, from + batchSize - 1);
-      
-      if (error) {
-        console.error('❌ Database error:', error);
-        console.log('⚠️  Sitemap generation skipped due to database unavailability (this is normal during build)');
-        // Exit gracefully - don't fail the build
-        return [];
-      }
-      
-      if (!data || data.length === 0) {
-        console.log('✅ No more data to fetch');
-        break;
-      }
-      
-      allQuestions.push(...data);
-      console.log(`📊 Fetched ${data.length} questions (total: ${allQuestions.length})`);
-      
-      if (data.length < batchSize) {
-        console.log('✅ Reached end of data');
-        break;
-      }
-      
-      from += batchSize;
-    }
-    
-    console.log(`\n📈 Total questions found: ${allQuestions.length}`);
-    
-    // Generate URLs with metadata for each question
     const allUrls: UrlWithDate[] = [];
-    const baseUrl = 'https://faultbase.com';
+    const baseUrl = 'https://fahrzeugfehler.de';
     const now = new Date().toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
     const seenUrls = new Set<string>(); // Track URLs to prevent duplicates
     
-    // Add main pages with high priority (exclude internal pages)
-    allUrls.push({ url: `${baseUrl}/en`, priority: 1.0, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/de`, priority: 1.0, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/en/knowledge`, priority: 0.9, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/de/knowledge`, priority: 0.9, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/en/news`, priority: 0.9, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/de/news`, priority: 0.9, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/en/reviews`, priority: 0.7, changefreq: 'weekly' });
-    allUrls.push({ url: `${baseUrl}/de/reviews`, priority: 0.7, changefreq: 'weekly' });
-    allUrls.push({ url: `${baseUrl}/en/chat`, priority: 0.8, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/de/chat`, priority: 0.8, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/en/cars`, priority: 0.9, changefreq: 'daily' });
-    allUrls.push({ url: `${baseUrl}/de/cars`, priority: 0.9, changefreq: 'daily' });
+    // Add main pages with high priority
+    console.log('📄 Adding main pages...');
+    allUrls.push({ url: `${baseUrl}/`, priority: 1.0, changefreq: 'daily' });
+    allUrls.push({ url: `${baseUrl}/cars`, priority: 0.9, changefreq: 'daily' });
+    allUrls.push({ url: `${baseUrl}/news`, priority: 0.9, changefreq: 'daily' });
+    allUrls.push({ url: `${baseUrl}/chat`, priority: 0.8, changefreq: 'daily' });
+    allUrls.push({ url: `${baseUrl}/reviews`, priority: 0.7, changefreq: 'weekly' });
+    allUrls.push({ url: `${baseUrl}/contact`, priority: 0.6, changefreq: 'monthly' });
+    allUrls.push({ url: `${baseUrl}/privacy`, priority: 0.5, changefreq: 'yearly' });
+    allUrls.push({ url: `${baseUrl}/impressum`, priority: 0.5, changefreq: 'yearly' });
     
-    // Note: Internal pages (internal/*, carinternal, carbulk, prompts) are intentionally excluded from sitemap
-    
-    // Add knowledge article URLs with lastmod dates (exclude internal pages)
-    for (const question of allQuestions) {
-      if (!question.slug) continue; // Skip if no slug
-      
-      // Skip internal pages
-      if (question.slug.includes('internal') || question.slug.includes('carinternal')) {
-        continue;
-      }
-      
-      let url: string;
-      if (question.language_path === 'en') {
-        url = `${baseUrl}/en/knowledge/${question.slug}`;
-      } else if (question.language_path === 'de') {
-        url = `${baseUrl}/de/knowledge/${question.slug}`;
-      } else {
-        continue; // Skip if language_path is not en or de
-      }
-      
-      // Deduplicate URLs
-      if (!seenUrls.has(url)) {
-        seenUrls.add(url);
-        // Use last_updated if available, otherwise created_at, otherwise current date
-        const lastmod = question.last_updated 
-          ? new Date(question.last_updated).toISOString().split('T')[0]
-          : question.created_at 
-          ? new Date(question.created_at).toISOString().split('T')[0]
-          : now;
-        
-        allUrls.push({
-          url,
-          lastmod,
-          priority: 0.8,
-          changefreq: 'weekly'
-        });
-      }
-    }
-    
-    // Add Cars pages (brands, models, generations, faults, manuals)
+    // Add Cars pages (brands, models, generations, error-codes, faults)
     console.log('🔄 Fetching Cars data for sitemap...');
     try {
       // Fetch all car brands with pagination
@@ -149,7 +66,7 @@ async function generateSitemaps() {
       
       while (true) {
         const { data: brands, error: brandsError } = await supabase
-        .from('car_brands')
+          .from('car_brands')
           .select('slug, updated_at, created_at')
           .range(brandsFrom, brandsFrom + brandsBatchSize - 1);
       
@@ -174,33 +91,17 @@ async function generateSitemaps() {
       
       if (allBrands.length > 0) {
         for (const brand of allBrands) {
-          const enUrl = `${baseUrl}/en/cars/${brand.slug}`;
-          const deUrl = `${baseUrl}/de/cars/${brand.slug}`;
+          const url = `${baseUrl}/cars/${brand.slug}`;
           
-          if (!seenUrls.has(enUrl)) {
-            seenUrls.add(enUrl);
+          if (!seenUrls.has(url)) {
+            seenUrls.add(url);
             const lastmod = brand.updated_at 
               ? new Date(brand.updated_at).toISOString().split('T')[0]
               : brand.created_at 
               ? new Date(brand.created_at).toISOString().split('T')[0]
               : now;
             allUrls.push({
-              url: enUrl,
-              lastmod,
-              priority: 0.8,
-              changefreq: 'weekly'
-            });
-          }
-          
-          if (!seenUrls.has(deUrl)) {
-            seenUrls.add(deUrl);
-            const lastmod = brand.updated_at 
-              ? new Date(brand.updated_at).toISOString().split('T')[0]
-              : brand.created_at 
-              ? new Date(brand.created_at).toISOString().split('T')[0]
-              : now;
-            allUrls.push({
-              url: deUrl,
+              url,
               lastmod,
               priority: 0.8,
               changefreq: 'weekly'
@@ -215,7 +116,7 @@ async function generateSitemaps() {
         
         while (true) {
           const { data: models, error: modelsError } = await supabase
-          .from('car_models')
+            .from('car_models')
             .select('slug, updated_at, created_at, car_brands(slug)')
             .range(modelsFrom, modelsFrom + modelsBatchSize - 1);
         
@@ -244,33 +145,35 @@ async function generateSitemaps() {
             const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
             if (!brandSlug) continue;
             
-            const enUrl = `${baseUrl}/en/cars/${brandSlug}/${model.slug}`;
-            const deUrl = `${baseUrl}/de/cars/${brandSlug}/${model.slug}`;
+            const modelUrl = `${baseUrl}/cars/${brandSlug}/${model.slug}`;
+            const errorCodesUrl = `${baseUrl}/cars/${brandSlug}/${model.slug}/error-codes`;
             
-            if (!seenUrls.has(enUrl)) {
-              seenUrls.add(enUrl);
+            // Add model page
+            if (!seenUrls.has(modelUrl)) {
+              seenUrls.add(modelUrl);
               const lastmod = model.updated_at 
                 ? new Date(model.updated_at).toISOString().split('T')[0]
                 : model.created_at 
                 ? new Date(model.created_at).toISOString().split('T')[0]
                 : now;
               allUrls.push({
-                url: enUrl,
+                url: modelUrl,
                 lastmod,
                 priority: 0.7,
                 changefreq: 'weekly'
               });
             }
             
-            if (!seenUrls.has(deUrl)) {
-              seenUrls.add(deUrl);
+            // Add error-codes page for this model
+            if (!seenUrls.has(errorCodesUrl)) {
+              seenUrls.add(errorCodesUrl);
               const lastmod = model.updated_at 
                 ? new Date(model.updated_at).toISOString().split('T')[0]
                 : model.created_at 
                 ? new Date(model.created_at).toISOString().split('T')[0]
                 : now;
               allUrls.push({
-                url: deUrl,
+                url: errorCodesUrl,
                 lastmod,
                 priority: 0.7,
                 changefreq: 'weekly'
@@ -286,7 +189,7 @@ async function generateSitemaps() {
         
         while (true) {
           const { data: generations, error: generationsError } = await supabase
-          .from('model_generations')
+            .from('model_generations')
             .select('slug, updated_at, created_at, car_models(slug, car_brands(slug))')
             .range(generationsFrom, generationsFrom + generationsBatchSize - 1);
         
@@ -319,33 +222,17 @@ async function generateSitemaps() {
             const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
             if (!brandSlug) continue;
             
-            const enUrl = `${baseUrl}/en/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
-            const deUrl = `${baseUrl}/de/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
+            const url = `${baseUrl}/cars/${brandSlug}/${modelData.slug}/${generation.slug}`;
             
-            if (!seenUrls.has(enUrl)) {
-              seenUrls.add(enUrl);
+            if (!seenUrls.has(url)) {
+              seenUrls.add(url);
               const lastmod = generation.updated_at 
                 ? new Date(generation.updated_at).toISOString().split('T')[0]
                 : generation.created_at 
                 ? new Date(generation.created_at).toISOString().split('T')[0]
                 : now;
               allUrls.push({
-                url: enUrl,
-                lastmod,
-                priority: 0.6,
-                changefreq: 'weekly'
-              });
-            }
-            
-            if (!seenUrls.has(deUrl)) {
-              seenUrls.add(deUrl);
-              const lastmod = generation.updated_at 
-                ? new Date(generation.updated_at).toISOString().split('T')[0]
-                : generation.created_at 
-                ? new Date(generation.created_at).toISOString().split('T')[0]
-                : now;
-              allUrls.push({
-                url: deUrl,
+                url,
                 lastmod,
                 priority: 0.6,
                 changefreq: 'weekly'
@@ -354,20 +241,20 @@ async function generateSitemaps() {
           }
         }
         
-        // Fetch all car faults with pagination
-        // First, get total count to ensure we fetch all records
+        // Fetch all car faults with pagination (only German, status live)
         const { count: totalFaultsCount, error: countError } = await supabase
           .from('car_faults')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'live');
+          .eq('status', 'live')
+          .eq('language_path', 'de');
         
         if (countError) {
           console.error('⚠️  Error counting faults:', countError);
         } else {
-          console.log(`📊 Total live faults in database: ${totalFaultsCount || 0}`);
+          console.log(`📊 Total live German faults in database: ${totalFaultsCount || 0}`);
         }
         
-        const allFaults: Array<{ slug: string; language_path: string; updated_at?: string; created_at?: string; model_generation_id: string; model_generations?: any }> = [];
+        const allFaults: Array<{ slug: string; updated_at?: string; created_at?: string; model_generation_id: string; model_generations?: any }> = [];
         let faultsFrom = 0;
         const faultsBatchSize = 1000;
         let consecutiveEmptyBatches = 0;
@@ -383,8 +270,9 @@ async function generateSitemaps() {
             // Try full query with joins
             const result = await supabase
               .from('car_faults')
-              .select('slug, language_path, updated_at, created_at, model_generation_id, model_generations(slug, car_models(slug, car_brands(slug)))')
+              .select('slug, updated_at, created_at, model_generation_id, model_generations(slug, car_models(slug, car_brands(slug)))')
               .eq('status', 'live')
+              .eq('language_path', 'de')
               .order('id', { ascending: true })
               .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
             
@@ -401,11 +289,12 @@ async function generateSitemaps() {
           } else {
             // Simplified query: fetch faults first, then fetch generation data separately
             const result = await supabase
-          .from('car_faults')
-              .select('slug, language_path, updated_at, created_at, model_generation_id')
-            .eq('status', 'live')
+              .from('car_faults')
+              .select('slug, updated_at, created_at, model_generation_id')
+              .eq('status', 'live')
+              .eq('language_path', 'de')
               .order('id', { ascending: true })
-            .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
+              .range(faultsFrom, faultsFrom + faultsBatchSize - 1);
             
             faults = result.data;
             faultsError = result.error;
@@ -443,7 +332,7 @@ async function generateSitemaps() {
             consecutiveEmptyBatches++;
             if (consecutiveEmptyBatches >= maxConsecutiveEmptyBatches) {
               console.log('⚠️  Too many consecutive errors, stopping fault fetch');
-            break;
+              break;
             }
             faultsFrom += faultsBatchSize;
             continue;
@@ -453,7 +342,7 @@ async function generateSitemaps() {
             consecutiveEmptyBatches++;
             if (consecutiveEmptyBatches >= maxConsecutiveEmptyBatches) {
               console.log('✅ Reached end of faults data');
-            break;
+              break;
             }
             faultsFrom += faultsBatchSize;
             continue;
@@ -490,7 +379,7 @@ async function generateSitemaps() {
         
         if (allFaults.length > 0) {
           for (const fault of allFaults) {
-            if (!fault.slug || !fault.language_path || (fault.language_path !== 'en' && fault.language_path !== 'de')) continue;
+            if (!fault.slug) continue;
             
             const generationData = fault.model_generations as unknown as { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] } | { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] }[];
             const genData = Array.isArray(generationData) ? generationData[0] : generationData;
@@ -504,7 +393,7 @@ async function generateSitemaps() {
             const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
             if (!brandSlug) continue;
             
-            const url = `${baseUrl}/${fault.language_path}/cars/${brandSlug}/${model.slug}/${genData.slug}/faults/${fault.slug}`;
+            const url = `${baseUrl}/cars/${brandSlug}/${model.slug}/${genData.slug}/faults/${fault.slug}`;
             
             if (!seenUrls.has(url)) {
               seenUrls.add(url);
@@ -523,73 +412,7 @@ async function generateSitemaps() {
           }
         }
         
-        // Fetch all car manuals with pagination
-        const allManuals: Array<{ slug: string; language_path: string; updated_at?: string; created_at?: string; model_generations: any }> = [];
-        let manualsFrom = 0;
-        const manualsBatchSize = 1000;
-        
-        while (true) {
-          const { data: manuals, error: manualsError } = await supabase
-          .from('car_manuals')
-          .select('slug, language_path, updated_at, created_at, model_generations(slug, car_models(slug, car_brands(slug)))')
-            .eq('status', 'live')
-            .range(manualsFrom, manualsFrom + manualsBatchSize - 1);
-        
-          if (manualsError) {
-            console.error('⚠️  Error fetching manuals:', manualsError);
-            break;
-          }
-          
-          if (!manuals || manuals.length === 0) {
-            break;
-          }
-          
-          allManuals.push(...manuals);
-          console.log(`📊 Fetched ${manuals.length} manuals (total: ${allManuals.length})`);
-          
-          if (manuals.length < manualsBatchSize) {
-            break;
-          }
-          
-          manualsFrom += manualsBatchSize;
-        }
-        
-        if (allManuals.length > 0) {
-          for (const manual of allManuals) {
-            if (!manual.slug || !manual.language_path || (manual.language_path !== 'en' && manual.language_path !== 'de')) continue;
-            
-            const generationData = manual.model_generations as unknown as { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] } | { slug: string; car_models: { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[] }[];
-            const genData = Array.isArray(generationData) ? generationData[0] : generationData;
-            if (!genData) continue;
-            
-            const modelData = genData.car_models as unknown as { slug: string; car_brands: { slug: string } | { slug: string }[] } | { slug: string; car_brands: { slug: string } | { slug: string }[] }[];
-            const model = Array.isArray(modelData) ? modelData[0] : modelData;
-            if (!model) continue;
-            
-            const carBrands = model.car_brands as unknown as { slug: string } | { slug: string }[];
-            const brandSlug = Array.isArray(carBrands) ? carBrands[0]?.slug : carBrands?.slug;
-            if (!brandSlug) continue;
-            
-            const url = `${baseUrl}/${manual.language_path}/cars/${brandSlug}/${model.slug}/${genData.slug}/manuals/${manual.slug}`;
-            
-            if (!seenUrls.has(url)) {
-              seenUrls.add(url);
-              const lastmod = manual.updated_at 
-                ? new Date(manual.updated_at).toISOString().split('T')[0]
-                : manual.created_at 
-                ? new Date(manual.created_at).toISOString().split('T')[0]
-                : now;
-              allUrls.push({
-                url,
-                lastmod,
-                priority: 0.7,
-                changefreq: 'monthly'
-              });
-            }
-          }
-        }
-        
-        console.log(`✅ Added ${allBrands.length} brands, ${allModels.length} models, ${allGenerations.length} generations, ${allFaults.length} faults, and ${allManuals.length} manuals to sitemap`);
+        console.log(`✅ Added ${allBrands.length} brands, ${allModels.length} models, ${allGenerations.length} generations, and ${allFaults.length} faults to sitemap`);
       }
     } catch (error) {
       console.log('⚠️  Cars data fetch failed (this is normal if database is unavailable):', error);
@@ -668,4 +491,4 @@ generateSitemaps()
     console.error('\n❌ Sitemap generation failed:', error);
     console.log('⚠️  Build will continue - sitemaps can be generated manually if needed');
     process.exit(0); // Exit with success to not fail the build
-  }); 
+  });
