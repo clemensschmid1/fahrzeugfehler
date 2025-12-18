@@ -6,8 +6,19 @@ const PUBLIC_DIR = path.join(__dirname, '../public');
 const SITEMAP_PATTERN = /^sitemap-(\d+)\.xml$/;
 
 function getSitemapFiles(): string[] {
+  if (!fs.existsSync(PUBLIC_DIR)) {
+    return [];
+  }
+  
   return fs.readdirSync(PUBLIC_DIR)
-    .filter(f => SITEMAP_PATTERN.test(f))
+    .filter(f => {
+      // Only include files that match the pattern AND actually exist
+      if (!SITEMAP_PATTERN.test(f)) {
+        return false;
+      }
+      const filePath = path.join(PUBLIC_DIR, f);
+      return fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+    })
     .sort((a, b) => {
       const aNum = parseInt(a.match(SITEMAP_PATTERN)![1], 10);
       const bNum = parseInt(b.match(SITEMAP_PATTERN)![1], 10);
@@ -16,7 +27,7 @@ function getSitemapFiles(): string[] {
 }
 
 function makeRootSitemapIndex(sitemapFiles: string[]): string {
-  const baseUrl = 'https://faultbase.com';
+  const baseUrl = 'https://fahrzeugfehler.de';
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${sitemapFiles.map(f => `  <sitemap><loc>${baseUrl}/${f}</loc></sitemap>`).join('\n')}
