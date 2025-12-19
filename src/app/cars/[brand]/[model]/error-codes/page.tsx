@@ -121,16 +121,15 @@ export default async function ErrorCodesPage({ params }: { params: Promise<Param
   // Fetch all generations for this model
   const generationsResult = await supabase
     .from('model_generations')
-    .select('id, name, slug, generation_code')
+    .select('id, name, slug, generation_code, year_start, year_end')
     .eq('car_model_id', modelData.id)
     .order('display_order', { ascending: true })
     .order('year_start', { ascending: false });
 
   const generations = generationsResult.data || [];
 
-  // Fetch all faults with error codes for this model
-  // Grouped by generation - each generation's error codes are separate
-  // First get all generation IDs
+  // Fetch all faults with error codes for this model (ALL generations combined)
+  // Group by error code, not by generation - show all error codes for the entire model
   const generationIds = generations.length > 0 ? generations.map(g => g.id) : [];
   
   let faultsResult;
@@ -145,20 +144,24 @@ export default async function ErrorCodesPage({ params }: { params: Promise<Param
         severity,
         difficulty_level,
         affected_component,
+        estimated_repair_time,
         model_generation_id,
         model_generations:model_generation_id (
           id,
           name,
           slug,
-          generation_code
+          generation_code,
+          year_start,
+          year_end
         )
       `)
       .eq('language_path', 'de')
       .eq('status', 'live')
       .not('error_code', 'is', null)
+      .neq('error_code', '')
       .in('model_generation_id', generationIds)
-      .order('model_generation_id', { ascending: true })
-      .order('error_code', { ascending: true });
+      .order('error_code', { ascending: true })
+      .order('model_generation_id', { ascending: true });
   } else {
     // No generations, return empty array
     faultsResult = { data: [], error: null };
@@ -166,21 +169,14 @@ export default async function ErrorCodesPage({ params }: { params: Promise<Param
 
   const faults = faultsResult.data || [];
 
-  // Group faults by generation first, then by error code
-  // This ensures error codes are separated per generation
-  const generationErrorCodesMap = new Map<string, Map<string, typeof faults>>();
+  // Group ALL faults by error code (across all generations)
+  // Each error code shows all faults from all generations
+  const errorCodesMap = new Map<string, typeof faults>();
   
   faults.forEach(fault => {
-    if (fault.error_code && fault.model_generation_id) {
-      const generationId = fault.model_generation_id;
+    if (fault.error_code) {
       const code = fault.error_code.trim().toUpperCase();
       
-      // Initialize generation map if not exists
-      if (!generationErrorCodesMap.has(generationId)) {
-        generationErrorCodesMap.set(generationId, new Map());
-      }
-      
-      const errorCodesMap = generationErrorCodesMap.get(generationId)!;
       if (!errorCodesMap.has(code)) {
         errorCodesMap.set(code, []);
       }
@@ -188,45 +184,49 @@ export default async function ErrorCodesPage({ params }: { params: Promise<Param
     }
   });
 
-  // Convert to array structure: [generationId, errorCodes[]]
-  const errorCodesByGeneration = Array.from(generationErrorCodesMap.entries())
-    .map(([generationId, errorCodesMap]) => {
-      const generation = generations.find(g => g.id === generationId);
-      const errorCodes = Array.from(errorCodesMap.entries())
-        .map(([code, faults]) => ({
-          code,
-          faults,
-          count: faults.length,
-        }))
-        .sort((a, b) => a.code.localeCompare(b.code));
+  // Convert to array structure: grouped by error code, showing all generations
+  const errorCodes = Array.from(errorCodesMap.entries())
+    .map(([code, faults]) => {
+      // Get unique severities, components, etc. from all faults with this code
+      const severities = Array.from(new Set(faults.map(f => f.severity).filter(Boolean)));
+      const components = Array.from(new Set(faults.map(f => f.affected_component).filter(Boolean)));
+      const difficulties = Array.from(new Set(faults.map(f => f.difficulty_level).filter(Boolean)));
       
-      return {
-        generationId,
-        generation,
-        errorCodes,
-        totalCodes: errorCodes.length,
-        totalFaults: faults.filter(f => f.model_generation_id === generationId).length,
-      };
-    })
-    .sort((a, b) => {
-      // Sort by generation display order or name
-      if (a.generation && b.generation) {
-        return (a.generation.name || '').localeCompare(b.generation.name || '');
-      }
-      return 0;
-    });
+      // Group faults by generation for display
+      const faultsByGeneration = new Map<string, typeof faults>();
+      faults.forEach(fault => {
+        const genId = fault.model_generation_id || 'unknown';
+        if (!faultsByGeneration.has(genId)) {
+          faultsByGeneration.set(genId, []);
+        }
+        faultsByGeneration.get(genId)!.push(fault);
+      });
 
-  // For backward compatibility, also create a flat list (all generations combined)
-  const errorCodes = Array.from(new Map(faults.map(f => [f.error_code?.trim().toUpperCase(), []]).filter(([code]) => code)).entries())
-    .map(([code]) => {
-      const codeFaults = faults.filter(f => f.error_code?.trim().toUpperCase() === code);
       return {
         code,
-        faults: codeFaults,
-        count: codeFaults.length,
+        faults,
+        faultsByGeneration: Array.from(faultsByGeneration.entries()).map(([genId, genFaults]) => {
+          const generation = generations.find(g => g.id === genId);
+          return {
+            generationId: genId,
+            generation,
+            faults: genFaults,
+          };
+        }),
+        count: faults.length,
+        severities,
+        components,
+        difficulties,
+        // Most common values for quick display
+        mostCommonSeverity: severities.length > 0 ? severities[0] : undefined,
+        mostCommonComponent: components.length > 0 ? components[0] : undefined,
+        mostCommonDifficulty: difficulties.length > 0 ? difficulties[0] : undefined,
       };
     })
     .sort((a, b) => a.code.localeCompare(b.code));
+
+  // For backward compatibility with ErrorCodesClient
+  const errorCodesByGeneration: any[] = [];
 
   return (
     <>
@@ -253,7 +253,7 @@ export default async function ErrorCodesPage({ params }: { params: Promise<Param
           model={modelData}
           generations={generations}
           errorCodes={errorCodes}
-          errorCodesByGeneration={errorCodesByGeneration}
+          errorCodesByGeneration={[]}
         />
       </Suspense>
     </>

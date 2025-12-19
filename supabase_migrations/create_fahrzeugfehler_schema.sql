@@ -196,10 +196,14 @@ ALTER TABLE public.car_faults
     ADD COLUMN IF NOT EXISTS model_generation_id UUID REFERENCES public.model_generations(id) ON DELETE CASCADE,
     ADD COLUMN IF NOT EXISTS car_model_id UUID REFERENCES public.car_models(id) ON DELETE CASCADE,
     ADD COLUMN IF NOT EXISTS meta_title TEXT,
+    ADD COLUMN IF NOT EXISTS meta_description TEXT,
+    ADD COLUMN IF NOT EXISTS tools_required TEXT[],
     ADD COLUMN IF NOT EXISTS parts_required TEXT[],
     ADD COLUMN IF NOT EXISTS frequency TEXT,
     ADD COLUMN IF NOT EXISTS symptoms TEXT[],
-    ADD COLUMN IF NOT EXISTS diagnostic_steps TEXT[];
+    ADD COLUMN IF NOT EXISTS diagnostic_steps TEXT[],
+    ADD COLUMN IF NOT EXISTS seo_score INTEGER CHECK (seo_score IS NULL OR (seo_score >= 1 AND seo_score <= 99)),
+    ADD COLUMN IF NOT EXISTS content_score INTEGER CHECK (content_score IS NULL OR (content_score >= 1 AND content_score <= 99));
 
 -- Make car_model_id nullable in car_faults (wenn es NOT NULL war)
 DO $$

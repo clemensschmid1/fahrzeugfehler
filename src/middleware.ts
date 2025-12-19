@@ -26,6 +26,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // CRITICAL: Exclude internal routes from redirects - they should work as-is
+  if (pathname.startsWith('/internal/') || pathname === '/internal') {
+    return NextResponse.next();
+  }
+
   // Check if this is a static file that should not be redirected
   // IndexNow key files are 32 hex characters followed by .txt (e.g., /19b8bc246b244733843ff32b3d426207.txt)
   const isIndexNowKeyFile = /^\/[a-f0-9]{32}\.txt$/i.test(pathname);
@@ -39,8 +44,13 @@ export function middleware(request: NextRequest) {
   }
 
   // Redirect old language-prefixed URLs to new structure (remove /en or /de)
+  // BUT: Don't redirect if it's an internal route (already handled above)
   if (pathname.startsWith('/en/') || pathname.startsWith('/de/')) {
     const newPath = pathname.replace(/^\/(en|de)/, '');
+    // Double-check: don't redirect internal routes even if they have /en/ or /de/ prefix
+    if (newPath.startsWith('/internal/') || newPath === '/internal') {
+      return NextResponse.next();
+    }
     return NextResponse.redirect(new URL(newPath || '/', request.url));
   }
   

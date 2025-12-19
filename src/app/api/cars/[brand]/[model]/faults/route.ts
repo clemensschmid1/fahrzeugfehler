@@ -67,7 +67,7 @@ export async function GET(
       `, { count: 'exact' })
       .eq('status', 'live')
       .eq('language_path', lang)
-      .eq('car_models.id', modelData.id);
+      .is('error_code', null); // Only faults without error codes
 
     // Filter by generation if specified
     if (generationId) {

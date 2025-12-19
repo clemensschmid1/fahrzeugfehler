@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { createHash } from 'crypto';
 
 export const runtime = 'nodejs';
 export const maxDuration = 600; // 10 minutes
@@ -264,6 +265,98 @@ function getOpenAIApiKey() {
   return apiKey;
 }
 
+// Create SHA256 hash for question duplicate detection
+function createQuestionHash(question: string): string {
+  return createHash('sha256')
+    .update(question.toLowerCase().trim())
+    .digest('hex');
+}
+
+// Save questions to generated_questions table in batches
+async function saveQuestionsToDatabase(
+  questions: string[],
+  language: 'en' | 'de',
+  exportFilename: string,
+  promptUsed: string,
+  aiModelUsed: string,
+  supabase: ReturnType<typeof getSupabaseClient>
+): Promise<{ saved: number; duplicates: number; errors: number }> {
+  if (questions.length === 0) {
+    return { saved: 0, duplicates: 0, errors: 0 };
+  }
+
+  const now = new Date().toISOString();
+  const batchSize = 500; // Insert in batches of 500 to avoid timeouts
+  let totalSaved = 0;
+  let totalDuplicates = 0;
+  let totalErrors = 0;
+
+  // Process in batches
+  for (let i = 0; i < questions.length; i += batchSize) {
+    const batch = questions.slice(i, i + batchSize);
+    
+    try {
+      // Prepare batch data
+      const questionsToInsert = batch.map(question => ({
+        question_text: question.trim(),
+        question_hash: createQuestionHash(question),
+        language,
+        generated_at: now,
+        exported_at: now,
+        export_filename: exportFilename,
+        prompt_used: promptUsed,
+        ai_model_used: aiModelUsed,
+      }));
+
+      // Try to insert batch (will fail on duplicate hash)
+      const { data, error } = await supabase
+        .from('generated_questions')
+        .insert(questionsToInsert)
+        .select('id');
+
+      if (error) {
+        // If error is due to duplicate, try inserting one by one
+        if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+          // Insert individually to handle duplicates gracefully
+          for (const questionData of questionsToInsert) {
+            try {
+              const { error: insertError } = await supabase
+                .from('generated_questions')
+                .insert(questionData)
+                .select('id')
+                .single();
+
+              if (insertError) {
+                if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
+                  totalDuplicates++;
+                } else {
+                  console.error(`Error inserting question: ${insertError.message}`);
+                  totalErrors++;
+                }
+              } else {
+                totalSaved++;
+              }
+            } catch (err) {
+              console.error(`Error inserting individual question:`, err);
+              totalErrors++;
+            }
+          }
+        } else {
+          console.error(`Batch insert error:`, error);
+          totalErrors += batch.length;
+        }
+      } else {
+        totalSaved += data?.length || 0;
+      }
+    } catch (err) {
+      console.error(`Error processing batch:`, err);
+      totalErrors += batch.length;
+    }
+  }
+
+  return { saved: totalSaved, duplicates: totalDuplicates, errors: totalErrors };
+}
+
 // Helper to send progress update
 function sendProgress(data: any) {
   try {
@@ -524,14 +617,29 @@ Format: One problem/question per line, no numbering, no prefixes, clear and sear
 KRITISCHE ANFORDERUNGEN:
 1. Konzentriere dich auf REALE Probleme, die Autobesitzer TATSÄCHLICH online suchen (verwende Suchvolumen-Daten wenn möglich)
 2. Priorisiere die AM HÄUFIGSTEN GESTELLTEN Fragen zuerst
-3. Jede Frage muss SPEZIFISCH für dieses genaue Modell und diese Generation sein
+3. Jede Frage muss SPEZIFISCH für dieses genaue Modell und diese Generation sein - füge Modellname oder Generation ein, wenn relevant
 4. Beziehe häufige Fehlercodes (P-Codes, Herstellercodes) ein, wenn relevant
 5. Abdecken: Motorprobleme, Getriebeprobleme, elektrische Fehler, Warnleuchten, Fehlercodes, häufige Pannen, Leistungsprobleme, Diagnoseprobleme und Wartungsprobleme
 6. Fragen sollten im natürlichen Suchanfrage-Format sein (wie Menschen tatsächlich suchen)
 7. KEINE Duplikate oder ähnliche Fragen zu diesen bestehenden: ${existingQuestionsList.length > 0 ? existingQuestionsList.slice(0, 50).join('; ') : 'keine'}
 8. Sortiere nach Suchhäufigkeit - am häufigsten gesucht zuerst
+9. Jede Frage muss 20-200 Zeichen, 4-30 Wörter lang sein und eine vollständige, durchsuchbare Anfrage sein
+10. Vermeide generische Fragen wie "Was ist..." oder "Wie funktioniert..." es sei denn, sie sind sehr spezifisch für dieses Modell
+11. Verwende natürliche Sprache - wie echte Menschen bei Google oder in Foren suchen würden
 
-Format: Ein Problem/Frage pro Zeile, keine Nummerierung, klar und durchsuchbar. Natürliche Sprache wie Menschen suchen würden.`;
+BEISPIELE GUTER FRAGEN:
+- "Warum leuchtet die Motorkontrollleuchte bei meinem ${brand} ${model} ${generation}?"
+- "${brand} ${model} ${generation} Getriebe rutscht Symptome"
+- "Wie behebe ich Fehlercode P0301 ${brand} ${model} ${generation}"
+- "${brand} ${model} ${generation} Batterie entlädt sich Problem"
+- "Häufige elektrische Probleme ${brand} ${model} ${generation}"
+
+BEISPIELE SCHLECHTER FRAGEN (VERMEIDEN):
+- "Was ist ein Auto?" (zu generisch)
+- "Motor" (zu kurz, keine Frage)
+- "Erzähl mir von Autos" (nicht spezifisch, zu generisch)
+
+Format: Ein Problem/Frage pro Zeile, keine Nummerierung, keine Präfixe, klar und durchsuchbar. Natürliche Sprache wie Menschen suchen würden.`;
 
   const batches = Math.ceil(count / BATCH_SIZE);
   const allQuestions: string[] = [];
@@ -1186,13 +1294,28 @@ Format: One instruction/guide per line, no numbering, clear and actionable. Natu
 KRITISCHE ANFORDERUNGEN:
 1. Konzentriere dich auf REALE Verfahren, die Autobesitzer TATSÄCHLICH online suchen (verwende Suchvolumen-Daten wenn möglich)
 2. Priorisiere die AM HÄUFIGSTEN GESTELLTEN Fragen zuerst
-3. Jede Anleitung muss SPEZIFISCH für dieses genaue Modell und diese Generation sein
+3. Jede Anleitung muss SPEZIFISCH für dieses genaue Modell und diese Generation sein - füge Modellname oder Generation ein, wenn relevant
 4. Abdecken: Ölwechsel, Bremsbelagwechsel, Filterwechsel, Flüssigkeitsnachfüllung, Teilewechsel, Diagnoseverfahren, routinemäßige Wartung, DIY-Reparaturen
 5. Anleitungen sollten im natürlichen Suchanfrage-Format sein (wie Menschen tatsächlich suchen)
 6. KEINE Duplikate oder ähnliche Fragen zu diesen bestehenden: ${existingQuestionsList.length > 0 ? existingQuestionsList.slice(0, 50).join('; ') : 'keine'}
 7. Sortiere nach Suchhäufigkeit - am häufigsten gesucht zuerst
+8. Jede Frage muss 20-200 Zeichen, 4-30 Wörter lang sein und eine vollständige, durchsuchbare Anfrage sein
+9. Vermeide generische Fragen wie "Was ist..." oder "Wie funktioniert..." es sei denn, sie sind sehr spezifisch für dieses Modell
+10. Verwende natürliche Sprache - wie echte Menschen bei Google oder in Foren suchen würden
 
-Format: Eine Anleitung/Leitfaden pro Zeile, keine Nummerierung, klar und umsetzbar. Natürliche Sprache wie Menschen suchen würden.`;
+BEISPIELE GUTER FRAGEN:
+- "Wie wechsle ich das Öl bei ${brand} ${model} ${generation}?"
+- "${brand} ${model} ${generation} Bremsbeläge wechseln Anleitung"
+- "Filterwechsel ${brand} ${model} ${generation} Schritt für Schritt"
+- "Kühlflüssigkeit nachfüllen ${brand} ${model} ${generation}"
+- "Zündkerzen wechseln ${brand} ${model} ${generation} DIY"
+
+BEISPIELE SCHLECHTER FRAGEN (VERMEIDEN):
+- "Was ist Wartung?" (zu generisch)
+- "Öl" (zu kurz, keine Frage)
+- "Erzähl mir von Autos" (nicht spezifisch, zu generisch)
+
+Format: Eine Anleitung/Leitfaden pro Zeile, keine Nummerierung, keine Präfixe, klar und umsetzbar. Natürliche Sprache wie Menschen suchen würden.`;
 
   const batches = Math.ceil(count / BATCH_SIZE);
   const allQuestions: string[] = [];
@@ -1294,12 +1417,13 @@ KRITISCH WICHTIG - MUSS GENAU EINGEHALTEN WERDEN:
 - Wenn du weniger als ${batchCount} Fragen generierst, ist deine Antwort UNVOLLSTÄNDIG und UNBRAUCHBAR
 - Zähle deine Fragen vor dem Ausgeben - es müssen EXAKT ${batchCount} sein
 - Priorisiere Fragen nach Suchhäufigkeit (meistgesucht zuerst)
-- Verwende natürliche Suchanfrage-Formulierungen
-- Jede Frage muss spezifisch für dieses Modell/Generation sein
-- Keine Wiederholungen oder ähnliche Fragen
+- Verwende natürliche Suchanfrage-Formulierungen (wie echte Menschen bei Google suchen)
+- Jede Frage muss spezifisch für dieses Modell/Generation sein - füge Modellname ein wenn relevant
+- Keine Wiederholungen oder ähnliche Fragen zu vorherigen Batches oder bestehenden Fragen
 - Gib NUR die Fragen aus, eine pro Zeile, mit normalen Leerzeichen und korrekter Formatierung
 - Keine Nummerierung, keine Antworten, keine Wiederholungen, keine Einleitung, keine doppelten Fragen
 - Schreibe normale, lesbare Sätze wie Menschen sie suchen würden
+- Jede Frage muss 20-200 Zeichen, 4-30 Wörter lang sein
 - GENERIERE EXAKT ${batchCount} FRAGEN - DIES IST EINE HARTE ANFORDERUNG`
         : `You are an expert in automotive search queries and technical knowledge bases. You know the most frequently searched maintenance procedures for each car model.
 
@@ -1711,6 +1835,9 @@ export async function POST(req: Request) {
 
       try {
         const { brandIds, generationIds, contentType, questionsPerGeneration, language } = await req.json();
+        
+        // Force German language for Fahrzeugfehler.de (site is German-only)
+        const effectiveLanguage: 'en' | 'de' = 'de';
 
         if (!brandIds || !Array.isArray(brandIds) || brandIds.length === 0) {
           sendUpdate({ type: 'error', error: 'Missing required parameters: brandIds array' });
@@ -1835,7 +1962,7 @@ Format your response with clear headings and structured steps. Include sections 
                 generation.name, 
                 generation.generation_code, 
                 questionsPerGeneration, 
-                language, 
+                effectiveLanguage, 
                 apiKey,
                 allGeneratedQuestions,
                 sendUpdate,
@@ -2011,6 +2138,45 @@ Format your response with clear headings and structured steps. Include sections 
           linesCount: allQuestions.length,
           fileSize: txtContent.length,
         });
+
+        // Save questions to database for duplicate tracking
+        sendUpdate({
+          type: 'database_save_start',
+          questionsCount: allQuestions.length,
+        });
+
+        try {
+          const promptUsed = contentType === 'fault' 
+            ? `Fault questions for ${brandIds.length} brands, ${generationIds.length} generations`
+            : `Manual questions for ${brandIds.length} brands, ${generationIds.length} generations`;
+          
+          const aiModelUsed = process.env.BATCH_MODEL_ANSWERS || 'gpt-4o-mini';
+          
+          const dbResult = await saveQuestionsToDatabase(
+            allQuestions,
+            effectiveLanguage,
+            filename,
+            promptUsed,
+            aiModelUsed,
+            supabase
+          );
+
+          sendUpdate({
+            type: 'database_save_complete',
+            saved: dbResult.saved,
+            duplicates: dbResult.duplicates,
+            errors: dbResult.errors,
+          });
+
+          console.log(`[Generate Questions] Database save: ${dbResult.saved} saved, ${dbResult.duplicates} duplicates, ${dbResult.errors} errors`);
+        } catch (dbError) {
+          console.error('[Generate Questions] Error saving to database:', dbError);
+          sendUpdate({
+            type: 'database_save_error',
+            error: dbError instanceof Error ? dbError.message : 'Unknown database error',
+            warning: 'Questions saved to file but not to database. File is still available.',
+          });
+        }
 
         sendUpdate({
           type: 'complete',

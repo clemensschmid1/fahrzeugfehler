@@ -63,6 +63,30 @@ async function generateSitemaps() {
   const now = new Date().toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
   const seenUrls = new Set<string>(); // Track URLs to prevent duplicates
   
+  // Helper function to check if URL should be excluded (internal routes, API, etc.)
+  const shouldExcludeUrl = (url: string): boolean => {
+    return url.includes('/internal/') || 
+           url.includes('/api/') || 
+           url.includes('/login') || 
+           url.includes('/signup') || 
+           url.includes('/profile') ||
+           url.includes('/admin/');
+  };
+  
+  // Helper function to safely add URL to sitemap (with exclusion check)
+  const safeAddUrl = (url: string, priority: number, changefreq: string, lastmod?: string) => {
+    if (shouldExcludeUrl(url)) {
+      console.warn(`⚠️  Skipping excluded URL: ${url}`);
+      return false;
+    }
+    if (!seenUrls.has(url)) {
+      seenUrls.add(url);
+      allUrls.push({ url, lastmod, priority, changefreq });
+      return true;
+    }
+    return false;
+  };
+  
   // Add main pages with high priority
   console.log('📄 Adding main pages...');
   allUrls.push({ url: `${baseUrl}/`, priority: 1.0, changefreq: 'daily' });
@@ -499,18 +523,25 @@ async function generateSitemaps() {
     // Continue without failing - Cars pages will be added in next build
   }
   
-  console.log(`🌐 Total URLs generated: ${allUrls.length}`);
+  // Final safety check: Filter out any internal routes that might have slipped through
+  const filteredUrls = allUrls.filter(urlData => !shouldExcludeUrl(urlData.url));
+  const excludedCount = allUrls.length - filteredUrls.length;
+  if (excludedCount > 0) {
+    console.log(`⚠️  Filtered out ${excludedCount} excluded URLs (internal routes, API, etc.)`);
+  }
+  
+  console.log(`🌐 Total URLs generated: ${filteredUrls.length} (${excludedCount > 0 ? `${excludedCount} excluded` : 'none excluded'})`);
   
   // Split URLs into sitemap files
   const sitemapFiles: string[] = [];
-  const totalSitemaps = Math.ceil(allUrls.length / SITEMAP_SIZE);
+  const totalSitemaps = Math.ceil(filteredUrls.length / SITEMAP_SIZE);
   
   console.log(`📁 Creating ${totalSitemaps} sitemap files...`);
   
   for (let i = 0; i < totalSitemaps; i++) {
     const startIndex = i * SITEMAP_SIZE;
-    const endIndex = Math.min(startIndex + SITEMAP_SIZE, allUrls.length);
-    const urlsForThisSitemap = allUrls.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + SITEMAP_SIZE, filteredUrls.length);
+    const urlsForThisSitemap = filteredUrls.slice(startIndex, endIndex);
     
     const sitemapXml = makeSitemapXml(urlsForThisSitemap);
     const filename = `sitemap-${i}.xml`;
@@ -568,7 +599,7 @@ ${sitemapEntries}
   
   console.log(`\n🎉 Successfully generated ${totalSitemaps} sitemap files:`);
   sitemapFiles.forEach(file => console.log(`   - ${file}`));
-  console.log(`📊 Total URLs: ${allUrls.length}`);
+  console.log(`📊 Total URLs: ${filteredUrls.length}${excludedCount > 0 ? ` (${excludedCount} excluded)` : ''}`);
   console.log(`📊 URLs per sitemap: ${SITEMAP_SIZE}`);
   
   return sitemapFiles;
