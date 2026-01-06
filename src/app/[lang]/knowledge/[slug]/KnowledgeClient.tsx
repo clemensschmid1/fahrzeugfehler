@@ -12,6 +12,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { processMarkdownForLatex } from '@/lib/latex-utils';
 import { visit } from 'unist-util-visit';
+import AdsterraBanner from '@/components/AdsterraBanner';
 
 type Question = {
   id: string;
@@ -293,7 +294,10 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 pt-24 pb-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 lg:gap-12">
+          {/* Main Content Column */}
+          <div className="min-w-0">
         {/* Header Section - Minimalistic */}
         <div className="mb-12">
           {question.status === 'draft' && (
@@ -351,6 +355,11 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
               <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed">{question.question}</p>
             </div>
           )}
+        </div>
+
+        {/* Adsterra Banner - Mobile inline placement after header */}
+        <div className="lg:hidden mb-8 flex justify-center">
+          <AdsterraBanner position="inline" />
         </div>
 
         {/* Answer Section - Clean and minimalistic */}
@@ -887,6 +896,20 @@ export default function KnowledgeClient({ question, followUpQuestions, relatedQu
             </div>
           </div>
         )}
+
+        {/* Adsterra Banner - Mobile inline placement */}
+        <div className="lg:hidden mb-8 flex justify-center">
+          <AdsterraBanner position="inline" />
+        </div>
+          </div>
+
+          {/* Sidebar with Adsterra Banner - Desktop only, Mobile shows inline */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-24">
+              <AdsterraBanner position="sticky" className="mb-6" />
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

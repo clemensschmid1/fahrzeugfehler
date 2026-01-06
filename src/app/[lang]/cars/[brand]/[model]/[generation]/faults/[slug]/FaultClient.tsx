@@ -9,6 +9,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { usePathname, useSearchParams } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
+import AdsterraBanner from '@/components/AdsterraBanner';
 
 type CarBrand = {
   id: string;
@@ -502,8 +503,11 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
         </div>
       </div>
 
-      {/* Main Content - Mobile optimized */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
+      {/* Main Content - Mobile optimized with Sidebar for Desktop */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 lg:gap-12">
+          {/* Main Content Column */}
+          <div className="min-w-0">
         {/* Table of Contents */}
         {showTOC && tocItems.length > 0 && (
           <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -544,6 +548,11 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             </svg>
             <span>{wordCount} Wörter</span>
           </div>
+        </div>
+
+        {/* Adsterra Banner - Mobile inline placement */}
+        <div className="lg:hidden mb-8 flex justify-center">
+          <AdsterraBanner position="inline" />
         </div>
         {/* Critical Safety Warning */}
         {(fault.severity === 'critical' || fault.severity === 'high') && (
@@ -1365,6 +1374,15 @@ export default function FaultClient({ brand, model, generation, fault, relatedFa
             </svg>
             Zurück zur Generation
           </Link>
+        </div>
+          </div>
+
+          {/* Sidebar with Adsterra Banner - Desktop only, Mobile shows inline */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-24">
+              <AdsterraBanner position="sticky" className="mb-6" />
+            </div>
+          </aside>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import AdsterraBanner from '@/components/AdsterraBanner';
 
 // Keep the same Question interface
 interface Question {
@@ -216,6 +217,16 @@ export default function KnowledgeClient({ questions, totalAvailable, page, pageS
           </div>
         </header>
         </motion.div>
+
+        {/* Adsterra Banner - Mobile inline, Desktop sticky sidebar */}
+        <div className="mb-6 lg:hidden flex justify-center">
+          <AdsterraBanner position="inline" />
+        </div>
+        
+        {/* Desktop: Sticky sidebar with banner */}
+        <div className="hidden lg:block fixed right-4 top-24 z-30">
+          <AdsterraBanner position="sticky" />
+        </div>
 
         {/* Mobile: Sticky collapsed filter bar */}
         <div className="sm:hidden sticky top-0 z-30 relative mb-6">
